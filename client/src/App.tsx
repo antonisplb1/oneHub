@@ -24,11 +24,13 @@ import PaymentProcessing from "@/pages/PaymentProcessing";
 import VerifyEmail from "@/pages/VerifyEmail";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
+import Demo from "@/pages/Demo";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={LandingPage} />
+      <Route path="/demo" component={Demo} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/verify-email/:token" component={VerifyEmail} />
       <Route path="/forgot-password" component={ForgotPassword} />

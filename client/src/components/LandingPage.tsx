@@ -30,9 +30,11 @@ export default function LandingPage() {
                   Register now..
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" data-testid="button-view-demo" className="text-base px-8">
-                View Demo
-              </Button>
+              <Link href="/demo">
+                <Button size="lg" variant="outline" data-testid="button-view-demo" className="text-base px-8">
+                  View Demo
+                </Button>
+              </Link>
             </div>
           </div>
           <div className="bg-gradient-to-br from-primary/20 to-chart-3/20 rounded-2xl p-12 aspect-video flex items-center justify-center shadow-sm">
