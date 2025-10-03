@@ -41,27 +41,27 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">MerchantHub</h1>
-          <p className="text-muted-foreground">Manage loyalty & engagement</p>
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-semibold text-primary mb-3 tracking-tight">MerchantHub</h1>
+          <p className="text-muted-foreground text-lg">Manage loyalty & engagement</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Welcome</CardTitle>
-            <CardDescription>Login or create your account to get started</CardDescription>
+        <Card className="border-card-border shadow-sm">
+          <CardHeader className="pb-6">
+            <CardTitle className="text-2xl font-semibold">Welcome</CardTitle>
+            <CardDescription className="text-base">Login or create your account to get started</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsList className="grid w-full grid-cols-2 mb-8">
                 <TabsTrigger value="login" data-testid="tab-login">Login</TabsTrigger>
                 <TabsTrigger value="signup" data-testid="tab-signup">Sign Up</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <Label htmlFor="login-email">Email</Label>
+                <form onSubmit={handleLogin} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email" className="text-sm font-medium">Email</Label>
                     <Input
                       id="login-email"
                       type="email"
@@ -73,8 +73,8 @@ export default function AuthPage() {
                       disabled={isLoggingIn}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="login-password">Password</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password" className="text-sm font-medium">Password</Label>
                     <Input
                       id="login-password"
                       type="password"
@@ -86,16 +86,16 @@ export default function AuthPage() {
                       disabled={isLoggingIn}
                     />
                   </div>
-                  <Button type="submit" className="w-full" data-testid="button-login-submit" disabled={isLoggingIn}>
+                  <Button type="submit" size="lg" className="w-full" data-testid="button-login-submit" disabled={isLoggingIn}>
                     {isLoggingIn ? "Logging in..." : "Login"}
                   </Button>
                 </form>
               </TabsContent>
 
               <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div>
-                    <Label htmlFor="shop-name">Shop Name</Label>
+                <form onSubmit={handleSignup} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="shop-name" className="text-sm font-medium">Shop Name</Label>
                     <Input
                       id="shop-name"
                       type="text"
@@ -107,8 +107,8 @@ export default function AuthPage() {
                       disabled={isSigningUp}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="signup-email">Email</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email" className="text-sm font-medium">Email</Label>
                     <Input
                       id="signup-email"
                       type="email"
@@ -120,8 +120,8 @@ export default function AuthPage() {
                       disabled={isSigningUp}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="signup-password">Password</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password" className="text-sm font-medium">Password</Label>
                     <Input
                       id="signup-password"
                       type="password"
@@ -134,8 +134,8 @@ export default function AuthPage() {
                       minLength={6}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password" className="text-sm font-medium">Confirm Password</Label>
                     <Input
                       id="confirm-password"
                       type="password"
@@ -152,6 +152,7 @@ export default function AuthPage() {
                   </div>
                   <Button 
                     type="submit" 
+                    size="lg"
                     className="w-full" 
                     data-testid="button-signup-submit" 
                     disabled={isSigningUp || signupPassword !== confirmPassword}

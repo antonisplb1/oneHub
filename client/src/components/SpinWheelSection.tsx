@@ -157,8 +157,8 @@ export default function SpinWheelSection() {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="rewards">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs defaultValue="rewards" className="mt-8">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="rewards" data-testid="tab-rewards">
             <Gift className="w-4 h-4 mr-2" />
             Rewards
@@ -169,27 +169,29 @@ export default function SpinWheelSection() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="rewards" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Prize Configuration</CardTitle>
+        <TabsContent value="rewards" className="space-y-6 mt-6">
+          <Card className="border-card-border shadow-sm">
+            <CardHeader className="pb-6">
+              <CardTitle className="text-xl font-semibold">Prize Configuration</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingRewards ? (
-                <p className="text-muted-foreground">Loading...</p>
+                <p className="text-muted-foreground text-lg">Loading...</p>
               ) : rewards.length === 0 ? (
-                <p className="text-muted-foreground">No rewards configured yet. Add your first reward to get started.</p>
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground text-lg">No rewards configured yet. Add your first reward to get started.</p>
+                </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {rewards.map((reward) => (
                     <div
                       key={reward.id}
-                      className="flex items-center justify-between p-4 border rounded-md hover-elevate"
+                      className="flex items-center justify-between p-5 border rounded-xl hover-elevate"
                       data-testid={`reward-${reward.id}`}
                     >
                       <div className="flex-1">
-                        <p className="font-semibold">{reward.name}</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="font-semibold text-lg">{reward.name}</p>
+                        <p className="text-sm text-muted-foreground mt-1">
                           {reward.winChance}% chance • Won {reward.timesWon || 0} times
                         </p>
                       </div>
@@ -198,7 +200,7 @@ export default function SpinWheelSection() {
                           {reward.isActive ? "Active" : "Inactive"}
                         </Badge>
                         <Button 
-                          size="sm" 
+                          size="icon" 
                           variant="ghost"
                           onClick={() => handleEditReward(reward)}
                           data-testid={`button-edit-reward-${reward.id}`}
@@ -206,7 +208,7 @@ export default function SpinWheelSection() {
                           <Settings className="w-4 h-4" />
                         </Button>
                         <Button 
-                          size="sm" 
+                          size="icon" 
                           variant="ghost"
                           onClick={() => handleDeleteReward(reward.id)}
                           disabled={deleteRewardMutation.isPending}
@@ -223,14 +225,14 @@ export default function SpinWheelSection() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="spin" className="space-y-4">
+        <TabsContent value="spin" className="space-y-6 mt-6">
           <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Customer Spin QR</CardTitle>
+            <Card className="border-card-border shadow-sm">
+              <CardHeader className="pb-6">
+                <CardTitle className="text-xl font-semibold">Customer Spin QR</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-muted-foreground text-sm">
+              <CardContent className="space-y-6">
+                <p className="text-muted-foreground">
                   Share this QR code with customers. When scanned, they get one spin only.
                 </p>
                 {user && (
@@ -261,15 +263,15 @@ export default function SpinWheelSection() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>In-Store Wheel</CardTitle>
+            <Card className="border-card-border shadow-sm">
+              <CardHeader className="pb-6">
+                <CardTitle className="text-xl font-semibold">In-Store Wheel</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-muted-foreground text-sm">
+              <CardContent className="space-y-6">
+                <p className="text-muted-foreground">
                   Open unlimited spin wheel on a tablet or display for in-store customers
                 </p>
-                <div className="flex flex-col items-center gap-4 py-4">
+                <div className="flex flex-col items-center gap-6 py-8">
                   <Gauge className="w-32 h-32 text-chart-2" />
                   <Button 
                     size="lg"
@@ -290,11 +292,11 @@ export default function SpinWheelSection() {
       <Dialog open={isEditRewardDialogOpen} onOpenChange={setIsEditRewardDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Reward</DialogTitle>
+            <DialogTitle className="text-2xl font-semibold">Edit Reward</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleUpdateReward} className="space-y-4">
-            <div>
-              <Label htmlFor="edit-reward-name">Reward Name</Label>
+          <form onSubmit={handleUpdateReward} className="space-y-6 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-reward-name" className="text-sm font-medium">Reward Name</Label>
               <Input
                 id="edit-reward-name"
                 value={rewardName}
@@ -304,8 +306,8 @@ export default function SpinWheelSection() {
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="edit-win-chance">Win Chance (%)</Label>
+            <div className="space-y-2">
+              <Label htmlFor="edit-win-chance" className="text-sm font-medium">Win Chance (%)</Label>
               <Input
                 id="edit-win-chance"
                 type="number"
@@ -319,6 +321,7 @@ export default function SpinWheelSection() {
             </div>
             <Button 
               type="submit" 
+              size="lg"
               className="w-full" 
               data-testid="button-update-reward"
               disabled={updateRewardMutation.isPending}

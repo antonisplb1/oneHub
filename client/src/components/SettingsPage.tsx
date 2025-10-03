@@ -94,20 +94,20 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Settings</h1>
-        <p className="text-muted-foreground">Manage your shop information</p>
+    <div className="space-y-10">
+      <div className="space-y-2">
+        <h1 className="text-4xl font-semibold tracking-tight">Settings</h1>
+        <p className="text-muted-foreground text-lg">Manage your shop information</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Shop Information</CardTitle>
+      <Card className="border-card-border shadow-sm">
+        <CardHeader className="pb-6">
+          <CardTitle className="text-xl font-semibold">Shop Information</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSave} className="space-y-4">
-            <div>
-              <Label htmlFor="shop-name">Shop Name</Label>
+          <form onSubmit={handleSave} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="shop-name" className="text-sm font-medium">Shop Name</Label>
               <Input
                 id="shop-name"
                 value={shopName}
@@ -173,6 +173,7 @@ export default function SettingsPage() {
             </div>
             <Button
               type="submit"
+              size="lg"
               disabled={updateMutation.isPending}
               data-testid="button-save-settings"
             >
@@ -182,25 +183,25 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Subscription</CardTitle>
+      <Card className="border-card-border shadow-sm">
+        <CardHeader className="pb-6">
+          <CardTitle className="text-xl font-semibold">Subscription</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <p className="text-sm text-muted-foreground mb-2">
-                Status: <span className="font-semibold text-foreground">
+              <p className="text-sm text-muted-foreground mb-4">
+                Status: <span className="font-semibold text-lg text-foreground">
                   {user?.subscriptionStatus === "active" ? "Active" : "Inactive"}
                 </span>
               </p>
               {user?.subscriptionStatus !== "active" && (
-                <Button data-testid="button-subscribe">
+                <Button size="lg" data-testid="button-subscribe">
                   Subscribe Now - €25/month
                 </Button>
               )}
               {user?.subscriptionStatus === "active" && (
-                <Button variant="outline" data-testid="button-manage-subscription">
+                <Button size="lg" variant="outline" data-testid="button-manage-subscription">
                   Manage Subscription
                 </Button>
               )}
