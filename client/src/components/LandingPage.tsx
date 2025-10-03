@@ -1,0 +1,155 @@
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Award, Gift, TrendingUp, Check } from "lucide-react";
+
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-primary">MerchantHub</h1>
+          <Link href="/auth">
+            <Button variant="outline" data-testid="button-login">Login</Button>
+          </Link>
+        </div>
+      </header>
+
+      <section className="py-20 px-6">
+        <div className="container mx-auto grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <h2 className="text-5xl font-bold mb-6 leading-tight">
+              Boost Customer Loyalty & Engagement
+            </h2>
+            <p className="text-xl text-muted-foreground mb-8">
+              All-in-one platform for digital stamp cards and prize wheels. Turn every visit into an opportunity.
+            </p>
+            <div className="flex gap-4">
+              <Link href="/auth">
+                <Button size="lg" data-testid="button-get-started">
+                  Start Free Trial
+                </Button>
+              </Link>
+              <Button size="lg" variant="outline" data-testid="button-view-demo">
+                View Demo
+              </Button>
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-primary/20 to-chart-3/20 rounded-2xl p-8 aspect-video flex items-center justify-center">
+            <p className="text-muted-foreground">Dashboard Preview</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 px-6 bg-muted/30">
+        <div className="container mx-auto">
+          <h3 className="text-3xl font-bold text-center mb-12">Everything You Need</h3>
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="hover-elevate">
+              <CardContent className="p-6">
+                <Award className="w-12 h-12 text-primary mb-4" />
+                <h4 className="text-xl font-semibold mb-2">Digital Loyalty Cards</h4>
+                <p className="text-muted-foreground">
+                  Customers collect stamps on their phones. No cards to carry, no stamps to lose.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate">
+              <CardContent className="p-6">
+                <Gift className="w-12 h-12 text-chart-3 mb-4" />
+                <h4 className="text-xl font-semibold mb-2">Prize Wheel Campaigns</h4>
+                <p className="text-muted-foreground">
+                  Create excitement with customizable spin-to-win wheels for promotions and events.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate">
+              <CardContent className="p-6">
+                <TrendingUp className="w-12 h-12 text-chart-2 mb-4" />
+                <h4 className="text-xl font-semibold mb-2">Unified Dashboard</h4>
+                <p className="text-muted-foreground">
+                  Manage both features from one place. Track engagement and measure ROI effortlessly.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 px-6">
+        <div className="container mx-auto">
+          <h3 className="text-3xl font-bold text-center mb-12">How It Works</h3>
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                1
+              </div>
+              <h4 className="font-semibold mb-2">Setup Your Account</h4>
+              <p className="text-sm text-muted-foreground">Create your shop profile and customize your rewards in minutes</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                2
+              </div>
+              <h4 className="font-semibold mb-2">Customers Scan QR</h4>
+              <p className="text-sm text-muted-foreground">Show your QR code at checkout or on your counter</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                3
+              </div>
+              <h4 className="font-semibold mb-2">Track Engagement</h4>
+              <p className="text-sm text-muted-foreground">Watch your repeat customers grow with real-time analytics</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 px-6 bg-muted/30">
+        <div className="container mx-auto max-w-2xl">
+          <div className="text-center mb-12">
+            <h3 className="text-3xl font-bold mb-4">Simple, Transparent Pricing</h3>
+            <p className="text-muted-foreground">Everything you need, one affordable price</p>
+          </div>
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <h4 className="text-2xl font-bold mb-2">Professional Plan</h4>
+              <div className="flex items-baseline justify-center gap-2">
+                <span className="text-5xl font-bold">€25</span>
+                <span className="text-muted-foreground">/month</span>
+              </div>
+            </div>
+            <ul className="space-y-3 mb-8">
+              {[
+                "Unlimited customers",
+                "Digital loyalty cards",
+                "Prize wheel campaigns",
+                "QR code generation",
+                "Real-time analytics",
+                "Email support",
+              ].map((feature) => (
+                <li key={feature} className="flex items-center gap-2">
+                  <Check className="w-5 h-5 text-chart-2" />
+                  <span>{feature}</span>
+                </li>
+              ))}
+            </ul>
+            <Link href="/auth">
+              <Button className="w-full" size="lg" data-testid="button-start-trial">
+                Start Free Trial
+              </Button>
+            </Link>
+          </Card>
+        </div>
+      </section>
+
+      <footer className="border-t py-8 px-6">
+        <div className="container mx-auto text-center text-sm text-muted-foreground">
+          <p>© 2025 MerchantHub. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
