@@ -31,6 +31,13 @@ function requireAuth(req: Request, res: Response, next: Function) {
   res.status(401).json({ error: "Unauthorized" });
 }
 
+function requireSubscription(req: Request, res: Response, next: Function) {
+  if (req.isAuthenticated() && req.user!.subscriptionStatus === "active") {
+    return next();
+  }
+  res.status(403).json({ error: "Active subscription required" });
+}
+
 export function registerRoutes(app: Express) {
   app.post("/api/auth/signup", async (req, res) => {
     try {
@@ -63,11 +70,39 @@ export function registerRoutes(app: Express) {
         })
         .returning();
 
-      req.login(newUser, (err) => {
+      req.login(newUser, async (err) => {
         if (err) {
           return res.status(500).json({ error: "Login failed after signup" });
         }
-        res.json({ user: newUser });
+        
+        const session = await stripe.checkout.sessions.create({
+          customer: stripeCustomer.id,
+          payment_method_types: ["card"],
+          line_items: [
+            {
+              price_data: {
+                currency: "eur",
+                product_data: {
+                  name: "Professional Plan",
+                  description: "Unlimited customers, loyalty cards & prize wheels",
+                },
+                unit_amount: 2500,
+                recurring: {
+                  interval: "month",
+                },
+              },
+              quantity: 1,
+            },
+          ],
+          mode: "subscription",
+          success_url: `${req.protocol}://${req.get("host")}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${req.protocol}://${req.get("host")}/auth`,
+          metadata: {
+            userId: newUser.id,
+          },
+        });
+        
+        res.json({ checkoutUrl: session.url });
       });
     } catch (error: any) {
       res.status(400).json({ error: error.message || "Signup failed" });
@@ -111,7 +146,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/user/profile", requireAuth, async (req, res) => {
+  app.patch("/api/user/profile", requireSubscription, async (req, res) => {
     try {
       const { shopName, logo } = req.body;
       
@@ -130,7 +165,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/customers", requireAuth, async (req, res) => {
+  app.get("/api/customers", requireSubscription, async (req, res) => {
     try {
       const customerList = await db
         .select()
@@ -143,7 +178,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/shop-qr-code", requireAuth, async (req, res) => {
+  app.get("/api/shop-qr-code", requireSubscription, async (req, res) => {
     try {
       const protocol = req.protocol;
       const host = req.get("host");
@@ -196,7 +231,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/customers", requireAuth, async (req, res) => {
+  app.post("/api/customers", requireSubscription, async (req, res) => {
     try {
       const customerQrCode = nanoid(12);
       
@@ -228,7 +263,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/loyalty-cards", requireAuth, async (req, res) => {
+  app.get("/api/loyalty-cards", requireSubscription, async (req, res) => {
     try {
       const cards = await db
         .select({
@@ -270,7 +305,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loyalty-cards/:cardId/stamp", requireAuth, async (req, res) => {
+  app.post("/api/loyalty-cards/:cardId/stamp", requireSubscription, async (req, res) => {
     try {
       const [card] = await db
         .select()
@@ -313,7 +348,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loyalty-cards/:cardId/redeem", requireAuth, async (req, res) => {
+  app.post("/api/loyalty-cards/:cardId/redeem", requireSubscription, async (req, res) => {
     try {
       const [card] = await db
         .select()
@@ -356,7 +391,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/rewards", requireAuth, async (req, res) => {
+  app.get("/api/rewards", requireSubscription, async (req, res) => {
     try {
       const rewardList = await db
         .select()
@@ -386,7 +421,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/rewards", requireAuth, async (req, res) => {
+  app.post("/api/rewards", requireSubscription, async (req, res) => {
     try {
       const validatedData = createRewardSchema.parse(req.body);
       
@@ -407,7 +442,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/rewards/:rewardId", requireAuth, async (req, res) => {
+  app.patch("/api/rewards/:rewardId", requireSubscription, async (req, res) => {
     try {
       const [updatedReward] = await db
         .update(rewards)
@@ -435,7 +470,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/spin-tokens", requireAuth, async (req, res) => {
+  app.get("/api/spin-tokens", requireSubscription, async (req, res) => {
     try {
       const tokens = await db
         .select()
@@ -448,7 +483,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/spin-tokens", requireAuth, async (req, res) => {
+  app.post("/api/spin-tokens", requireSubscription, async (req, res) => {
     try {
       const validatedData = createTokenSchema.parse(req.body);
       const token = nanoid(8).toUpperCase();
@@ -594,7 +629,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/spin-token/:tokenId/qr", requireAuth, async (req, res) => {
+  app.get("/api/spin-token/:tokenId/qr", requireSubscription, async (req, res) => {
     try {
       const [token] = await db
         .select()
@@ -625,7 +660,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/spin-in-store-qr/:userId", requireAuth, async (req, res) => {
+  app.get("/api/spin-in-store-qr/:userId", requireSubscription, async (req, res) => {
     try {
       if (req.params.userId !== req.user!.id) {
         return res.status(403).json({ error: "Forbidden" });

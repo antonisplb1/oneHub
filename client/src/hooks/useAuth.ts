@@ -36,13 +36,12 @@ export function useAuth() {
 
   const signupMutation = useMutation({
     mutationFn: signup,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api", "auth", "me"] });
-      setLocation("/dashboard");
+    onSuccess: (data: { checkoutUrl: string }) => {
       toast({
-        title: "Welcome!",
-        description: "Your account has been created.",
+        title: "Account Created!",
+        description: "Redirecting to payment...",
       });
+      window.location.href = data.checkoutUrl;
     },
     onError: (error: any) => {
       toast({

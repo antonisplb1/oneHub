@@ -48,13 +48,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       setLocation("/auth");
+    } else if (!isLoading && user && user.subscriptionStatus !== "active") {
+      setLocation("/subscription-required");
     }
-  }, [isAuthenticated, isLoading, setLocation]);
+  }, [isAuthenticated, isLoading, user, setLocation]);
 
   if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (user.subscriptionStatus !== "active") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Verifying subscription...</p>
       </div>
     );
   }

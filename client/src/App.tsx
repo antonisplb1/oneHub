@@ -15,12 +15,14 @@ import CustomerLoyaltyCard from "@/components/CustomerLoyaltyCard";
 import JoinLoyalty from "@/components/JoinLoyalty";
 import InStoreSpinWheel from "@/components/InStoreSpinWheel";
 import SettingsPage from "@/components/SettingsPage";
+import SubscriptionRequired from "@/pages/SubscriptionRequired";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/subscription-required" component={SubscriptionRequired} />
       <Route path="/dashboard">
         {() => (
           <DashboardLayout>
