@@ -8,7 +8,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto px-6 py-5 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-primary">MerchantHub</h1>
+          <h1 className="text-2xl font-semibold text-primary">oneHub</h1>
           <Link href="/auth">
             <Button variant="outline" size="lg" data-testid="button-login">Login</Button>
           </Link>
@@ -27,7 +27,7 @@ export default function LandingPage() {
             <div className="flex gap-4 flex-wrap">
               <Link href="/auth">
                 <Button size="lg" data-testid="button-get-started" className="text-base px-8">
-                  Start Free Trial
+                  Register now..
                 </Button>
               </Link>
               <Button size="lg" variant="outline" data-testid="button-view-demo" className="text-base px-8">
@@ -147,7 +147,7 @@ export default function LandingPage() {
 
       <footer className="border-t py-8 px-6">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          <p>© 2025 MerchantHub. All rights reserved.</p>
+          <p>© 2025 oneHub. All rights reserved.</p>
         </div>
       </footer>
     </div>
