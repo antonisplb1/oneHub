@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Settings, Ticket, Gift, Gauge, Trash2 } from "lucide-react";
-import { getRewards, getSpinTokens, createReward, createSpinToken, updateReward, deleteReward } from "@/lib/api";
+import { Plus, Settings, Gift, Gauge, Trash2 } from "lucide-react";
+import { getRewards, createReward, updateReward, deleteReward } from "@/lib/api";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,23 +17,15 @@ import type { Reward } from "@shared/schema";
 export default function SpinWheelSection() {
   const [isRewardDialogOpen, setIsRewardDialogOpen] = useState(false);
   const [isEditRewardDialogOpen, setIsEditRewardDialogOpen] = useState(false);
-  const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
   const [rewardName, setRewardName] = useState("");
   const [winChance, setWinChance] = useState("25");
-  const [customerName, setCustomerName] = useState("");
-  const [expiryMinutes, setExpiryMinutes] = useState("30");
   const { toast } = useToast();
   const { user } = useAuth();
 
   const { data: rewards = [], isLoading: isLoadingRewards } = useQuery({
     queryKey: ["/api", "rewards"],
     queryFn: getRewards,
-  });
-
-  const { data: tokens = [], isLoading: isLoadingTokens } = useQuery({
-    queryKey: ["/api", "spin-tokens"],
-    queryFn: getSpinTokens,
   });
 
 
@@ -47,20 +39,6 @@ export default function SpinWheelSection() {
       toast({
         title: "Reward created!",
         description: "Your new reward has been added to the wheel.",
-      });
-    },
-  });
-
-  const tokenMutation = useMutation({
-    mutationFn: createSpinToken,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api", "spin-tokens"] });
-      setIsTokenDialogOpen(false);
-      setCustomerName("");
-      toast({
-        title: "Token generated!",
-        description: `Token: ${data.token}`,
-        duration: 5000,
       });
     },
   });
@@ -94,14 +72,6 @@ export default function SpinWheelSection() {
     rewardMutation.mutate({
       name: rewardName,
       winChance: parseFloat(winChance),
-    });
-  };
-
-  const handleGenerateToken = (e: React.FormEvent) => {
-    e.preventDefault();
-    tokenMutation.mutate({
-      customerName: customerName || undefined,
-      expiryMinutes: parseInt(expiryMinutes),
     });
   };
 
@@ -257,89 +227,33 @@ export default function SpinWheelSection() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-muted-foreground text-sm">
-                  Generate a QR code for customers to scan and get one spin
+                  Share this QR code with customers. When scanned, they get a one-time spin link (expires in 5 minutes)
                 </p>
-                <Dialog open={isTokenDialogOpen} onOpenChange={setIsTokenDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="w-full" data-testid="button-generate-token">
-                      <Ticket className="w-4 h-4 mr-2" />
-                      Generate QR Code
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>One-Time Spin QR Code</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleGenerateToken} className="space-y-4">
-                      <div>
-                        <Label htmlFor="customer-name">Customer Name (optional)</Label>
-                        <Input
-                          id="customer-name"
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                          placeholder="John Doe"
-                          data-testid="input-customer-name"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="expiry-minutes">Expiry (minutes)</Label>
-                        <Input
-                          id="expiry-minutes"
-                          type="number"
-                          min="1"
-                          max="1440"
-                          value={expiryMinutes}
-                          onChange={(e) => setExpiryMinutes(e.target.value)}
-                          data-testid="input-expiry-minutes"
-                          required
-                        />
-                      </div>
-                      <Button 
-                        type="submit" 
-                        className="w-full"
-                        disabled={tokenMutation.isPending}
-                        data-testid="button-submit-token"
-                      >
-                        {tokenMutation.isPending ? "Generating..." : "Generate QR Code"}
-                      </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-                {(() => {
-                  const latestActiveToken = tokens.find(t => !t.isUsed && new Date(t.expiresAt) > new Date());
-                  return latestActiveToken ? (
-                    <div className="space-y-3 p-4 border rounded-md">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">{latestActiveToken.customerName || "Latest QR Code"}</p>
-                        <Badge>Active</Badge>
-                      </div>
-                      <div className="flex justify-center">
-                        <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/spin/${latestActiveToken.token}`)}`}
-                          alt="Spin QR code"
-                          className="w-48 h-48"
-                        />
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => {
-                          const link = document.createElement('a');
-                          link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`${window.location.origin}/spin/${latestActiveToken.token}`)}`;
-                          link.download = `spin-qr.png`;
-                          link.click();
-                        }}
-                      >
-                        Download QR
-                      </Button>
+                {user && (
+                  <div className="space-y-3">
+                    <div className="flex justify-center p-4 border rounded-md bg-background">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`${window.location.origin}/get-spin/${user.id}`)}`}
+                        alt="Spin QR code"
+                        className="w-64 h-64"
+                      />
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No active QR code. Generate one to get started.
-                    </p>
-                  );
-                })()}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`${window.location.origin}/get-spin/${user.id}`)}`;
+                        link.download = `spin-qr.png`;
+                        link.click();
+                      }}
+                      data-testid="button-download-qr"
+                    >
+                      Download QR Code
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
