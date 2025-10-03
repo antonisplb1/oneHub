@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, QrCode, Users } from "lucide-react";
-import { getLoyaltyCards, addStamp, redeemReward } from "@/lib/api";
+import { getLoyaltyCards, addStamp, redeemReward, getShopQRCode } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,6 +20,11 @@ export default function LoyaltyCardsSection() {
   const { data: cards = [], isLoading } = useQuery({
     queryKey: ["/api", "loyalty-cards"],
     queryFn: getLoyaltyCards,
+  });
+
+  const { data: qrCodeData } = useQuery({
+    queryKey: ["/api", "shop-qr-code"],
+    queryFn: getShopQRCode,
   });
 
   const stampMutation = useMutation({
@@ -184,15 +189,30 @@ export default function LoyaltyCardsSection() {
               <CardTitle>Shop QR Code</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
-              <div className="w-64 h-64 bg-muted rounded-md flex items-center justify-center">
-                <QrCode className="w-32 h-32 text-muted-foreground" />
-              </div>
+              {qrCodeData ? (
+                <img 
+                  src={qrCodeData.qrCode} 
+                  alt="Shop QR Code" 
+                  className="w-64 h-64 border rounded-md"
+                />
+              ) : (
+                <div className="w-64 h-64 bg-muted rounded-md flex items-center justify-center">
+                  <QrCode className="w-32 h-32 text-muted-foreground" />
+                </div>
+              )}
               <p className="text-sm text-muted-foreground text-center">
                 Customers scan this QR code to join your loyalty program
               </p>
-              <Button variant="outline" data-testid="button-download-qr">
-                Download QR Code
-              </Button>
+              {qrCodeData && (
+                <a 
+                  href={qrCodeData.qrCode} 
+                  download="shop-qr-code.png"
+                >
+                  <Button variant="outline" data-testid="button-download-qr">
+                    Download QR Code
+                  </Button>
+                </a>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

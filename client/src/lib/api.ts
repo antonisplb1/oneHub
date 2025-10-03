@@ -105,3 +105,7 @@ export async function createPortalSession() {
     method: "POST",
   });
 }
+
+export async function getShopQRCode() {
+  return apiRequest<{ qrCode: string }>("/api/shop-qr-code");
+}

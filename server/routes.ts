@@ -18,6 +18,7 @@ import { hashPassword } from "./auth";
 import passport from "passport";
 import { nanoid } from "nanoid";
 import Stripe from "stripe";
+import QRCode from "qrcode";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-09-30.clover",
@@ -118,6 +119,21 @@ export function registerRoutes(app: Express) {
         .where(eq(customers.userId, req.user!.id))
         .orderBy(desc(customers.createdAt));
       res.json(customerList);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/shop-qr-code", requireAuth, async (req, res) => {
+    try {
+      const protocol = req.protocol;
+      const host = req.get("host");
+      const shopUrl = `${protocol}://${host}/join/${req.user!.id}`;
+      const qrCodeDataUrl = await QRCode.toDataURL(shopUrl, {
+        width: 300,
+        margin: 2,
+      });
+      res.json({ qrCode: qrCodeDataUrl, url: shopUrl });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
