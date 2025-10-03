@@ -692,7 +692,7 @@ export function registerRoutes(app: Express) {
         .select()
         .from(spins)
         .where(eq(spins.userId, req.user!.id))
-        .orderBy(desc(spins.createdAt));
+        .orderBy(desc(spins.spunAt));
       res.json(allSpins);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
