@@ -1,14 +1,14 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Award, Gift, QrCode, Smartphone, TrendingUp, Users, ArrowRight, Check } from "lucide-react";
+import { Award, Gift, QrCode, Smartphone, TrendingUp, Users, ArrowRight, Check, Sparkles } from "lucide-react";
 
 export default function Demo() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto px-6 py-5 flex items-center justify-between">
-          <Link href="/">
+          <Link href="/" data-testid="link-home">
             <h1 className="text-2xl font-semibold text-primary cursor-pointer">oneHub</h1>
           </Link>
           <Link href="/auth">
@@ -55,7 +55,7 @@ export default function Demo() {
                   </li>
                 </ul>
               </div>
-              <Card className="p-8">
+              <Card className="p-8" data-testid="card-loyalty-demo">
                 <div className="aspect-square bg-gradient-to-br from-primary/20 to-chart-3/20 rounded-xl flex flex-col items-center justify-center gap-6">
                   <div className="text-center">
                     <Award className="w-20 h-20 text-primary mx-auto mb-4" />
@@ -67,28 +67,29 @@ export default function Demo() {
                           className={`w-8 h-8 rounded-full ${
                             i < 7 ? 'bg-primary' : 'bg-muted'
                           }`}
+                          data-testid={`stamp-${i}`}
                         />
                       ))}
                     </div>
-                    <div className="text-lg font-semibold">7 of 10 stamps</div>
+                    <div className="text-lg font-semibold" data-testid="text-stamp-count">7 of 10 stamps</div>
                   </div>
                 </div>
               </Card>
             </div>
 
             <div className="grid md:grid-cols-2 gap-12 items-center">
-              <Card className="p-8 md:order-first">
+              <Card className="p-8 md:order-first" data-testid="card-prizewheel-demo">
                 <div className="aspect-square bg-gradient-to-br from-chart-3/20 to-primary/20 rounded-xl flex flex-col items-center justify-center gap-6">
                   <div className="relative">
                     <div className="w-48 h-48 rounded-full border-8 border-primary/30 flex items-center justify-center">
                       <Gift className="w-20 h-20 text-chart-3" />
                     </div>
                     <div className="absolute -top-2 -right-2 w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-                      <span className="text-2xl">🎉</span>
+                      <Sparkles className="w-8 h-8 text-primary-foreground" />
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-semibold">Prize Wheel</div>
+                    <div className="text-lg font-semibold" data-testid="text-prizewheel-title">Prize Wheel</div>
                     <div className="text-sm text-muted-foreground">Spin to Win!</div>
                   </div>
                 </div>
@@ -146,11 +147,11 @@ export default function Demo() {
                   </li>
                 </ul>
               </div>
-              <Card className="p-8">
+              <Card className="p-8" data-testid="card-qrcode-demo">
                 <div className="aspect-square bg-gradient-to-br from-primary/20 to-chart-2/20 rounded-xl flex flex-col items-center justify-center gap-6">
                   <QrCode className="w-32 h-32 text-primary" />
                   <div className="text-center">
-                    <div className="text-lg font-semibold mb-2">Scan to Join</div>
+                    <div className="text-lg font-semibold mb-2" data-testid="text-qr-title">Scan to Join</div>
                     <div className="text-sm text-muted-foreground">Customer scans your QR code</div>
                   </div>
                 </div>
@@ -158,25 +159,25 @@ export default function Demo() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-12 items-center">
-              <Card className="p-8 md:order-first">
+              <Card className="p-8 md:order-first" data-testid="card-dashboard-demo">
                 <div className="aspect-square bg-gradient-to-br from-chart-2/20 to-primary/20 rounded-xl flex flex-col items-center justify-center p-6">
                   <TrendingUp className="w-16 h-16 text-chart-2 mb-6" />
                   <div className="w-full space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Total Customers</span>
-                      <span className="text-2xl font-bold">247</span>
+                      <span className="text-2xl font-bold" data-testid="text-total-customers">247</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Active Cards</span>
-                      <span className="text-2xl font-bold">189</span>
+                      <span className="text-2xl font-bold" data-testid="text-active-cards">189</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Rewards Given</span>
-                      <span className="text-2xl font-bold">45</span>
+                      <span className="text-2xl font-bold" data-testid="text-rewards-given">45</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Spins Today</span>
-                      <span className="text-2xl font-bold">23</span>
+                      <span className="text-2xl font-bold" data-testid="text-spins-today">23</span>
                     </div>
                   </div>
                 </div>
