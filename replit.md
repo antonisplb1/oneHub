@@ -26,13 +26,12 @@ The application merges functionality from two separate apps into one cohesive pl
 - **Auto-Reset Rewards**: Removed manual redeem button - cards automatically reset to 0 when customer with 10/10 stamps is scanned again
 - **Reward Notifications**: Dashboard shows "Reward Ready" badge and colored highlight when customers reach 10/10 stamps
 - **Reward Tracking**: Total rewards count displayed for each customer showing how many rewards they've received
-- **Fixed QR Spin System (October 2025)**: Redesigned spin wheel QR flow to use ONE permanent QR code per merchant
-  - **Old System**: Merchant manually generated multiple one-time tokens, displayed in grid, customer scanned specific QR
-  - **New System**: ONE fixed QR code per merchant linking to `/get-spin/:userId` that auto-generates one-time tokens on scan
-  - **Auto-Token Generation**: When customer scans QR, backend validates merchant/subscription and creates 5-minute token
-  - **Security**: Added merchant existence and active subscription validation to token generation endpoint
-  - **Error Handling**: User-friendly error messages for invalid merchants or inactive subscriptions
-  - **Removed UI**: Eliminated token generation dialog, token grid display, and manual token management
+- **Simplified QR Spin System (October 2025)**: Removed all token logic for direct spin access
+  - **Old System**: Complex token generation with 5-minute expiration, validation, and manual management
+  - **New System**: ONE permanent QR code per merchant linking directly to `/in-store-spin/:userId`
+  - **Direct Access**: Customer scans QR → opens spin wheel → spins immediately (no tokens, no expiration)
+  - **Unlimited Spins**: In-store wheel allows customers to spin multiple times
+  - **Removed**: Token generation endpoint, GetSpinRedirect component, token API functions, all token-related UI
 - **Fixed In-Store Wheel Route**: Corrected route from `/in-store-spin/:userId` to match button navigation
 - **Reward Edit/Delete**: Added edit and delete functionality to reward settings with confirmation dialogs
 
@@ -67,7 +66,7 @@ Preferred communication style: Simple, everyday language.
 
 **Routing Strategy:**
 - Public routes: Landing page (`/`), Auth (`/auth`)
-- Customer-facing routes: `/card/:customerId`, `/spin/:tokenId`, `/join/:userId`, `/in-store-spin/:userId`, `/get-spin/:userId`
+- Customer-facing routes: `/card/:customerId`, `/spin/:tokenId`, `/join/:userId`, `/in-store-spin/:userId`
 - Protected dashboard routes: `/dashboard/*` with auth guards
 - Dashboard subroutes: `/dashboard/loyalty`, `/dashboard/scanner`, `/dashboard/spin-wheel`, `/dashboard/settings`, etc.
 
@@ -94,7 +93,7 @@ Preferred communication style: Simple, everyday language.
 - QR code endpoints: `/api/customer-qr/:customerId` (customer QR codes), `/api/qr-codes/:userId` (merchant QR codes)
 - Logo endpoint: `/api/logo/:userId` (serves uploaded logos as images with proper Content-Type)
 - Wallet endpoints: `/api/wallet/apple/:customerId`, `/api/wallet/google/:customerId` (placeholder implementation)
-- Spin wheel endpoints: `/api/rewards`, `/api/spin`, `/api/spin-in-store/:userId`, `/api/generate-spin-token/:userId` (public endpoint with merchant validation)
+- Spin wheel endpoints: `/api/rewards`, `/api/spin`, `/api/spin-in-store/:userId` (public endpoint for direct customer spins)
 - Middleware for route protection via `requireAuth` function
 
 **Data Layer:**
@@ -162,11 +161,10 @@ Preferred communication style: Simple, everyday language.
 
 **Implementation:**
 - QRCode library generates data URLs
-- Four QR code types:
+- Three QR code types:
   1. **Merchant Join QR** - Links to `/join/:userId` for customer signup
   2. **Customer Loyalty QR** - Displays unique customerQrCode on customer's card for merchant scanning
-  3. **Spin Wheel QR** - ONE permanent QR per merchant linking to `/get-spin/:userId` that auto-generates one-time tokens
-  4. **In-Store Spin** - Links to `/in-store-spin/:userId` for unlimited merchant-specific spins
+  3. **Spin Wheel QR** - ONE permanent QR per merchant linking directly to `/in-store-spin/:userId`
 - QR codes generated on-demand via API endpoints
 - Base64 encoded images returned for display/download
 
@@ -177,14 +175,14 @@ Preferred communication style: Simple, everyday language.
 4. Backend validates QR code belongs to merchant's customer
 5. Stamp is added, response shows customer name and updated stamp count
 
-**Spin Wheel QR Flow (Fixed QR System):**
+**Spin Wheel QR Flow (Simplified System):**
 1. Merchant displays ONE permanent QR code from dashboard
-2. Customer scans QR → visits `/get-spin/:userId`
-3. Backend validates merchant exists and has active subscription
-4. Backend generates one-time token with 5-minute expiration
-5. Customer redirected to `/spin/:token`
-6. Customer spins wheel once
-7. Token marked as used in database
+2. Customer scans QR → visits `/in-store-spin/:userId`
+3. In-store spin wheel loads immediately
+4. Customer clicks spin button
+5. POST to `/api/spin-in-store/:userId` to get random reward
+6. Reward displayed on screen
+7. Customer can spin again (unlimited spins)
 
 ### Digital Wallet Integration
 
