@@ -32,11 +32,17 @@ export class GoogleWalletService {
       }
       
       const trimmed = jsonString.trim();
+      
+      let parsedData;
       if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-        this.credentials = JSON.parse(JSON.parse(jsonString));
+        parsedData = JSON.parse(JSON.parse(jsonString));
+      } else if (trimmed.startsWith('{')) {
+        parsedData = JSON.parse(jsonString);
       } else {
-        this.credentials = JSON.parse(jsonString);
+        throw new Error(`JSON does not start with { or ", starts with: ${trimmed.substring(0, 50)}`);
       }
+      
+      this.credentials = parsedData;
       
       if (!this.credentials.client_email || !this.credentials.private_key) {
         throw new Error('Missing required fields: client_email or private_key');
@@ -56,7 +62,7 @@ export class GoogleWalletService {
     });
   }
 
-  async createLoyaltyClass(userId: string, shopName: string) {
+  async createLoyaltyClass(userId: string, shopName: string, logoUrl?: string | null) {
     const classId = `${this.issuerId}.loyalty_${userId}`;
 
     try {
@@ -68,14 +74,17 @@ export class GoogleWalletService {
       }
     }
 
-    const loyaltyClass = {
+    const defaultLogoUrl = 'https://www.gstatic.com/images/branding/product/1x/googleg_64dp.png';
+    const validLogoUrl = (logoUrl && logoUrl.startsWith('https://')) ? logoUrl : defaultLogoUrl;
+
+    const loyaltyClass: any = {
       id: classId,
       issuerName: shopName,
       reviewStatus: 'UNDER_REVIEW',
       programName: 'Loyalty Program',
       programLogo: {
         sourceUri: {
-          uri: 'https://via.placeholder.com/200x200.png?text=Logo'
+          uri: validLogoUrl
         }
       },
       hexBackgroundColor: '#4285F4',
@@ -94,8 +103,8 @@ export class GoogleWalletService {
     return classId;
   }
 
-  async createLoyaltyPass(passData: LoyaltyPassData, userId: string): Promise<string> {
-    const classId = await this.createLoyaltyClass(userId, passData.shopName);
+  async createLoyaltyPass(passData: LoyaltyPassData, userId: string, logoUrl?: string | null): Promise<string> {
+    const classId = await this.createLoyaltyClass(userId, passData.shopName, logoUrl);
     const objectId = `${this.issuerId}.customer_${passData.customerId}`;
 
     try {

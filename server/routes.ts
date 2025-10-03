@@ -905,7 +905,7 @@ export function registerRoutes(app: Express) {
 
       const passData: LoyaltyPassData = {
         customerId: result.customer.id,
-        customerName: result.customer.name,
+        customerName: result.customer.name!,
         shopName: result.user.shopName,
         stamps: result.card.stamps,
         maxStamps: result.card.maxStamps,
@@ -915,7 +915,8 @@ export function registerRoutes(app: Express) {
 
       const saveUrl = await googleWalletService.createLoyaltyPass(
         passData,
-        result.user.id
+        result.user.id,
+        result.user.logo
       );
 
       res.redirect(saveUrl);
