@@ -9,7 +9,7 @@ export default function Demo() {
       <header className="border-b">
         <div className="container mx-auto px-6 py-5 flex items-center justify-between">
           <Link href="/" data-testid="link-home">
-            <h1 className="text-2xl font-semibold text-primary cursor-pointer">oneHub</h1>
+            <h1 className="text-2xl font-semibold text-primary cursor-pointer">uniHub</h1>
           </Link>
           <Link href="/auth">
             <Button variant="outline" size="lg" data-testid="button-get-started">Get Started</Button>
@@ -20,9 +20,9 @@ export default function Demo() {
       <section className="py-16 px-6">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h1 className="text-5xl font-semibold mb-6">See oneHub in Action</h1>
+            <h1 className="text-5xl font-semibold mb-6">See uniHub in Action</h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Discover how oneHub helps businesses like yours boost customer loyalty and engagement with digital loyalty cards and prize wheels.
+              Discover how uniHub helps businesses like yours boost customer loyalty and engagement with digital loyalty cards and prize wheels.
             </p>
           </div>
 
@@ -215,7 +215,7 @@ export default function Demo() {
           <div className="mt-24 text-center">
             <h2 className="text-3xl font-semibold mb-6">Ready to Get Started?</h2>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join hundreds of businesses using oneHub to build lasting customer relationships.
+              Join hundreds of businesses using uniHub to build lasting customer relationships.
             </p>
             <div className="flex gap-4 justify-center flex-wrap">
               <Link href="/auth">
@@ -235,7 +235,7 @@ export default function Demo() {
 
       <footer className="border-t py-8 px-6">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          <p>© 2025 oneHub. All rights reserved.</p>
+          <p>© 2025 uniHub. All rights reserved.</p>
         </div>
       </footer>
     </div>

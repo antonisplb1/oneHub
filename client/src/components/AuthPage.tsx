@@ -42,7 +42,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-semibold text-primary mb-3 tracking-tight">oneHub</h1>
+          <h1 className="text-4xl font-semibold text-primary mb-3 tracking-tight">uniHub</h1>
           <p className="text-muted-foreground text-lg">Manage loyalty & engagement</p>
         </div>
 

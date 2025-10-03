@@ -1,8 +1,8 @@
-# oneHub - Merchant Engagement Platform
+# uniHub - Merchant Engagement Platform
 
 ## Overview
 
-oneHub is a B2B SaaS platform offering digital loyalty card programs and spin-to-win campaigns to merchants through a unified dashboard. Merchants pay a €25/month subscription to access tools for managing loyalty, creating spin campaigns, tracking customer engagement, and viewing analytics. Customers interact via mobile devices to collect loyalty stamps, use QR codes for merchant scanning, and participate in spin-to-win promotions, with optional integration into Apple Wallet or Google Wallet. The platform consolidates functionality from previously separate applications, providing unified authentication, subscription management, and shared customer data.
+uniHub is a B2B SaaS platform offering digital loyalty card programs and spin-to-win campaigns to merchants through a unified dashboard. Merchants pay a €25/month subscription to access tools for managing loyalty, creating spin campaigns, tracking customer engagement, and viewing analytics. Customers interact via mobile devices to collect loyalty stamps, use QR codes for merchant scanning, and participate in spin-to-win promotions, with optional integration into Apple Wallet or Google Wallet. The platform consolidates functionality from previously separate applications, providing unified authentication, subscription management, and shared customer data.
 
 ## Recent Changes (October 2025)
 

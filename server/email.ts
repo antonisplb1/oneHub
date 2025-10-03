@@ -57,10 +57,10 @@ export async function sendVerificationEmail(
     await client.emails.send({
       from: fromEmail,
       to: email,
-      subject: "Verify your oneHub account",
+      subject: "Verify your uniHub account",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #333;">Welcome to oneHub, ${shopName}!</h1>
+          <h1 style="color: #333;">Welcome to uniHub, ${shopName}!</h1>
           <p style="color: #666; font-size: 16px;">Thank you for registering. Please verify your email address to complete your registration.</p>
           <div style="margin: 30px 0;">
             <a href="${verifyUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Verify Email</a>
@@ -88,7 +88,7 @@ export async function sendPasswordResetEmail(
     await client.emails.send({
       from: fromEmail,
       to: email,
-      subject: "Reset your oneHub password",
+      subject: "Reset your uniHub password",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #333;">Password Reset Request</h1>
