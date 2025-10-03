@@ -76,6 +76,7 @@ export default function ScannerPage() {
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
+        await scannerRef.current.clear();
         scannerRef.current = null;
         setIsScanning(false);
         isProcessingRef.current = false;
@@ -88,7 +89,9 @@ export default function ScannerPage() {
   useEffect(() => {
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.stop().catch(console.error);
+        scannerRef.current.stop()
+          .then(() => scannerRef.current?.clear())
+          .catch(console.error);
       }
     };
   }, []);
@@ -186,7 +189,7 @@ export default function ScannerPage() {
             </div>
             {scanResult.card.isRedeemable && (
               <div className="bg-chart-2 text-white p-4 rounded-lg text-center">
-                <p className="font-bold text-lg">🎉 Reward Ready!</p>
+                <p className="font-bold text-lg">Reward Ready!</p>
                 <p className="text-sm mt-1">{scanResult.card.rewardText}</p>
               </div>
             )}
