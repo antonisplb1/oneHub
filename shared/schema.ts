@@ -77,10 +77,12 @@ export const spinTokens = pgTable("spin_tokens", {
 
 export const spins = pgTable("spins", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tokenId: varchar("token_id").references(() => spinTokens.id, { onDelete: "cascade" }).notNull(),
+  tokenId: varchar("token_id").references(() => spinTokens.id, { onDelete: "cascade" }),
   rewardId: varchar("reward_id").references(() => rewards.id),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
   prizeWon: text("prize_won"),
+  customerId: varchar("customer_id").references(() => customers.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 20 }).$type<'customer' | 'token'>(),
   spunAt: timestamp("spun_at").defaultNow(),
 });
 

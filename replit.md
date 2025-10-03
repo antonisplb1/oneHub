@@ -2,38 +2,7 @@
 
 ## Overview
 
-This is a unified B2B SaaS platform that combines digital loyalty card programs and spin-to-win prize wheel campaigns into a single merchant dashboard. Business owners subscribe for €25/month to access both customer engagement tools. The platform serves two distinct user groups:
-
-1. **Merchants** - Use a professional dashboard to manage loyalty programs, create spin wheel campaigns, track customer engagement, and view analytics. Can scan customer QR codes in-store to award stamps.
-2. **Customers** - Interact via mobile devices to collect loyalty stamps, view their digital cards with QR codes for merchant scanning, and participate in spin-to-win promotions. Can optionally add loyalty cards to Apple Wallet or Google Wallet.
-
-The application merges functionality from two separate apps into one cohesive platform with unified authentication, subscription management, and customer data sharing.
-
-## Recent Changes (January 2025)
-
-- **Simplified Customer Enrollment**: Join flow now only requires customer name (email and phone removed for faster signup)
-- **Customer QR Codes**: Loyalty cards display QR codes that merchants can scan to award stamps
-- **Camera-Based QR Scanner**: Added `/dashboard/scanner` page with real-time camera scanning using html5-qrcode library
-- **Prominent Scan Button**: Added large "Scan QR Code" button to loyalty dashboard for easy access to camera scanner
-- **QR Scanner Features**: Opens device camera, detects QR codes automatically, adds stamps in real-time without manual input
-- **Image Upload for Logos**: Settings page now supports direct file upload for logos (replaces URL input)
-- **Logo Serving Endpoint**: Added `/api/logo/:userId` to serve uploaded logos as images for Google Wallet
-- **Google Wallet Logo Fix**: Google Wallet now uses uploaded merchant logos via HTTPS endpoint
-- **Google Wallet Stamp Sync**: Stamps now automatically update in Google Wallet passes when added or redeemed
-- **Increased Body Limit**: Express body parser limit increased to 10mb to support base64 image uploads
-- **Digital Wallet Integration**: Added Apple Wallet and Google Wallet buttons to customer loyalty cards
-- **Payment Flow Fix**: Resolved webhook timing issue with payment processing page that actively verifies Stripe session status
-- **Auto-Reset Rewards**: Removed manual redeem button - cards automatically reset to 0 when customer with 10/10 stamps is scanned again
-- **Reward Notifications**: Dashboard shows "Reward Ready" badge and colored highlight when customers reach 10/10 stamps
-- **Reward Tracking**: Total rewards count displayed for each customer showing how many rewards they've received
-- **Two-Mode Spin System (October 2025)**: Separated one-time customer spins from unlimited merchant spins
-  - **Customer Spin QR** (`/customer-spin/:userId`): One spin per browser session using sessionStorage tracking
-  - **In-Store Wheel** (`/in-store-spin/:userId`): Unlimited spins for merchant-operated promotions
-  - **Visual Wheel**: SVG-based wheel with colored segments showing reward names and percentages
-  - **Segment Display**: Each reward appears as a colored wedge sized by its win percentage
-  - **Spin Animation**: 5 rotations with 3-second cubic-bezier animation landing on winning segment
-  - **Session Tracking**: Customer spins blocked after first use via sessionStorage (`spin-${userId}` key)
-- **Reward Edit/Delete**: Added edit and delete functionality to reward settings with confirmation dialogs
+This B2B SaaS platform offers digital loyalty card programs and spin-to-win campaigns to merchants through a unified dashboard. Merchants pay a monthly subscription to access tools for managing loyalty, creating spin campaigns, tracking customer engagement, and viewing analytics. Customers interact via mobile devices to collect loyalty stamps, use QR codes for merchant scanning, and participate in spin-to-win promotions, with optional integration into Apple Wallet or Google Wallet. The platform consolidates functionality from previously separate applications, providing unified authentication, subscription management, and shared customer data.
 
 ## User Preferences
 
@@ -43,229 +12,56 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 
-**Technology Stack:**
-- React with TypeScript for type safety
-- Vite as the build tool and dev server
-- Wouter for lightweight client-side routing
-- TanStack Query (React Query) for server state management and caching
-- shadcn/ui component library built on Radix UI primitives
-- Tailwind CSS for styling with custom design system
-
-**Design System:**
-- Dual personality approach: Professional merchant dashboard + playful customer-facing experiences
-- Color palette uses HSL CSS variables for theme flexibility (supports light/dark mode)
-- Typography primarily uses Inter font family
-- Custom CSS variables in `index.css` define elevation states (`--elevate-1`, `--elevate-2`) for hover/active interactions
-- Spacing follows Tailwind's 4px grid system (units of 4, 6, 8, 12, 16)
-
-**Component Organization:**
-- UI components in `client/src/components/ui/` (shadcn/ui primitives)
-- Feature components in `client/src/components/` (AuthPage, DashboardLayout, LoyaltyCardsSection, SpinWheelSection, etc.)
-- Example components for development/testing in `client/src/components/examples/`
-- Page components in `client/src/pages/`
-
-**Routing Strategy:**
-- Public routes: Landing page (`/`), Auth (`/auth`)
-- Customer-facing routes: `/card/:customerId`, `/spin/:tokenId`, `/join/:userId`, `/in-store-spin/:userId`
-- Protected dashboard routes: `/dashboard/*` with auth guards
-- Dashboard subroutes: `/dashboard/loyalty`, `/dashboard/scanner`, `/dashboard/spin-wheel`, `/dashboard/settings`, etc.
+The frontend is built with **React, TypeScript, and Vite**, utilizing **Wouter** for routing and **TanStack Query** for server state management. **shadcn/ui** (based on Radix UI) and **Tailwind CSS** define the UI, following a dual personality design: professional for merchants and playful for customers, with a flexible HSL-based color palette and Inter font family. Components are organized into UI primitives, feature-specific components, and page components. Routing includes public, customer-facing, and protected dashboard routes with authentication guards.
 
 ### Backend Architecture
 
-**Technology Stack:**
-- Express.js server with TypeScript
-- Passport.js for authentication with local strategy
-- Session-based authentication using express-session with MemoryStore
-- Drizzle ORM for database operations
-- Neon serverless PostgreSQL as the database
-
-**Authentication Flow:**
-- Password hashing using Node.js crypto scrypt with salt
-- Session cookies with 7-day expiration
-- Secure cookies in production, httpOnly and sameSite settings
-- User serialization/deserialization via Passport
-
-**API Design:**
-- RESTful endpoints under `/api/*`
-- Authentication endpoints: `/api/auth/signup`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`
-- Loyalty endpoints: `/api/customers`, `/api/loyalty-cards`, `/api/loyalty-cards/:id/stamp`, `/api/loyalty-cards/:id/redeem`, `/api/loyalty-cards/scan-stamp`
-- Customer join: `/api/customers/join` (only requires name)
-- QR code endpoints: `/api/customer-qr/:customerId` (customer QR codes), `/api/qr-codes/:userId` (merchant QR codes)
-- Logo endpoint: `/api/logo/:userId` (serves uploaded logos as images with proper Content-Type)
-- Wallet endpoints: `/api/wallet/apple/:customerId`, `/api/wallet/google/:customerId` (placeholder implementation)
-- Spin wheel endpoints: `/api/rewards`, `/api/spin`, `/api/spin-in-store/:userId` (public endpoint for direct customer spins)
-- Middleware for route protection via `requireAuth` function
-
-**Data Layer:**
-- Drizzle schema in `shared/schema.ts` for type-safe database operations
-- Zod schemas for request validation (signupSchema, loginSchema, createRewardSchema, etc.)
-- Database migrations managed via Drizzle Kit in `/migrations`
+The backend uses **Express.js with TypeScript**, **Passport.js** for session-based authentication, and **Drizzle ORM** for database interactions with **Neon serverless PostgreSQL**. Authentication involves `scrypt` for password hashing and secure, httpOnly session cookies. The API follows a RESTful design under `/api/*`, covering authentication, loyalty, customer management, QR code generation, logo serving, wallet integrations, and spin wheel functionalities. Data validation is enforced using **Zod schemas**, and database migrations are managed with Drizzle Kit.
 
 ### Database Schema
 
-**Core Tables:**
-
-1. **users** - Shop owners/merchants
-   - Authentication credentials (email, passwordHash)
-   - Shop information (shopName, logo)
-   - Stripe integration (customerId, subscriptionId, subscriptionStatus, subscriptionEndsAt)
-
-2. **customers** - End users who participate in loyalty/spin programs
-   - Contact information (name required, email and phone optional for privacy)
-   - Unique QR code for merchant scanning (customerQrCode - generated with nanoid(12))
-   - Foreign key to users table (userId)
-
-3. **loyaltyCards** - Digital stamp cards
-   - Progress tracking (stamps, maxStamps, isRedeemable)
-   - Reward configuration (rewardText)
-   - Metrics (totalRewards, lastStampAt)
-   - Unique constraint on (userId, customerId) to prevent duplicates
-
-4. **loyaltyTransactions** - Audit trail for stamps and redemptions
-   - Type ('stamp' or 'reward')
-   - Amount and timestamp
-
-5. **rewards** - Prize wheel reward configurations
-   - Reward details (name, winChance as percentage)
-   - Foreign key to users table
-
-6. **spinTokens** - One-time use tokens for spin-to-win
-   - Token string and expiration
-   - Usage tracking (used, usedAt)
-   - Optional customer association
-
-7. **spins** - Historical record of all spins
-   - Links token, user, reward, and optional customer
-   - Timestamp tracking
-
-**Key Design Decisions:**
-- UUID primary keys for all tables using PostgreSQL's `gen_random_uuid()`
-- Cascade deletes to maintain referential integrity when merchants delete accounts
-- Timestamps for audit trails and analytics
-- Optional customer information to respect privacy while enabling personalization
+The core database schema includes tables for `users` (merchants), `customers`, `loyaltyCards`, `loyaltyTransactions`, `rewards`, `spinTokens`, and `spins`. Key design decisions include UUID primary keys, cascade deletes for referential integrity, and timestamps for audit trails. Customer information is kept optional for privacy.
 
 ### Payment Integration
 
-**Stripe Integration:**
-- Stripe JS and Stripe React components for frontend
-- Subscription model at €25/month
-- Customer and subscription IDs stored in users table
-- Subscription status tracking (active/inactive)
-- Subscription end date for grace period handling
-
-**Considerations:**
-- Webhooks would be needed for production to handle subscription updates
-- Payment flow implementation details are referenced but not fully shown in codebase
+**Stripe** is integrated for subscription billing (€25/month), managing customer and subscription statuses. Frontend uses `@stripe/stripe-js` and `@stripe/react-stripe-js`, while the backend uses the Stripe Node SDK.
 
 ### QR Code System
 
-**Implementation:**
-- QRCode library generates data URLs
-- Three QR code types:
-  1. **Merchant Join QR** - Links to `/join/:userId` for customer signup
-  2. **Customer Loyalty QR** - Displays unique customerQrCode on customer's card for merchant scanning
-  3. **Spin Wheel QR** - ONE permanent QR per merchant linking directly to `/in-store-spin/:userId`
-- QR codes generated on-demand via API endpoints
-- Base64 encoded images returned for display/download
-
-**Loyalty QR Scanner Flow:**
-1. Merchant navigates to `/dashboard/scanner`
-2. Merchant scans customer's QR code (or manually enters code)
-3. POST to `/api/loyalty-cards/scan-stamp` with QR code value
-4. Backend validates QR code belongs to merchant's customer
-5. Stamp is added, response shows customer name and updated stamp count
-
-**Spin Wheel QR Flow (Simplified System):**
-1. Merchant displays ONE permanent QR code from dashboard
-2. Customer scans QR → visits `/in-store-spin/:userId`
-3. In-store spin wheel loads immediately
-4. Customer clicks spin button
-5. POST to `/api/spin-in-store/:userId` to get random reward
-6. Reward displayed on screen
-7. Customer can spin again (unlimited spins)
+Three types of QR codes are generated: Merchant Join QR (for customer signup), Customer Loyalty QR (for merchant scanning stamps), and Spin Wheel QR (for customer spin-to-win). A camera-based scanner is available in the merchant dashboard for real-time QR code scanning to award stamps. Customer-initiated spins are tracked, while merchant-operated in-store spins are not saved to the database.
 
 ### Digital Wallet Integration
 
-**Current Status:**
-- Apple Wallet and Google Wallet buttons present on customer loyalty cards
-- Placeholder endpoints return HTML setup instructions
-- Ready for integration once credentials are configured
-
-**Apple Wallet Requirements:**
-- Apple Developer Program enrollment ($99/year)
-- Pass Type ID and signing certificate
-- `passkit-generator` npm package
-- Template .pass folder with icons and pass.json
-
-**Google Wallet Requirements:**
-- Google Cloud project with Wallet API enabled
-- Service account credentials (JSON key file)
-- Issuer ID from Google Wallet Console
-- `googleapis` npm package
-- Environment variables: GOOGLE_WALLET_ISSUER_ID, GOOGLE_APPLICATION_CREDENTIALS
+Buttons for **Apple Wallet** and **Google Wallet** are present on customer loyalty cards, with placeholder endpoints ready for full integration once necessary credentials are configured.
 
 ## External Dependencies
 
 ### Third-Party Services
 
-**Stripe Payment Processing:**
-- Purpose: Subscription billing and payment management
-- Integration: Client-side with `@stripe/stripe-js` and `@stripe/react-stripe-js`
-- Server-side with Stripe Node SDK
-- API version: 2025-09-30.clover
-
-**Neon Serverless PostgreSQL:**
-- Purpose: Managed PostgreSQL database
-- Integration: Via `@neondatabase/serverless` package with WebSocket support
-- Connection pooling enabled
-- DATABASE_URL environment variable required
+-   **Stripe Payment Processing**: For subscription billing using client-side `@stripe/stripe-js` and `@stripe/react-stripe-js`, and server-side Stripe Node SDK.
+-   **Neon Serverless PostgreSQL**: Managed database accessed via `@neondatabase/serverless` for WebSocket-supported connections.
 
 ### UI Component Libraries
 
-**Radix UI:**
-- Comprehensive set of unstyled, accessible UI primitives
-- Components used: Dialog, Dropdown Menu, Popover, Tooltip, Accordion, Tabs, Select, and many more
-- Provides keyboard navigation and ARIA attributes out of the box
-
-**shadcn/ui:**
-- Pre-styled Radix UI components with Tailwind CSS
-- Configured via `components.json` with "new-york" style
-- Components are copied into project rather than installed as dependencies
-- Path aliases configured for easy imports (`@/components`, `@/lib`, `@/hooks`)
+-   **Radix UI**: Provides accessible, unstyled UI primitives.
+-   **shadcn/ui**: Pre-styled Radix UI components with Tailwind CSS, copied directly into the project.
 
 ### Development Tools
 
-**Replit-Specific Plugins:**
-- `@replit/vite-plugin-runtime-error-modal` - Runtime error overlay
-- `@replit/vite-plugin-cartographer` - Code navigation
-- `@replit/vite-plugin-dev-banner` - Development environment indicator
-
-**Build Tools:**
-- Vite for frontend bundling and HMR
-- esbuild for server-side bundling
-- TypeScript compiler for type checking
-- PostCSS with Tailwind and Autoprefixer
+-   **Replit-Specific Plugins**: `@replit/vite-plugin-runtime-error-modal`, `@replit/vite-plugin-cartographer`, `@replit/vite-plugin-dev-banner`.
+-   **Build Tools**: Vite (frontend), esbuild (server-side), TypeScript compiler, PostCSS with Tailwind and Autoprefixer.
 
 ### Authentication & Session Management
 
-**Passport.js:**
-- Local strategy for username/password authentication
-- Session serialization/deserialization
-- Type extensions for Express user object
-
-**Session Storage:**
-- Development: MemoryStore from `memorystore` package
-- Production consideration: Would need persistent session store (Redis, PostgreSQL) for scaling
+-   **Passport.js**: For local strategy authentication and session management.
+-   **Session Storage**: `memorystore` for development, with a note for production scalability requiring persistent storage.
 
 ### Validation & Type Safety
 
-**Zod:**
-- Runtime schema validation
-- Type inference for TypeScript
-- Integration with Drizzle via `drizzle-zod` for automatic schema generation from database models
+-   **Zod**: For runtime schema validation and TypeScript type inference.
 
-**Utility Libraries:**
-- nanoid - Unique token generation
-- date-fns - Date manipulation and formatting
-- class-variance-authority - Type-safe variant styling
-- clsx & tailwind-merge - Conditional className composition
+### Utility Libraries
+
+-   **nanoid**: For unique token generation.
+-   **date-fns**: For date manipulation.
+-   **class-variance-authority**, **clsx**, **tailwind-merge**: For conditional CSS class composition.

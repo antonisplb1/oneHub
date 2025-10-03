@@ -289,6 +289,26 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  app.get("/api/loyalty-transactions", requireSubscription, async (req, res) => {
+    try {
+      const transactions = await db
+        .select({
+          transaction: loyaltyTransactions,
+          card: loyaltyCards,
+          customer: customers,
+        })
+        .from(loyaltyTransactions)
+        .leftJoin(loyaltyCards, eq(loyaltyTransactions.loyaltyCardId, loyaltyCards.id))
+        .leftJoin(customers, eq(loyaltyCards.customerId, customers.id))
+        .where(eq(loyaltyCards.userId, req.user!.id))
+        .orderBy(desc(loyaltyTransactions.createdAt));
+
+      res.json(transactions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/loyalty-card/customer/:customerId", async (req, res) => {
     try {
       const [card] = await db
@@ -691,7 +711,12 @@ export function registerRoutes(app: Express) {
       const allSpins = await db
         .select()
         .from(spins)
-        .where(eq(spins.userId, req.user!.id))
+        .where(
+          and(
+            eq(spins.userId, req.user!.id),
+            eq(spins.type, 'customer')
+          )
+        )
         .orderBy(desc(spins.spunAt));
       res.json(allSpins);
     } catch (error: any) {
@@ -808,6 +833,7 @@ export function registerRoutes(app: Express) {
         rewardId: selectedReward.id,
         userId: token.userId,
         prizeWon: selectedReward.name,
+        type: 'token',
       });
 
       res.json({ reward: selectedReward });
@@ -852,6 +878,56 @@ export function registerRoutes(app: Express) {
           timesWon: (selectedReward.timesWon || 0) + 1,
         })
         .where(eq(rewards.id, selectedReward.id));
+
+      res.json({ reward: selectedReward });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/customer-spin/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      const activeRewards = await db
+        .select()
+        .from(rewards)
+        .where(
+          and(
+            eq(rewards.userId, userId),
+            eq(rewards.isActive, true)
+          )
+        );
+
+      if (activeRewards.length === 0) {
+        return res.status(400).json({ error: "No active rewards configured" });
+      }
+
+      const random = Math.random() * 100;
+      let cumulative = 0;
+      let selectedReward = activeRewards[activeRewards.length - 1];
+
+      for (const reward of activeRewards) {
+        cumulative += reward.winChance;
+        if (random <= cumulative) {
+          selectedReward = reward;
+          break;
+        }
+      }
+
+      await db
+        .update(rewards)
+        .set({
+          timesWon: (selectedReward.timesWon || 0) + 1,
+        })
+        .where(eq(rewards.id, selectedReward.id));
+
+      await db.insert(spins).values({
+        rewardId: selectedReward.id,
+        userId: userId,
+        prizeWon: selectedReward.name,
+        type: 'customer',
+      });
 
       res.json({ reward: selectedReward });
     } catch (error: any) {

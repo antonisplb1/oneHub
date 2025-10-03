@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, CreditCard, Gauge, TrendingUp } from "lucide-react";
+import { Users, UserPlus, MousePointer, Gauge } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 export default function AnalyticsSection() {
   const { data: customers = [] } = useQuery({
@@ -14,13 +15,51 @@ export default function AnalyticsSection() {
     queryFn: () => apiRequest<any[]>("/api/loyalty-cards"),
   });
 
+  const { data: transactions = [] } = useQuery({
+    queryKey: ["/api/loyalty-transactions"],
+    queryFn: () => apiRequest<any[]>("/api/loyalty-transactions"),
+  });
+
   const { data: spins = [] } = useQuery({
     queryKey: ["/api/spins"],
     queryFn: () => apiRequest<any[]>("/api/spins"),
   });
 
-  const activeCards = loyaltyCards.filter(card => card.stamps > 0);
-  const totalRewards = loyaltyCards.reduce((sum, card) => sum + (card.totalRewards || 0), 0);
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const thisMonthNewCustomers = loyaltyCards.filter(
+    (item: any) => new Date(item.card.createdAt) >= startOfMonth
+  ).length;
+
+  const stampTransactions = transactions.filter(
+    (item: any) => item.transaction?.type === 'stamp'
+  );
+
+  const totalVisits = stampTransactions.length;
+
+  const thisMonthVisits = stampTransactions.filter(
+    (item: any) => new Date(item.transaction.createdAt) >= startOfMonth
+  ).length;
+
+  const combinedActivities = [
+    ...stampTransactions.map((item: any) => ({
+      id: `stamp-${item.transaction.id}`,
+      type: 'stamp' as const,
+      customerName: item.customer?.name || 'Unknown',
+      timestamp: item.transaction.createdAt,
+      description: 'Received a stamp',
+    })),
+    ...spins.map((item: any) => ({
+      id: `spin-${item.id}`,
+      type: 'spin' as const,
+      customerName: 'Customer',
+      timestamp: item.spunAt,
+      description: `Won: ${item.prizeWon}`,
+    })),
+  ]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 10);
 
   const stats = [
     { 
@@ -30,22 +69,28 @@ export default function AnalyticsSection() {
       color: "text-primary" 
     },
     { 
-      title: "Active Loyalty Cards", 
-      value: activeCards.length.toString(), 
-      icon: CreditCard, 
+      title: "New Customers This Month", 
+      value: thisMonthNewCustomers.toString(), 
+      icon: UserPlus, 
       color: "text-chart-2" 
     },
     { 
-      title: "Total Spins", 
-      value: spins.length.toString(), 
-      icon: Gauge, 
+      title: "Total Visits", 
+      value: totalVisits.toString(), 
+      icon: MousePointer, 
       color: "text-chart-3" 
     },
     { 
-      title: "Rewards Redeemed", 
-      value: totalRewards.toString(), 
-      icon: TrendingUp, 
+      title: "Visits This Month", 
+      value: thisMonthVisits.toString(), 
+      icon: MousePointer, 
       color: "text-chart-4" 
+    },
+    { 
+      title: "Total QR Spins", 
+      value: spins.length.toString(), 
+      icon: Gauge, 
+      color: "text-chart-5" 
     },
   ];
 
@@ -58,7 +103,7 @@ export default function AnalyticsSection() {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
@@ -72,95 +117,34 @@ export default function AnalyticsSection() {
         ))}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loyaltyCards.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                No activity yet
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {loyaltyCards
-                  .sort((a, b) => new Date(b.lastStampAt || 0).getTime() - new Date(a.lastStampAt || 0).getTime())
-                  .slice(0, 5)
-                  .map((card, index) => {
-                    const customer = customers.find(c => c.id === card.customerId);
-                    return (
-                      <div key={card.id} className="flex items-center justify-between p-3 border rounded-md">
-                        <div>
-                          <p className="font-medium">{customer?.name || "Unknown"}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {card.stamps}/{card.maxStamps} stamps
-                          </p>
-                        </div>
-                        {card.totalRewards > 0 && (
-                          <div className="text-sm text-muted-foreground">
-                            {card.totalRewards} reward{card.totalRewards !== 1 ? 's' : ''}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Engagement Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Card Completion Rate</span>
-                  <span className="text-sm font-medium">
-                    {loyaltyCards.length > 0 
-                      ? Math.round((loyaltyCards.filter(c => c.isRedeemable).length / loyaltyCards.length) * 100)
-                      : 0}%
-                  </span>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {combinedActivities.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No activity yet
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {combinedActivities.map((activity) => (
+                <div key={activity.id} className="flex items-center justify-between p-3 border rounded-md" data-testid={`activity-${activity.id}`}>
+                  <div>
+                    <p className="font-medium">{activity.customerName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {activity.description}
+                    </p>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                  </div>
                 </div>
-                <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary transition-all"
-                    style={{ 
-                      width: `${loyaltyCards.length > 0 
-                        ? (loyaltyCards.filter(c => c.isRedeemable).length / loyaltyCards.length) * 100
-                        : 0}%` 
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Average Stamps</span>
-                  <span className="text-sm font-medium">
-                    {loyaltyCards.length > 0
-                      ? (loyaltyCards.reduce((sum, card) => sum + card.stamps, 0) / loyaltyCards.length).toFixed(1)
-                      : 0}
-                  </span>
-                </div>
-                <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-chart-2 transition-all"
-                    style={{ 
-                      width: `${loyaltyCards.length > 0
-                        ? ((loyaltyCards.reduce((sum, card) => sum + card.stamps, 0) / loyaltyCards.length) / 10) * 100
-                        : 0}%` 
-                    }}
-                  />
-                </div>
-              </div>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

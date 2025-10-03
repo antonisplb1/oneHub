@@ -32,8 +32,9 @@ export default function InStoreSpinWheel() {
       for (let i = 0; i < winningIndex; i++) {
         cumulative += activeRewards[i].winChance;
       }
-      targetAngle = cumulative + (activeRewards[winningIndex].winChance / 2);
-      const normalizedAngle = 360 - targetAngle + 90;
+      const segmentPercentage = cumulative + (activeRewards[winningIndex].winChance / 2);
+      targetAngle = (segmentPercentage / totalPercentage) * 360;
+      const normalizedAngle = 360 - targetAngle;
       const spinRotations = 360 * 5;
       const finalRotation = spinRotations + normalizedAngle;
       
