@@ -41,6 +41,14 @@ export default function ScannerPage() {
 
   const startScanning = async () => {
     try {
+      const qrElement = document.getElementById("qr-reader");
+      if (!qrElement) {
+        throw new Error("QR reader element not found");
+      }
+
+      qrElement.style.display = "block";
+      setIsScanning(true);
+      
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
 
@@ -60,10 +68,14 @@ export default function ScannerPage() {
           // Ignore continuous scanning errors
         }
       );
-
-      setIsScanning(true);
     } catch (err) {
       console.error("Error starting scanner:", err);
+      const qrElement = document.getElementById("qr-reader");
+      if (qrElement) {
+        qrElement.style.display = "none";
+      }
+      setIsScanning(false);
+      scannerRef.current = null;
       toast({
         title: "Camera Error",
         description: "Unable to access camera. Please check permissions.",
