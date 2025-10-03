@@ -1,29 +1,37 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { spinWheel } from "@/lib/api";
 
 export default function CustomerSpinWheel() {
   const [token, setToken] = useState("");
-  const [isSpinning, setIsSpinning] = useState(false);
   const [prizeWon, setPrizeWon] = useState<string | null>(null);
 
-  //todo: remove mock functionality
-  const rewards = ["Free Coffee", "10% Off", "Free Pastry", "Try Again"];
-  
+  const spinMutation = useMutation({
+    mutationFn: (token: string) => spinWheel(token),
+    onSuccess: (data) => {
+      setTimeout(() => {
+        setPrizeWon(data.reward.name);
+      }, 2000);
+    },
+    onError: (error: any) => {
+      alert(error.message || "Failed to spin. Check your token and try again.");
+    },
+  });
+
   const handleSpin = () => {
     if (!token.trim()) return;
-    
-    setIsSpinning(true);
     setPrizeWon(null);
+    spinMutation.mutate(token);
+  };
 
-    setTimeout(() => {
-      const randomPrize = rewards[Math.floor(Math.random() * rewards.length)];
-      setPrizeWon(randomPrize);
-      setIsSpinning(false);
-      console.log("Prize won:", randomPrize);
-    }, 2000);
+  const handleReset = () => {
+    setPrizeWon(null);
+    setToken("");
+    spinMutation.reset();
   };
 
   return (
@@ -39,16 +47,10 @@ export default function CustomerSpinWheel() {
               <div className="w-full aspect-square bg-gradient-to-br from-primary to-chart-3 rounded-full flex items-center justify-center relative">
                 <div
                   className={`w-4/5 h-4/5 bg-background rounded-full flex items-center justify-center ${
-                    isSpinning ? "animate-spin" : ""
+                    spinMutation.isPending ? "animate-spin" : ""
                   }`}
                 >
-                  <div className="grid grid-cols-2 gap-2 text-center text-sm font-semibold">
-                    {rewards.map((reward, i) => (
-                      <div key={i} className="p-2">
-                        {reward}
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-4xl font-bold text-muted-foreground">?</p>
                 </div>
                 <div className="absolute top-0 w-0 h-0 border-l-8 border-r-8 border-t-12 border-l-transparent border-r-transparent border-t-chart-4" />
               </div>
@@ -59,21 +61,22 @@ export default function CustomerSpinWheel() {
                   <Input
                     id="spin-token"
                     value={token}
-                    onChange={(e) => setToken(e.target.value)}
+                    onChange={(e) => setToken(e.target.value.toUpperCase())}
                     placeholder="Enter your token"
                     data-testid="input-spin-token"
-                    disabled={isSpinning}
+                    disabled={spinMutation.isPending}
+                    className="uppercase"
                   />
                 </div>
 
                 <Button
                   onClick={handleSpin}
-                  disabled={isSpinning || !token.trim()}
+                  disabled={spinMutation.isPending || !token.trim()}
                   className="w-full"
                   size="lg"
                   data-testid="button-spin"
                 >
-                  {isSpinning ? "Spinning..." : "Spin Now!"}
+                  {spinMutation.isPending ? "Spinning..." : "Spin Now!"}
                 </Button>
               </div>
             </>
@@ -84,11 +87,9 @@ export default function CustomerSpinWheel() {
               <div className="text-6xl">🎉</div>
               <h3 className="text-2xl font-bold">Congratulations!</h3>
               <p className="text-xl">You won: {prizeWon}</p>
+              <p className="text-sm text-muted-foreground">Show this screen to claim your prize!</p>
               <Button
-                onClick={() => {
-                  setPrizeWon(null);
-                  setToken("");
-                }}
+                onClick={handleReset}
                 className="w-full"
                 data-testid="button-spin-again"
               >

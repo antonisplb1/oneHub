@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,18 +7,42 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, QrCode, Users } from "lucide-react";
+import { getLoyaltyCards, addStamp, redeemReward } from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoyaltyCardsSection() {
   const [maxStamps, setMaxStamps] = useState("10");
   const [rewardText, setRewardText] = useState("Free Coffee");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { toast } = useToast();
 
-  //todo: remove mock functionality
-  const mockCustomers = [
-    { id: "1", name: "John Doe", stamps: 7, maxStamps: 10 },
-    { id: "2", name: "Jane Smith", stamps: 10, maxStamps: 10, redeemable: true },
-    { id: "3", name: "Bob Johnson", stamps: 3, maxStamps: 10 },
-  ];
+  const { data: cards = [], isLoading } = useQuery({
+    queryKey: ["/api", "loyalty-cards"],
+    queryFn: getLoyaltyCards,
+  });
+
+  const stampMutation = useMutation({
+    mutationFn: addStamp,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api", "loyalty-cards"] });
+      toast({
+        title: "Stamp added!",
+        description: "Customer stamp has been recorded.",
+      });
+    },
+  });
+
+  const redeemMutation = useMutation({
+    mutationFn: redeemReward,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api", "loyalty-cards"] });
+      toast({
+        title: "Reward redeemed!",
+        description: "Customer reward has been claimed.",
+      });
+    },
+  });
 
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,43 +114,66 @@ export default function LoyaltyCardsSection() {
               <CardTitle>Active Loyalty Cards</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {mockCustomers.map((customer) => (
-                  <div
-                    key={customer.id}
-                    className="flex items-center justify-between p-4 border rounded-md hover-elevate"
-                    data-testid={`customer-card-${customer.id}`}
-                  >
-                    <div>
-                      <p className="font-semibold">{customer.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {customer.stamps}/{customer.maxStamps} stamps
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1">
-                        {Array.from({ length: customer.maxStamps }).map((_, i) => (
-                          <div
-                            key={i}
-                            className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs ${
-                              i < customer.stamps
-                                ? "bg-chart-2 border-chart-2 text-white"
-                                : "border-muted"
-                            }`}
-                          >
-                            {i < customer.stamps ? "✓" : ""}
-                          </div>
-                        ))}
+              {isLoading ? (
+                <p className="text-muted-foreground">Loading...</p>
+              ) : cards.length === 0 ? (
+                <p className="text-muted-foreground">No loyalty cards yet. Customers will appear here once they scan your QR code.</p>
+              ) : (
+                <div className="space-y-4">
+                  {cards.map(({ card, customer }) => (
+                    <div
+                      key={card.id}
+                      className="flex items-center justify-between p-4 border rounded-md hover-elevate"
+                      data-testid={`customer-card-${card.id}`}
+                    >
+                      <div>
+                        <p className="font-semibold">{customer?.name || "Anonymous Customer"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {card.stamps}/{card.maxStamps} stamps
+                        </p>
                       </div>
-                      {customer.redeemable && (
-                        <Button size="sm" variant="default" data-testid={`button-redeem-${customer.id}`}>
-                          Redeem
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-4">
+                        <div className="flex gap-1">
+                          {Array.from({ length: card.maxStamps }).map((_, i) => (
+                            <div
+                              key={i}
+                              className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs ${
+                                i < card.stamps
+                                  ? "bg-chart-2 border-chart-2 text-white"
+                                  : "border-muted"
+                              }`}
+                            >
+                              {i < card.stamps ? "✓" : ""}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => stampMutation.mutate(card.id)}
+                            disabled={stampMutation.isPending || card.stamps >= card.maxStamps}
+                            data-testid={`button-stamp-${card.id}`}
+                          >
+                            Add Stamp
+                          </Button>
+                          {card.isRedeemable && (
+                            <Button 
+                              size="sm" 
+                              variant="default" 
+                              onClick={() => redeemMutation.mutate(card.id)}
+                              disabled={redeemMutation.isPending}
+                              data-testid={`button-redeem-${card.id}`}
+                            >
+                              Redeem
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   SidebarProvider,
@@ -20,10 +20,10 @@ import {
   Users,
   BarChart3,
   Settings,
-  Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/useAuth";
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
@@ -42,10 +42,24 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [location] = useLocation();
-  //todo: remove mock functionality
-  const shopName = "My Coffee Shop";
-  const shopInitials = "MC";
+  const [location, setLocation] = useLocation();
+  const { user, logout, isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      setLocation("/auth");
+    }
+  }, [isAuthenticated, isLoading, setLocation]);
+
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  const shopInitials = user.shopName.substring(0, 2).toUpperCase();
 
   const style = {
     "--sidebar-width": "16rem",
@@ -63,8 +77,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-semibold text-sm">{shopName}</p>
-                <p className="text-xs text-muted-foreground">Pro Plan</p>
+                <p className="font-semibold text-sm">{user.shopName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {user.subscriptionStatus === "active" ? "Pro Plan" : "Free Trial"}
+                </p>
               </div>
             </div>
           </SidebarHeader>
@@ -117,7 +133,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex flex-col flex-1">
           <header className="flex items-center justify-between p-4 border-b bg-background">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <Button variant="ghost" size="sm" data-testid="button-logout">
+            <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout">
               Logout
             </Button>
           </header>

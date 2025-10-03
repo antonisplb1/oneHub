@@ -4,6 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
+import { useEffect } from "react";
 
 export default function AuthPage() {
   const [loginEmail, setLoginEmail] = useState("");
@@ -12,15 +15,27 @@ export default function AuthPage() {
   const [signupPassword, setSignupPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [shopName, setShopName] = useState("");
+  
+  const { login, signup, isLoggingIn, isSigningUp, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation("/dashboard");
+    }
+  }, [isAuthenticated, setLocation]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login:", { loginEmail, loginPassword });
+    login({ email: loginEmail, password: loginPassword });
   };
 
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Signup:", { signupEmail, signupPassword, confirmPassword, shopName });
+    if (signupPassword !== confirmPassword) {
+      return;
+    }
+    signup({ email: signupEmail, password: signupPassword, confirmPassword, shopName });
   };
 
   return (
@@ -55,6 +70,7 @@ export default function AuthPage() {
                       onChange={(e) => setLoginEmail(e.target.value)}
                       data-testid="input-login-email"
                       required
+                      disabled={isLoggingIn}
                     />
                   </div>
                   <div>
@@ -67,10 +83,11 @@ export default function AuthPage() {
                       onChange={(e) => setLoginPassword(e.target.value)}
                       data-testid="input-login-password"
                       required
+                      disabled={isLoggingIn}
                     />
                   </div>
-                  <Button type="submit" className="w-full" data-testid="button-login-submit">
-                    Login
+                  <Button type="submit" className="w-full" data-testid="button-login-submit" disabled={isLoggingIn}>
+                    {isLoggingIn ? "Logging in..." : "Login"}
                   </Button>
                 </form>
               </TabsContent>
@@ -87,6 +104,7 @@ export default function AuthPage() {
                       onChange={(e) => setShopName(e.target.value)}
                       data-testid="input-shop-name"
                       required
+                      disabled={isSigningUp}
                     />
                   </div>
                   <div>
@@ -99,6 +117,7 @@ export default function AuthPage() {
                       onChange={(e) => setSignupEmail(e.target.value)}
                       data-testid="input-signup-email"
                       required
+                      disabled={isSigningUp}
                     />
                   </div>
                   <div>
@@ -111,6 +130,8 @@ export default function AuthPage() {
                       onChange={(e) => setSignupPassword(e.target.value)}
                       data-testid="input-signup-password"
                       required
+                      disabled={isSigningUp}
+                      minLength={6}
                     />
                   </div>
                   <div>
@@ -123,10 +144,19 @@ export default function AuthPage() {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       data-testid="input-confirm-password"
                       required
+                      disabled={isSigningUp}
                     />
+                    {confirmPassword && signupPassword !== confirmPassword && (
+                      <p className="text-sm text-destructive mt-1">Passwords don't match</p>
+                    )}
                   </div>
-                  <Button type="submit" className="w-full" data-testid="button-signup-submit">
-                    Create Account
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    data-testid="button-signup-submit" 
+                    disabled={isSigningUp || signupPassword !== confirmPassword}
+                  >
+                    {isSigningUp ? "Creating Account..." : "Create Account"}
                   </Button>
                 </form>
               </TabsContent>
