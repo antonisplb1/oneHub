@@ -13,8 +13,9 @@ The application merges functionality from two separate apps into one cohesive pl
 
 - **Simplified Customer Enrollment**: Join flow now only requires customer name (email and phone removed for faster signup)
 - **Customer QR Codes**: Loyalty cards display QR codes that merchants can scan to award stamps
-- **QR Scanner Dashboard**: Added `/dashboard/scanner` page for merchants to scan customer QR codes and add stamps directly
-- **Prominent Scan Button**: Added large "Scan QR Code" button to loyalty dashboard for easy access to scanner
+- **Camera-Based QR Scanner**: Added `/dashboard/scanner` page with real-time camera scanning using html5-qrcode library
+- **Prominent Scan Button**: Added large "Scan QR Code" button to loyalty dashboard for easy access to camera scanner
+- **QR Scanner Features**: Opens device camera, detects QR codes automatically, adds stamps in real-time without manual input
 - **Image Upload for Logos**: Settings page now supports direct file upload for logos (replaces URL input)
 - **Logo Serving Endpoint**: Added `/api/logo/:userId` to serve uploaded logos as images for Google Wallet
 - **Google Wallet Logo Fix**: Google Wallet now uses uploaded merchant logos via HTTPS endpoint
