@@ -32,14 +32,15 @@ export default function CustomerSpinOnce() {
     }),
     onSuccess: (data) => {
       const winningReward = data.reward;
-      const winningIndex = rewards.findIndex(r => r.id === winningReward.id);
+      const activeRewards = rewards.filter(r => r.isActive);
+      const winningIndex = activeRewards.findIndex(r => r.id === winningReward.id);
       
       let targetAngle = 0;
       let cumulative = 0;
       for (let i = 0; i < winningIndex; i++) {
-        cumulative += rewards[i].winChance;
+        cumulative += activeRewards[i].winChance;
       }
-      targetAngle = cumulative + (rewards[winningIndex].winChance / 2);
+      targetAngle = cumulative + (activeRewards[winningIndex].winChance / 2);
       const normalizedAngle = 360 - targetAngle + 90;
       const spinRotations = 360 * 5;
       const finalRotation = spinRotations + normalizedAngle;
