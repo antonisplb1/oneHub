@@ -6,16 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, QrCode, Users } from "lucide-react";
+import { Plus, QrCode, Users, Scan } from "lucide-react";
 import { getLoyaltyCards, addStamp, redeemReward, getShopQRCode } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 export default function LoyaltyCardsSection() {
   const [maxStamps, setMaxStamps] = useState("10");
   const [rewardText, setRewardText] = useState("Free Coffee");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const { data: cards = [], isLoading } = useQuery({
     queryKey: ["/api", "loyalty-cards"],
@@ -57,15 +59,24 @@ export default function LoyaltyCardsSection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-3xl font-bold">Loyalty Cards</h1>
-        <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-card-settings">
-              <Plus className="w-4 h-4 mr-2" />
-              Card Settings
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setLocation("/dashboard/scanner")}
+            size="lg"
+            data-testid="button-open-scanner"
+          >
+            <Scan className="w-4 h-4 mr-2" />
+            Scan QR Code
+          </Button>
+          <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="button-card-settings">
+                <Plus className="w-4 h-4 mr-2" />
+                Card Settings
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Loyalty Card Settings</DialogTitle>
@@ -99,6 +110,7 @@ export default function LoyaltyCardsSection() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Tabs defaultValue="customers">
