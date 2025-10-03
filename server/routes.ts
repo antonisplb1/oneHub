@@ -664,6 +664,28 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  app.delete("/api/rewards/:rewardId", requireSubscription, async (req, res) => {
+    try {
+      const [deletedReward] = await db
+        .delete(rewards)
+        .where(
+          and(
+            eq(rewards.id, req.params.rewardId),
+            eq(rewards.userId, req.user!.id)
+          )
+        )
+        .returning();
+
+      if (!deletedReward) {
+        return res.status(404).json({ error: "Reward not found" });
+      }
+
+      res.json({ success: true, deletedReward });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/spin-tokens", requireSubscription, async (req, res) => {
     try {
       const tokens = await db

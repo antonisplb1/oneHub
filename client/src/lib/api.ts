@@ -76,6 +76,12 @@ export async function updateReward(rewardId: string, data: Partial<Reward>) {
   });
 }
 
+export async function deleteReward(rewardId: string) {
+  return apiRequest(`/api/rewards/${rewardId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function getSpinTokens() {
   return apiRequest<SpinToken[]>("/api/spin-tokens");
 }
