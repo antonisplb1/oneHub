@@ -4,10 +4,18 @@
 
 This is a unified B2B SaaS platform that combines digital loyalty card programs and spin-to-win prize wheel campaigns into a single merchant dashboard. Business owners subscribe for €25/month to access both customer engagement tools. The platform serves two distinct user groups:
 
-1. **Merchants** - Use a professional dashboard to manage loyalty programs, create spin wheel campaigns, track customer engagement, and view analytics
-2. **Customers** - Interact via mobile devices to collect loyalty stamps, view their digital cards, and participate in spin-to-win promotions through QR code scanning
+1. **Merchants** - Use a professional dashboard to manage loyalty programs, create spin wheel campaigns, track customer engagement, and view analytics. Can scan customer QR codes in-store to award stamps.
+2. **Customers** - Interact via mobile devices to collect loyalty stamps, view their digital cards with QR codes for merchant scanning, and participate in spin-to-win promotions. Can optionally add loyalty cards to Apple Wallet or Google Wallet.
 
 The application merges functionality from two separate apps into one cohesive platform with unified authentication, subscription management, and customer data sharing.
+
+## Recent Changes (January 2025)
+
+- **Simplified Customer Enrollment**: Join flow now only requires customer name (email and phone removed for faster signup)
+- **Customer QR Codes**: Loyalty cards display QR codes that merchants can scan to award stamps
+- **QR Scanner Dashboard**: Added `/dashboard/scanner` page for merchants to scan customer QR codes and add stamps directly
+- **Digital Wallet Integration**: Added Apple Wallet and Google Wallet buttons to customer loyalty cards (requires external credentials to activate)
+- **Payment Flow Fix**: Resolved webhook timing issue with payment processing page that actively verifies Stripe session status
 
 ## User Preferences
 
@@ -42,7 +50,7 @@ Preferred communication style: Simple, everyday language.
 - Public routes: Landing page (`/`), Auth (`/auth`)
 - Customer-facing routes: `/card/:customerId`, `/spin/:tokenId`, `/join/:userId`, `/in-store-spin/:userId`
 - Protected dashboard routes: `/dashboard/*` with auth guards
-- Dashboard subroutes: `/dashboard/loyalty`, `/dashboard/spin-wheel`, `/dashboard/settings`, etc.
+- Dashboard subroutes: `/dashboard/loyalty`, `/dashboard/scanner`, `/dashboard/spin-wheel`, `/dashboard/settings`, etc.
 
 ### Backend Architecture
 
@@ -62,9 +70,11 @@ Preferred communication style: Simple, everyday language.
 **API Design:**
 - RESTful endpoints under `/api/*`
 - Authentication endpoints: `/api/auth/signup`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`
-- Loyalty endpoints: `/api/customers`, `/api/loyalty-cards`, `/api/loyalty-cards/:id/stamp`, `/api/loyalty-cards/:id/redeem`
+- Loyalty endpoints: `/api/customers`, `/api/loyalty-cards`, `/api/loyalty-cards/:id/stamp`, `/api/loyalty-cards/:id/redeem`, `/api/loyalty-cards/scan-stamp`
+- Customer join: `/api/customers/join` (only requires name)
+- QR code endpoints: `/api/customer-qr/:customerId` (customer QR codes), `/api/qr-codes/:userId` (merchant QR codes)
+- Wallet endpoints: `/api/wallet/apple/:customerId`, `/api/wallet/google/:customerId` (placeholder implementation)
 - Spin wheel endpoints: `/api/rewards`, `/api/spin-tokens`, `/api/spin/:token`, `/api/spin-in-store/:userId`
-- QR code generation endpoints for both features
 - Middleware for route protection via `requireAuth` function
 
 **Data Layer:**
@@ -82,8 +92,8 @@ Preferred communication style: Simple, everyday language.
    - Stripe integration (customerId, subscriptionId, subscriptionStatus, subscriptionEndsAt)
 
 2. **customers** - End users who participate in loyalty/spin programs
-   - Contact information (name, email, phone - all optional for privacy)
-   - Unique QR code for identification (customerQrCode)
+   - Contact information (name required, email and phone optional for privacy)
+   - Unique QR code for merchant scanning (customerQrCode - generated with nanoid(12))
    - Foreign key to users table (userId)
 
 3. **loyaltyCards** - Digital stamp cards
@@ -132,11 +142,39 @@ Preferred communication style: Simple, everyday language.
 
 **Implementation:**
 - QRCode library generates data URLs
-- Two QR code types:
-  1. **Loyalty QR** - Links to `/join/:userId` (merchant-specific signup) or `/card/:customerId` (existing customer card)
-  2. **Spin QR** - Links to `/spin/:tokenId` (token-based) or `/in-store-spin/:userId` (unlimited merchant-specific)
+- Three QR code types:
+  1. **Merchant Join QR** - Links to `/join/:userId` for customer signup
+  2. **Customer Loyalty QR** - Displays unique customerQrCode on customer's card for merchant scanning
+  3. **Spin QR** - Links to `/spin/:tokenId` (token-based) or `/in-store-spin/:userId` (unlimited merchant-specific)
 - QR codes generated on-demand via API endpoints
 - Base64 encoded images returned for display/download
+
+**QR Scanner Flow:**
+1. Merchant navigates to `/dashboard/scanner`
+2. Merchant scans customer's QR code (or manually enters code)
+3. POST to `/api/loyalty-cards/scan-stamp` with QR code value
+4. Backend validates QR code belongs to merchant's customer
+5. Stamp is added, response shows customer name and updated stamp count
+
+### Digital Wallet Integration
+
+**Current Status:**
+- Apple Wallet and Google Wallet buttons present on customer loyalty cards
+- Placeholder endpoints return HTML setup instructions
+- Ready for integration once credentials are configured
+
+**Apple Wallet Requirements:**
+- Apple Developer Program enrollment ($99/year)
+- Pass Type ID and signing certificate
+- `passkit-generator` npm package
+- Template .pass folder with icons and pass.json
+
+**Google Wallet Requirements:**
+- Google Cloud project with Wallet API enabled
+- Service account credentials (JSON key file)
+- Issuer ID from Google Wallet Console
+- `googleapis` npm package
+- Environment variables: GOOGLE_WALLET_ISSUER_ID, GOOGLE_APPLICATION_CREDENTIALS
 
 ## External Dependencies
 
