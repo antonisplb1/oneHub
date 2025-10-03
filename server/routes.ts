@@ -305,6 +305,98 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  app.get("/api/customer-qr/:customerId", async (req, res) => {
+    try {
+      const [customer] = await db
+        .select()
+        .from(customers)
+        .where(eq(customers.id, req.params.customerId))
+        .limit(1);
+
+      if (!customer || !customer.customerQrCode) {
+        return res.status(404).json({ error: "Customer not found" });
+      }
+
+      const qrCodeDataUrl = await QRCode.toDataURL(customer.customerQrCode, {
+        width: 300,
+        margin: 2,
+      });
+
+      res.json({ qrCode: qrCodeDataUrl, qrCodeValue: customer.customerQrCode });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/loyalty-cards/scan-stamp", requireSubscription, async (req, res) => {
+    try {
+      const { qrCode } = req.body;
+
+      if (!qrCode) {
+        return res.status(400).json({ error: "QR code is required" });
+      }
+
+      const [customer] = await db
+        .select()
+        .from(customers)
+        .where(
+          and(
+            eq(customers.customerQrCode, qrCode),
+            eq(customers.userId, req.user!.id)
+          )
+        )
+        .limit(1);
+
+      if (!customer) {
+        return res.status(404).json({ error: "Customer not found" });
+      }
+
+      const [card] = await db
+        .select()
+        .from(loyaltyCards)
+        .where(
+          and(
+            eq(loyaltyCards.customerId, customer.id),
+            eq(loyaltyCards.userId, req.user!.id)
+          )
+        )
+        .limit(1);
+
+      if (!card) {
+        return res.status(404).json({ error: "Loyalty card not found" });
+      }
+
+      const newStamps = Math.min(card.stamps + 1, card.maxStamps);
+      const isRedeemable = newStamps >= card.maxStamps;
+
+      const [updatedCard] = await db
+        .update(loyaltyCards)
+        .set({
+          stamps: newStamps,
+          isRedeemable,
+          lastStampAt: new Date(),
+        })
+        .where(eq(loyaltyCards.id, card.id))
+        .returning();
+
+      await db.insert(loyaltyTransactions).values({
+        loyaltyCardId: card.id,
+        type: "stamp",
+        amount: 1,
+        description: "Stamp added via QR scan",
+      });
+
+      res.json({ 
+        success: true, 
+        card: updatedCard, 
+        customer,
+        message: `Stamp added! ${newStamps}/${card.maxStamps}` 
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/loyalty-cards/:cardId/stamp", requireSubscription, async (req, res) => {
     try {
       const [card] = await db
@@ -761,6 +853,93 @@ export function registerRoutes(app: Express) {
       res.json({ url: session.url });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/wallet/google/:customerId", async (req, res) => {
+    try {
+      const [result] = await db
+        .select({
+          card: loyaltyCards,
+          customer: customers,
+          user: users,
+        })
+        .from(loyaltyCards)
+        .leftJoin(customers, eq(loyaltyCards.customerId, customers.id))
+        .leftJoin(users, eq(loyaltyCards.userId, users.id))
+        .where(eq(customers.id, req.params.customerId))
+        .limit(1);
+
+      if (!result) {
+        return res.status(404).send("Loyalty card not found");
+      }
+
+      res.status(501).send(`
+        <html>
+          <head><title>Google Wallet Setup Required</title></head>
+          <body style="font-family: sans-serif; padding: 40px; max-width: 600px; margin: 0 auto;">
+            <h1>🔧 Google Wallet Setup Required</h1>
+            <p>To enable Google Wallet passes, you need to:</p>
+            <ol>
+              <li>Create a Google Cloud project</li>
+              <li>Enable the Google Wallet API</li>
+              <li>Create a service account and download credentials</li>
+              <li>Register for Google Wallet API access</li>
+              <li>Install the <code>googleapis</code> npm package</li>
+              <li>Set environment variable <code>GOOGLE_WALLET_ISSUER_ID</code></li>
+              <li>Set environment variable <code>GOOGLE_APPLICATION_CREDENTIALS</code></li>
+            </ol>
+            <p><strong>Customer:</strong> ${result.customer?.name || 'Customer'}<br>
+            <strong>Points:</strong> ${result.card.stamps}/${result.card.maxStamps}</p>
+            <p><a href="https://developers.google.com/wallet/retail/loyalty-cards">View Google Wallet Documentation →</a></p>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.get("/api/wallet/apple/:customerId", async (req, res) => {
+    try {
+      const [result] = await db
+        .select({
+          card: loyaltyCards,
+          customer: customers,
+          user: users,
+        })
+        .from(loyaltyCards)
+        .leftJoin(customers, eq(loyaltyCards.customerId, customers.id))
+        .leftJoin(users, eq(loyaltyCards.userId, users.id))
+        .where(eq(customers.id, req.params.customerId))
+        .limit(1);
+
+      if (!result) {
+        return res.status(404).send("Loyalty card not found");
+      }
+
+      res.status(501).send(`
+        <html>
+          <head><title>Apple Wallet Setup Required</title></head>
+          <body style="font-family: sans-serif; padding: 40px; max-width: 600px; margin: 0 auto;">
+            <h1>🔧 Apple Wallet Setup Required</h1>
+            <p>To enable Apple Wallet passes, you need to:</p>
+            <ol>
+              <li>Enroll in Apple Developer Program ($99/year)</li>
+              <li>Create a Pass Type ID in Apple Developer Portal</li>
+              <li>Generate and download a Pass Signing Certificate</li>
+              <li>Install the <code>passkit-generator</code> npm package</li>
+              <li>Create a .pass template folder with icons and pass.json</li>
+              <li>Add certificate files to the server</li>
+            </ol>
+            <p><strong>Customer:</strong> ${result.customer?.name || 'Customer'}<br>
+            <strong>Points:</strong> ${result.card.stamps}/${result.card.maxStamps}</p>
+            <p><a href="https://developer.apple.com/documentation/walletpasses">View Apple Wallet Documentation →</a></p>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      res.status(500).send(error.message);
     }
   });
 

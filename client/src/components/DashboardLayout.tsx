@@ -20,6 +20,7 @@ import {
   Users,
   BarChart3,
   Settings,
+  Scan,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -28,6 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { title: "Loyalty Cards", icon: CreditCard, href: "/dashboard/loyalty" },
+  { title: "QR Scanner", icon: Scan, href: "/dashboard/scanner" },
   { title: "Spin Wheel", icon: Gauge, href: "/dashboard/spin-wheel" },
   { title: "Customers", icon: Users, href: "/dashboard/customers" },
   { title: "Analytics", icon: BarChart3, href: "/dashboard/analytics" },

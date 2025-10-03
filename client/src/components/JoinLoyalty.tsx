@@ -11,11 +11,9 @@ export default function JoinLoyalty() {
   const { userId } = useParams();
   const [, setLocation] = useLocation();
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
 
   const joinMutation = useMutation({
-    mutationFn: async (data: { userId: string; name?: string; email?: string; phone?: string }) => {
+    mutationFn: async (data: { userId: string; name?: string }) => {
       return apiRequest<{ customer: any; loyaltyCard: any }>("/api/customers/join", {
         method: "POST",
         body: JSON.stringify(data),
@@ -31,8 +29,6 @@ export default function JoinLoyalty() {
     joinMutation.mutate({
       userId: userId!,
       name: name || undefined,
-      email: email || undefined,
-      phone: phone || undefined,
     });
   };
 
@@ -46,38 +42,15 @@ export default function JoinLoyalty() {
         <CardContent>
           <form onSubmit={handleJoin} className="space-y-4">
             <div>
-              <Label htmlFor="name">Name (optional)</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="John Doe"
+                placeholder="Enter your name"
                 data-testid="input-name"
                 disabled={joinMutation.isPending}
-              />
-            </div>
-            <div>
-              <Label htmlFor="email">Email (optional)</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                data-testid="input-email"
-                disabled={joinMutation.isPending}
-              />
-            </div>
-            <div>
-              <Label htmlFor="phone">Phone (optional)</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+1234567890"
-                data-testid="input-phone"
-                disabled={joinMutation.isPending}
+                required
               />
             </div>
             <Button

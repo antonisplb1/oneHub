@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, Download, Wallet } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { SiApple, SiGoogle } from "react-icons/si";
 
 export default function CustomerLoyaltyCard() {
   const { customerId } = useParams();
@@ -13,6 +14,12 @@ export default function CustomerLoyaltyCard() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["/api", "loyalty-card", "customer", customerId],
     queryFn: () => apiRequest<any>(`/api/loyalty-card/customer/${customerId}`),
+    enabled: !!customerId,
+  });
+
+  const { data: qrData } = useQuery({
+    queryKey: ["/api", "customer-qr", customerId],
+    queryFn: () => apiRequest<{ qrCode: string; qrCodeValue: string }>(`/api/customer-qr/${customerId}`),
     enabled: !!customerId,
   });
 
@@ -101,8 +108,52 @@ export default function CustomerLoyaltyCard() {
             </div>
           )}
 
-          <div className="pt-4 border-t text-center text-xs text-muted-foreground">
-            Save this page to your home screen for quick access
+          {qrData && (
+            <div className="pt-4 border-t space-y-4">
+              <div className="text-center">
+                <p className="text-sm font-medium mb-3">Show this QR code to collect stamps</p>
+                <div className="flex justify-center">
+                  <img 
+                    src={qrData.qrCode} 
+                    alt="Customer QR Code" 
+                    className="w-48 h-48"
+                    data-testid="customer-qr-code"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4 border-t space-y-3">
+            <p className="text-sm font-medium text-center">Add to Wallet</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  window.open(`/api/wallet/apple/${customerId}`, '_blank');
+                }}
+                data-testid="button-add-to-apple-wallet"
+              >
+                <SiApple className="w-5 h-5 mr-2" />
+                Apple Wallet
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  window.open(`/api/wallet/google/${customerId}`, '_blank');
+                }}
+                data-testid="button-add-to-google-wallet"
+              >
+                <SiGoogle className="w-5 h-5 mr-2" />
+                Google Wallet
+              </Button>
+            </div>
+          </div>
+
+          <div className="pt-4 text-center text-xs text-muted-foreground space-y-2">
+            <p>Save to your digital wallet for quick access</p>
           </div>
         </CardContent>
       </Card>

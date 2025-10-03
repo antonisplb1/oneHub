@@ -15,6 +15,7 @@ import CustomerLoyaltyCard from "@/components/CustomerLoyaltyCard";
 import JoinLoyalty from "@/components/JoinLoyalty";
 import InStoreSpinWheel from "@/components/InStoreSpinWheel";
 import SettingsPage from "@/components/SettingsPage";
+import ScannerPage from "@/components/ScannerPage";
 import SubscriptionRequired from "@/pages/SubscriptionRequired";
 import PaymentProcessing from "@/pages/PaymentProcessing";
 
@@ -36,6 +37,13 @@ function Router() {
         {() => (
           <DashboardLayout>
             <LoyaltyCardsSection />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/dashboard/scanner">
+        {() => (
+          <DashboardLayout>
+            <ScannerPage />
           </DashboardLayout>
         )}
       </Route>
