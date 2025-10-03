@@ -19,10 +19,18 @@ import passport from "passport";
 import { nanoid } from "nanoid";
 import Stripe from "stripe";
 import QRCode from "qrcode";
+import { GoogleWalletService } from "./googleWallet";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-09-30.clover",
 });
+
+let googleWalletService: GoogleWalletService | null = null;
+try {
+  googleWalletService = new GoogleWalletService();
+} catch (error) {
+  console.warn('Google Wallet service not initialized:', error);
+}
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (req.isAuthenticated()) {
@@ -858,6 +866,27 @@ export function registerRoutes(app: Express) {
 
   app.get("/api/wallet/google/:customerId", async (req, res) => {
     try {
+      if (!googleWalletService) {
+        return res.status(501).send(`
+          <html>
+            <head><title>Google Wallet Setup Required</title></head>
+            <body style="font-family: sans-serif; padding: 40px; max-width: 600px; margin: 0 auto;">
+              <h1>🔧 Google Wallet Setup Required</h1>
+              <p>To enable Google Wallet passes, you need to:</p>
+              <ol>
+                <li>Create a Google Cloud project</li>
+                <li>Enable the Google Wallet API</li>
+                <li>Create a service account and download credentials</li>
+                <li>Register for Google Wallet API access</li>
+                <li>Set environment variable <code>GOOGLE_WALLET_ISSUER_ID</code></li>
+                <li>Set environment variable <code>GOOGLE_WALLET_SERVICE_ACCOUNT_JSON</code></li>
+              </ol>
+              <p><a href="https://developers.google.com/wallet/retail/loyalty-cards">View Google Wallet Documentation →</a></p>
+            </body>
+          </html>
+        `);
+      }
+
       const [result] = await db
         .select({
           card: loyaltyCards,
@@ -870,33 +899,36 @@ export function registerRoutes(app: Express) {
         .where(eq(customers.id, req.params.customerId))
         .limit(1);
 
-      if (!result) {
+      if (!result || !result.customer || !result.user) {
         return res.status(404).send("Loyalty card not found");
       }
 
-      res.status(501).send(`
+      const saveUrl = await googleWalletService.createLoyaltyPass(
+        {
+          customerId: result.customer.id,
+          customerName: result.customer.name,
+          shopName: result.user.shopName,
+          stamps: result.card.stamps,
+          maxStamps: result.card.maxStamps,
+          rewardText: result.card.rewardText || 'Loyalty Reward',
+          customerQrCode: result.customer.customerQrCode || result.customer.id,
+        },
+        result.user.id
+      );
+
+      res.redirect(saveUrl);
+    } catch (error: any) {
+      console.error('Google Wallet error:', error);
+      res.status(500).send(`
         <html>
-          <head><title>Google Wallet Setup Required</title></head>
+          <head><title>Error</title></head>
           <body style="font-family: sans-serif; padding: 40px; max-width: 600px; margin: 0 auto;">
-            <h1>🔧 Google Wallet Setup Required</h1>
-            <p>To enable Google Wallet passes, you need to:</p>
-            <ol>
-              <li>Create a Google Cloud project</li>
-              <li>Enable the Google Wallet API</li>
-              <li>Create a service account and download credentials</li>
-              <li>Register for Google Wallet API access</li>
-              <li>Install the <code>googleapis</code> npm package</li>
-              <li>Set environment variable <code>GOOGLE_WALLET_ISSUER_ID</code></li>
-              <li>Set environment variable <code>GOOGLE_APPLICATION_CREDENTIALS</code></li>
-            </ol>
-            <p><strong>Customer:</strong> ${result.customer?.name || 'Customer'}<br>
-            <strong>Points:</strong> ${result.card.stamps}/${result.card.maxStamps}</p>
-            <p><a href="https://developers.google.com/wallet/retail/loyalty-cards">View Google Wallet Documentation →</a></p>
+            <h1>❌ Error Generating Pass</h1>
+            <p>There was an error creating your Google Wallet pass. Please try again later.</p>
+            <p><strong>Error:</strong> ${error.message}</p>
           </body>
         </html>
       `);
-    } catch (error: any) {
-      res.status(500).send(error.message);
     }
   });
 
