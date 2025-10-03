@@ -26,13 +26,13 @@ The application merges functionality from two separate apps into one cohesive pl
 - **Auto-Reset Rewards**: Removed manual redeem button - cards automatically reset to 0 when customer with 10/10 stamps is scanned again
 - **Reward Notifications**: Dashboard shows "Reward Ready" badge and colored highlight when customers reach 10/10 stamps
 - **Reward Tracking**: Total rewards count displayed for each customer showing how many rewards they've received
-- **Simplified QR Spin System (October 2025)**: Removed all token logic for direct spin access
-  - **Old System**: Complex token generation with 5-minute expiration, validation, and manual management
-  - **New System**: ONE permanent QR code per merchant linking directly to `/in-store-spin/:userId`
-  - **Direct Access**: Customer scans QR → opens spin wheel → spins immediately (no tokens, no expiration)
-  - **Unlimited Spins**: In-store wheel allows customers to spin multiple times
-  - **Removed**: Token generation endpoint, GetSpinRedirect component, token API functions, all token-related UI
-- **Fixed In-Store Wheel Route**: Corrected route from `/in-store-spin/:userId` to match button navigation
+- **Two-Mode Spin System (October 2025)**: Separated one-time customer spins from unlimited merchant spins
+  - **Customer Spin QR** (`/customer-spin/:userId`): One spin per browser session using sessionStorage tracking
+  - **In-Store Wheel** (`/in-store-spin/:userId`): Unlimited spins for merchant-operated promotions
+  - **Visual Wheel**: SVG-based wheel with colored segments showing reward names and percentages
+  - **Segment Display**: Each reward appears as a colored wedge sized by its win percentage
+  - **Spin Animation**: 5 rotations with 3-second cubic-bezier animation landing on winning segment
+  - **Session Tracking**: Customer spins blocked after first use via sessionStorage (`spin-${userId}` key)
 - **Reward Edit/Delete**: Added edit and delete functionality to reward settings with confirmation dialogs
 
 ## User Preferences
