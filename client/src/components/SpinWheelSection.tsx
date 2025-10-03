@@ -7,19 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Settings, Ticket, Gift } from "lucide-react";
+import { Plus, Settings, Ticket, Gift, Gauge } from "lucide-react";
 import { getRewards, getSpinTokens, createReward, createSpinToken } from "@/lib/api";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function SpinWheelSection() {
   const [isRewardDialogOpen, setIsRewardDialogOpen] = useState(false);
   const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
+  const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [rewardName, setRewardName] = useState("");
   const [winChance, setWinChance] = useState("25");
   const [customerName, setCustomerName] = useState("");
   const [expiryMinutes, setExpiryMinutes] = useState("30");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: rewards = [], isLoading: isLoadingRewards } = useQuery({
     queryKey: ["/api", "rewards"],
@@ -29,6 +32,18 @@ export default function SpinWheelSection() {
   const { data: tokens = [], isLoading: isLoadingTokens } = useQuery({
     queryKey: ["/api", "spin-tokens"],
     queryFn: getSpinTokens,
+  });
+
+  const { data: tokenQR, refetch: refetchTokenQR } = useQuery({
+    queryKey: ["/api", "spin-token", selectedTokenId, "qr"],
+    queryFn: () => apiRequest<{ qrCode: string; url: string }>(`/api/spin-token/${selectedTokenId}/qr`),
+    enabled: !!selectedTokenId,
+  });
+
+  const { data: inStoreQR } = useQuery({
+    queryKey: ["/api", "spin-in-store-qr", user?.id],
+    queryFn: () => apiRequest<{ qrCode: string; url: string }>(`/api/spin-in-store-qr/${user!.id}`),
+    enabled: !!user?.id,
   });
 
   const rewardMutation = useMutation({
@@ -129,7 +144,7 @@ export default function SpinWheelSection() {
       </div>
 
       <Tabs defaultValue="rewards">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="rewards" data-testid="tab-rewards">
             <Gift className="w-4 h-4 mr-2" />
             Rewards
@@ -137,6 +152,10 @@ export default function SpinWheelSection() {
           <TabsTrigger value="tokens" data-testid="tab-tokens">
             <Ticket className="w-4 h-4 mr-2" />
             Spin Tokens
+          </TabsTrigger>
+          <TabsTrigger value="in-store" data-testid="tab-in-store">
+            <Gauge className="w-4 h-4 mr-2" />
+            In-Store Wheel
           </TabsTrigger>
         </TabsList>
 
@@ -241,18 +260,30 @@ export default function SpinWheelSection() {
                   {tokens.map((token) => (
                     <div
                       key={token.id}
-                      className="flex items-center justify-between p-4 border rounded-md"
+                      className="flex items-center justify-between p-4 border rounded-md hover-elevate"
                       data-testid={`token-${token.id}`}
                     >
-                      <div>
+                      <div className="flex-1">
                         <p className="font-semibold font-mono text-lg">{token.token}</p>
                         <p className="text-sm text-muted-foreground">
                           {token.customerName || "Anonymous"} • Expires {new Date(token.expiresAt).toLocaleString()}
                         </p>
                       </div>
-                      <Badge variant={token.isUsed ? "secondary" : "default"}>
-                        {token.isUsed ? "Used" : "Active"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={token.isUsed ? "secondary" : "default"}>
+                          {token.isUsed ? "Used" : "Active"}
+                        </Badge>
+                        {!token.isUsed && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSelectedTokenId(token.id)}
+                            data-testid={`button-qr-${token.id}`}
+                          >
+                            Show QR
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -260,7 +291,63 @@ export default function SpinWheelSection() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="in-store">
+          <Card>
+            <CardHeader>
+              <CardTitle>In-Store Wheel</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Let customers spin the wheel unlimited times at your store location. Display this QR code at the counter or on a tablet.
+              </p>
+              {inStoreQR ? (
+                <div className="flex flex-col items-center gap-4">
+                  <img
+                    src={inStoreQR.qrCode}
+                    alt="In-store wheel QR code"
+                    className="w-64 h-64 border rounded-md"
+                  />
+                  <a href={inStoreQR.qrCode} download="in-store-wheel-qr.png">
+                    <Button variant="outline" data-testid="button-download-in-store-qr">
+                      Download QR Code
+                    </Button>
+                  </a>
+                </div>
+              ) : (
+                <div className="w-64 h-64 bg-muted rounded-md flex items-center justify-center mx-auto">
+                  <Gauge className="w-32 h-32 text-muted-foreground" />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {selectedTokenId && tokenQR && (
+        <Dialog open={!!selectedTokenId} onOpenChange={() => setSelectedTokenId(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Token QR Code</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col items-center gap-4">
+              <img
+                src={tokenQR.qrCode}
+                alt="Token QR code"
+                className="w-64 h-64 border rounded-md"
+              />
+              <p className="text-sm text-muted-foreground text-center">
+                Customer scans this QR code to spin the wheel once
+              </p>
+              <a href={tokenQR.qrCode} download={`spin-token-qr.png`}>
+                <Button variant="outline" data-testid="button-download-token-qr">
+                  Download QR Code
+                </Button>
+              </a>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -12,6 +12,9 @@ import LoyaltyCardsSection from "@/components/LoyaltyCardsSection";
 import SpinWheelSection from "@/components/SpinWheelSection";
 import CustomerSpinWheel from "@/components/CustomerSpinWheel";
 import CustomerLoyaltyCard from "@/components/CustomerLoyaltyCard";
+import JoinLoyalty from "@/components/JoinLoyalty";
+import InStoreSpinWheel from "@/components/InStoreSpinWheel";
+import SettingsPage from "@/components/SettingsPage";
 
 function Router() {
   return (
@@ -39,7 +42,16 @@ function Router() {
           </DashboardLayout>
         )}
       </Route>
+      <Route path="/dashboard/settings">
+        {() => (
+          <DashboardLayout>
+            <SettingsPage />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/join/:userId" component={JoinLoyalty} />
       <Route path="/spin/:token" component={CustomerSpinWheel} />
+      <Route path="/spin-in-store/:userId" component={InStoreSpinWheel} />
       <Route path="/card/:customerId" component={CustomerLoyaltyCard} />
       <Route component={NotFound} />
     </Switch>
