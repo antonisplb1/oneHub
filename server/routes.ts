@@ -427,6 +427,18 @@ export function registerRoutes(app: Express) {
         description: "Stamp added via QR scan",
       });
 
+      if (googleWalletService) {
+        try {
+          await googleWalletService.updateLoyaltyPoints(
+            customer.id,
+            newStamps,
+            card.maxStamps
+          );
+        } catch (walletError) {
+          console.error('Google Wallet update failed (non-blocking):', walletError);
+        }
+      }
+
       res.json({ 
         success: true, 
         card: updatedCard, 
@@ -475,6 +487,18 @@ export function registerRoutes(app: Express) {
         description: "Stamp added",
       });
 
+      if (googleWalletService) {
+        try {
+          await googleWalletService.updateLoyaltyPoints(
+            card.customerId,
+            newStamps,
+            card.maxStamps
+          );
+        } catch (walletError) {
+          console.error('Google Wallet update failed (non-blocking):', walletError);
+        }
+      }
+
       res.json(updatedCard);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -517,6 +541,18 @@ export function registerRoutes(app: Express) {
         type: "reward",
         description: "Reward redeemed",
       });
+
+      if (googleWalletService) {
+        try {
+          await googleWalletService.updateLoyaltyPoints(
+            card.customerId,
+            0,
+            card.maxStamps
+          );
+        } catch (walletError) {
+          console.error('Google Wallet update failed (non-blocking):', walletError);
+        }
+      }
 
       res.json(updatedCard);
     } catch (error: any) {
