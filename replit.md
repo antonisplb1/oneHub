@@ -23,6 +23,9 @@ The application merges functionality from two separate apps into one cohesive pl
 - **Increased Body Limit**: Express body parser limit increased to 10mb to support base64 image uploads
 - **Digital Wallet Integration**: Added Apple Wallet and Google Wallet buttons to customer loyalty cards
 - **Payment Flow Fix**: Resolved webhook timing issue with payment processing page that actively verifies Stripe session status
+- **Auto-Reset Rewards**: Removed manual redeem button - cards automatically reset to 0 when customer with 10/10 stamps is scanned again
+- **Reward Notifications**: Dashboard shows "Reward Ready" badge and colored highlight when customers reach 10/10 stamps
+- **Reward Tracking**: Total rewards count displayed for each customer showing how many rewards they've received
 
 ## User Preferences
 
