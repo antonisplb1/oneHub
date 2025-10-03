@@ -60,20 +60,20 @@ export default function PaymentProcessing() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md border-card-border shadow-sm">
         {status === "processing" && (
           <>
-            <CardHeader className="text-center">
-              <div className="flex justify-center mb-4">
-                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            <CardHeader className="text-center pb-6">
+              <div className="flex justify-center mb-6">
+                <Loader2 className="w-16 h-16 text-primary animate-spin" />
               </div>
-              <CardTitle>Processing Payment</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl font-semibold mb-2">Processing Payment</CardTitle>
+              <CardDescription className="text-base">
                 Please wait while we confirm your subscription...
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-muted-foreground text-center">
                 This usually takes just a few seconds. Do not close this page.
               </p>
             </CardContent>
@@ -82,12 +82,12 @@ export default function PaymentProcessing() {
 
         {status === "success" && (
           <>
-            <CardHeader className="text-center">
-              <div className="flex justify-center mb-4">
-                <CheckCircle className="w-12 h-12 text-green-600" />
+            <CardHeader className="text-center pb-6">
+              <div className="flex justify-center mb-6">
+                <CheckCircle className="w-16 h-16 text-green-600" />
               </div>
-              <CardTitle>Payment Successful!</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl font-semibold mb-2">Payment Successful!</CardTitle>
+              <CardDescription className="text-base">
                 Your subscription is now active. Redirecting to dashboard...
               </CardDescription>
             </CardHeader>
@@ -96,22 +96,24 @@ export default function PaymentProcessing() {
 
         {status === "error" && (
           <>
-            <CardHeader className="text-center">
-              <div className="flex justify-center mb-4">
-                <XCircle className="w-12 h-12 text-destructive" />
+            <CardHeader className="text-center pb-6">
+              <div className="flex justify-center mb-6">
+                <XCircle className="w-16 h-16 text-destructive" />
               </div>
-              <CardTitle>Verification Error</CardTitle>
-              <CardDescription>{errorMessage}</CardDescription>
+              <CardTitle className="text-2xl font-semibold mb-2">Verification Error</CardTitle>
+              <CardDescription className="text-base">{errorMessage}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col gap-2">
+            <CardContent className="space-y-6">
+              <div className="flex flex-col gap-3">
                 <Button
+                  size="lg"
                   onClick={() => window.location.reload()}
                   data-testid="button-retry"
                 >
                   Retry Verification
                 </Button>
                 <Button
+                  size="lg"
                   variant="outline"
                   onClick={() => setLocation("/subscription-required")}
                   data-testid="button-go-back"

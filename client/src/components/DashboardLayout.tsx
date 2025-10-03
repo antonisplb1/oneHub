@@ -74,22 +74,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const shopInitials = user.shopName.substring(0, 2).toUpperCase();
 
   const style = {
-    "--sidebar-width": "16rem",
+    "--sidebar-width": "17rem",
   };
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
         <Sidebar>
-          <SidebarHeader className="p-4 border-b">
+          <SidebarHeader className="p-5 border-b">
             <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-primary text-primary-foreground">
+              <Avatar className="h-11 w-11">
+                <AvatarFallback className="bg-primary text-primary-foreground text-base font-semibold">
                   {shopInitials}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-semibold text-sm">{user.shopName}</p>
+                <p className="font-semibold">{user.shopName}</p>
                 <p className="text-xs text-muted-foreground">
                   {user.subscriptionStatus === "active" ? "Pro Plan" : "Free Trial"}
                 </p>
@@ -98,7 +98,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
+              <SidebarGroupLabel className="text-xs font-medium">Main Menu</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {menuItems.map((item) => (

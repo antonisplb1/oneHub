@@ -7,36 +7,36 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">MerchantHub</h1>
+        <div className="container mx-auto px-6 py-5 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-primary">MerchantHub</h1>
           <Link href="/auth">
-            <Button variant="outline" data-testid="button-login">Login</Button>
+            <Button variant="outline" size="lg" data-testid="button-login">Login</Button>
           </Link>
         </div>
       </header>
 
-      <section className="py-20 px-6">
-        <div className="container mx-auto grid md:grid-cols-2 gap-12 items-center">
+      <section className="py-24 px-6">
+        <div className="container mx-auto grid md:grid-cols-2 gap-16 items-center">
           <div>
-            <h2 className="text-5xl font-bold mb-6 leading-tight">
+            <h2 className="text-5xl font-semibold mb-8 leading-tight tracking-tight">
               Boost Customer Loyalty & Engagement
             </h2>
-            <p className="text-xl text-muted-foreground mb-8">
+            <p className="text-xl text-muted-foreground mb-10 leading-relaxed">
               All-in-one platform for digital stamp cards and prize wheels. Turn every visit into an opportunity.
             </p>
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <Link href="/auth">
-                <Button size="lg" data-testid="button-get-started">
+                <Button size="lg" data-testid="button-get-started" className="text-base px-8">
                   Start Free Trial
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" data-testid="button-view-demo">
+              <Button size="lg" variant="outline" data-testid="button-view-demo" className="text-base px-8">
                 View Demo
               </Button>
             </div>
           </div>
-          <div className="bg-gradient-to-br from-primary/20 to-chart-3/20 rounded-2xl p-8 aspect-video flex items-center justify-center">
-            <p className="text-muted-foreground">Dashboard Preview</p>
+          <div className="bg-gradient-to-br from-primary/20 to-chart-3/20 rounded-2xl p-12 aspect-video flex items-center justify-center shadow-sm">
+            <p className="text-muted-foreground text-lg">Dashboard Preview</p>
           </div>
         </div>
       </section>
