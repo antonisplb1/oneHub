@@ -35,7 +35,7 @@ export default function InStoreSpinWheel() {
       targetAngle = cumulative + (activeRewards[winningIndex].winChance / 2);
       const normalizedAngle = 360 - targetAngle + 90;
       const spinRotations = 360 * 5;
-      const finalRotation = rotation + spinRotations + normalizedAngle;
+      const finalRotation = spinRotations + normalizedAngle;
       
       setRotation(finalRotation);
       
@@ -54,6 +54,7 @@ export default function InStoreSpinWheel() {
 
   const handleReset = () => {
     setPrizeWon(null);
+    setRotation(0);
     spinMutation.reset();
   };
 
@@ -108,20 +109,8 @@ export default function InStoreSpinWheel() {
             fontWeight="bold"
             textAnchor="middle"
             dominantBaseline="middle"
-            transform={`rotate(${textAngle}, ${textX}, ${textY})`}
           >
             {reward.name}
-          </text>
-          <text
-            x={textX}
-            y={textY + 16}
-            fill="white"
-            fontSize="12"
-            textAnchor="middle"
-            dominantBaseline="middle"
-            transform={`rotate(${textAngle}, ${textX}, ${textY + 16})`}
-          >
-            {Math.round(percentage)}%
           </text>
         </g>
       );

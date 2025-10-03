@@ -113,20 +113,8 @@ export default function CustomerSpinOnce() {
             fontWeight="bold"
             textAnchor="middle"
             dominantBaseline="middle"
-            transform={`rotate(${textAngle}, ${textX}, ${textY})`}
           >
             {reward.name}
-          </text>
-          <text
-            x={textX}
-            y={textY + 16}
-            fill="white"
-            fontSize="12"
-            textAnchor="middle"
-            dominantBaseline="middle"
-            transform={`rotate(${textAngle}, ${textX}, ${textY + 16})`}
-          >
-            {Math.round(percentage)}%
           </text>
         </g>
       );
