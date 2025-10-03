@@ -17,8 +17,24 @@ export function useAuth() {
 
   const loginMutation = useMutation({
     mutationFn: login,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api", "auth", "me"] });
+      
+      const user = data.user;
+      if (!user.emailVerified) {
+        toast({
+          title: "Email not verified",
+          description: "Please check your email and verify your account before continuing.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (user.subscriptionStatus !== "active") {
+        setLocation("/subscription-required");
+        return;
+      }
+      
       setLocation("/dashboard");
       toast({
         title: "Welcome back!",
@@ -36,12 +52,11 @@ export function useAuth() {
 
   const signupMutation = useMutation({
     mutationFn: signup,
-    onSuccess: (data: { checkoutUrl: string }) => {
+    onSuccess: (data: { success: boolean; message: string }) => {
       toast({
-        title: "Account Created!",
-        description: "Redirecting to payment...",
+        title: "Registration Successful!",
+        description: data.message || "Please check your email to verify your account.",
       });
-      window.location.href = data.checkoutUrl;
     },
     onError: (error: any) => {
       toast({

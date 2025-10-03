@@ -89,6 +89,11 @@ export default function AuthPage() {
                   <Button type="submit" size="lg" className="w-full" data-testid="button-login-submit" disabled={isLoggingIn}>
                     {isLoggingIn ? "Logging in..." : "Login"}
                   </Button>
+                  <div className="text-center mt-4">
+                    <a href="/forgot-password" className="text-sm text-primary hover:underline" data-testid="link-forgot-password">
+                      Forgot Password?
+                    </a>
+                  </div>
                 </form>
               </TabsContent>
 

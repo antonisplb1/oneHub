@@ -21,12 +21,18 @@ import CustomersSection from "@/components/CustomersSection";
 import AnalyticsSection from "@/components/AnalyticsSection";
 import SubscriptionRequired from "@/pages/SubscriptionRequired";
 import PaymentProcessing from "@/pages/PaymentProcessing";
+import VerifyEmail from "@/pages/VerifyEmail";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/verify-email/:token" component={VerifyEmail} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password/:token" component={ResetPassword} />
       <Route path="/subscription-required" component={SubscriptionRequired} />
       <Route path="/payment-processing" component={PaymentProcessing} />
       <Route path="/dashboard">

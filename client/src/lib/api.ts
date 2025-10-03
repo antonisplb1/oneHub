@@ -7,7 +7,7 @@ export interface LoyaltyCardWithCustomer {
 }
 
 export async function signup(data: { email: string; password: string; confirmPassword: string; shopName: string }) {
-  const response = await apiRequest<{ checkoutUrl: string }>("/api/auth/signup", {
+  const response = await apiRequest<{ success: boolean; message: string }>("/api/auth/signup", {
     method: "POST",
     body: JSON.stringify(data),
   });

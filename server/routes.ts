@@ -14,12 +14,13 @@ import {
   createTokenSchema,
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { hashPassword } from "./auth";
+import { hashPassword, generateToken } from "./auth";
 import passport from "passport";
 import { nanoid } from "nanoid";
 import Stripe from "stripe";
 import QRCode from "qrcode";
 import { GoogleWalletService, type LoyaltyPassData } from "./googleWallet";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-09-30.clover",
@@ -39,8 +40,15 @@ function requireAuth(req: Request, res: Response, next: Function) {
   res.status(401).json({ error: "Unauthorized" });
 }
 
+function requireEmailVerification(req: Request, res: Response, next: Function) {
+  if (req.isAuthenticated() && req.user!.emailVerified) {
+    return next();
+  }
+  res.status(403).json({ error: "Email verification required" });
+}
+
 function requireSubscription(req: Request, res: Response, next: Function) {
-  if (req.isAuthenticated() && req.user!.subscriptionStatus === "active") {
+  if (req.isAuthenticated() && req.user!.emailVerified && req.user!.subscriptionStatus === "active") {
     return next();
   }
   res.status(403).json({ error: "Active subscription required" });
@@ -62,55 +70,26 @@ export function registerRoutes(app: Express) {
       }
 
       const passwordHash = await hashPassword(validatedData.password);
+      const verificationToken = generateToken();
+      const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       
-      const stripeCustomer = await stripe.customers.create({
-        email: validatedData.email,
-        name: validatedData.shopName,
-      });
-
       const [newUser] = await db
         .insert(users)
         .values({
           email: validatedData.email,
           passwordHash,
           shopName: validatedData.shopName,
-          stripeCustomerId: stripeCustomer.id,
+          emailVerified: false,
+          verificationToken,
+          verificationTokenExpiry,
         })
         .returning();
 
-      req.login(newUser, async (err) => {
-        if (err) {
-          return res.status(500).json({ error: "Login failed after signup" });
-        }
-        
-        const session = await stripe.checkout.sessions.create({
-          customer: stripeCustomer.id,
-          payment_method_types: ["card"],
-          line_items: [
-            {
-              price_data: {
-                currency: "eur",
-                product_data: {
-                  name: "Professional Plan",
-                  description: "Unlimited customers, loyalty cards & prize wheels",
-                },
-                unit_amount: 2500,
-                recurring: {
-                  interval: "month",
-                },
-              },
-              quantity: 1,
-            },
-          ],
-          mode: "subscription",
-          success_url: `${req.protocol}://${req.get("host")}/payment-processing?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${req.protocol}://${req.get("host")}/subscription-required`,
-          metadata: {
-            userId: newUser.id,
-          },
-        });
-        
-        res.json({ checkoutUrl: session.url });
+      await sendVerificationEmail(newUser.email, newUser.shopName, verificationToken);
+
+      res.json({ 
+        success: true,
+        message: "Registration successful! Please check your email to verify your account." 
       });
     } catch (error: any) {
       res.status(400).json({ error: error.message || "Signup failed" });
@@ -151,6 +130,167 @@ export function registerRoutes(app: Express) {
       res.json({ user: req.user });
     } else {
       res.status(401).json({ error: "Not authenticated" });
+    }
+  });
+
+  app.get("/api/auth/verify-email/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.verificationToken, token))
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).json({ error: "Invalid verification token" });
+      }
+
+      if (user.verificationTokenExpiry && user.verificationTokenExpiry < new Date()) {
+        return res.status(400).json({ error: "Verification token has expired" });
+      }
+
+      if (user.emailVerified) {
+        return res.status(400).json({ error: "Email already verified" });
+      }
+
+      const stripeCustomer = await stripe.customers.create({
+        email: user.email,
+        name: user.shopName,
+      });
+
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          emailVerified: true,
+          verificationToken: null,
+          verificationTokenExpiry: null,
+          stripeCustomerId: stripeCustomer.id,
+        })
+        .where(eq(users.id, user.id))
+        .returning();
+
+      res.json({ 
+        success: true, 
+        message: "Email verified successfully! You can now log in.",
+        user: updatedUser
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Email verification failed" });
+    }
+  });
+
+  app.post("/api/auth/resend-verification", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (user.emailVerified) {
+        return res.status(400).json({ error: "Email already verified" });
+      }
+
+      const verificationToken = generateToken();
+      const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await db
+        .update(users)
+        .set({
+          verificationToken,
+          verificationTokenExpiry,
+        })
+        .where(eq(users.id, user.id));
+
+      await sendVerificationEmail(user.email, user.shopName, verificationToken);
+
+      res.json({ success: true, message: "Verification email sent" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to resend verification email" });
+    }
+  });
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (!user) {
+        return res.json({ success: true, message: "If that email exists, a password reset link has been sent" });
+      }
+
+      const resetPasswordToken = generateToken();
+      const resetPasswordExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await db
+        .update(users)
+        .set({
+          resetPasswordToken,
+          resetPasswordExpiry,
+        })
+        .where(eq(users.id, user.id));
+
+      await sendPasswordResetEmail(user.email, user.shopName, resetPasswordToken);
+
+      res.json({ success: true, message: "If that email exists, a password reset link has been sent" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Password reset request failed" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        return res.status(400).json({ error: "Token and new password are required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.resetPasswordToken, token))
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).json({ error: "Invalid reset token" });
+      }
+
+      if (user.resetPasswordExpiry && user.resetPasswordExpiry < new Date()) {
+        return res.status(400).json({ error: "Reset token has expired" });
+      }
+
+      const passwordHash = await hashPassword(newPassword);
+
+      await db
+        .update(users)
+        .set({
+          passwordHash,
+          resetPasswordToken: null,
+          resetPasswordExpiry: null,
+        })
+        .where(eq(users.id, user.id));
+
+      res.json({ success: true, message: "Password reset successfully" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Password reset failed" });
     }
   });
 

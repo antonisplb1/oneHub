@@ -9,6 +9,10 @@ import { users, insertUserSchema, type User as SelectUser } from "@shared/schema
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
+export function generateToken(): string {
+  return randomBytes(32).toString("hex");
+}
+
 const scryptAsync = promisify(scrypt);
 const MemoryStore = createMemoryStore(session);
 
