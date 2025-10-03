@@ -184,18 +184,14 @@ export default function SpinWheelSection() {
       </div>
 
       <Tabs defaultValue="rewards">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="rewards" data-testid="tab-rewards">
             <Gift className="w-4 h-4 mr-2" />
             Rewards
           </TabsTrigger>
-          <TabsTrigger value="tokens" data-testid="tab-tokens">
-            <Ticket className="w-4 h-4 mr-2" />
-            Spin Tokens
-          </TabsTrigger>
-          <TabsTrigger value="in-store" data-testid="tab-in-store">
+          <TabsTrigger value="spin" data-testid="tab-spin">
             <Gauge className="w-4 h-4 mr-2" />
-            In-Store Wheel
+            Spin Wheel
           </TabsTrigger>
         </TabsList>
 
@@ -253,141 +249,123 @@ export default function SpinWheelSection() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="tokens" className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-              <CardTitle>Spin Tokens</CardTitle>
-              <Dialog open={isTokenDialogOpen} onOpenChange={setIsTokenDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-generate-token">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Generate Token
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Generate Spin Token</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleGenerateToken} className="space-y-4">
-                    <div>
-                      <Label htmlFor="customer-name">Customer Name (optional)</Label>
-                      <Input
-                        id="customer-name"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="John Doe"
-                        data-testid="input-customer-name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="expiry-minutes">Expiry (minutes)</Label>
-                      <Input
-                        id="expiry-minutes"
-                        type="number"
-                        min="1"
-                        max="1440"
-                        value={expiryMinutes}
-                        onChange={(e) => setExpiryMinutes(e.target.value)}
-                        data-testid="input-expiry-minutes"
-                        required
-                      />
-                    </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full"
-                      disabled={tokenMutation.isPending}
-                      data-testid="button-submit-token"
-                    >
-                      {tokenMutation.isPending ? "Generating..." : "Generate Token"}
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </CardHeader>
-            <CardContent>
-              {isLoadingTokens ? (
-                <p className="text-muted-foreground">Loading...</p>
-              ) : tokens.length === 0 ? (
-                <p className="text-muted-foreground">No tokens generated yet. Create one to share with customers.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {tokens.map((token) => {
-                    const tokenUrl = `${window.location.origin}/spin/${token.token}`;
-                    return (
-                      <Card
-                        key={token.id}
-                        className={token.isUsed ? "opacity-50" : ""}
-                        data-testid={`token-${token.id}`}
-                      >
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <p className="font-semibold">{token.customerName || "Anonymous Customer"}</p>
-                            <Badge variant={token.isUsed ? "secondary" : "default"}>
-                              {token.isUsed ? "Used" : "Active"}
-                            </Badge>
-                          </div>
-                          <div className="flex justify-center">
-                            <img
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(tokenUrl)}`}
-                              alt={`QR code for ${token.customerName || 'spin token'}`}
-                              className="w-48 h-48 border rounded-md"
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground text-center">
-                            Expires {new Date(token.expiresAt).toLocaleString()}
-                          </p>
-                          {!token.isUsed && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => {
-                                const link = document.createElement('a');
-                                link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(tokenUrl)}`;
-                                link.download = `spin-token-${token.customerName || 'qr'}.png`;
-                                link.click();
-                              }}
-                              data-testid={`button-download-qr-${token.id}`}
-                            >
-                              Download QR
-                            </Button>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="in-store">
-          <Card>
-            <CardHeader>
-              <CardTitle>In-Store Wheel</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                Open the unlimited spin wheel for in-store customers. Keep this open on a tablet or display at your counter to let customers spin as many times as they want.
-              </p>
-              <div className="flex flex-col items-center gap-4">
-                <Gauge className="w-32 h-32 text-chart-2" />
-                <Button 
-                  size="lg"
-                  onClick={() => window.open(`/in-store-spin/${user?.id}`, '_blank')}
-                  data-testid="button-open-in-store-wheel"
-                  className="w-full max-w-md"
-                >
-                  <Gauge className="w-4 h-4 mr-2" />
-                  Open In-Store Wheel
-                </Button>
-                <p className="text-sm text-muted-foreground text-center">
-                  This will open the spin wheel in a new tab with unlimited spins
+        <TabsContent value="spin" className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>One-Time Spin QR</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground text-sm">
+                  Generate a QR code for customers to scan and get one spin
                 </p>
-              </div>
-            </CardContent>
-          </Card>
+                <Dialog open={isTokenDialogOpen} onOpenChange={setIsTokenDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full" data-testid="button-generate-token">
+                      <Ticket className="w-4 h-4 mr-2" />
+                      Generate QR Code
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>One-Time Spin QR Code</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleGenerateToken} className="space-y-4">
+                      <div>
+                        <Label htmlFor="customer-name">Customer Name (optional)</Label>
+                        <Input
+                          id="customer-name"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          placeholder="John Doe"
+                          data-testid="input-customer-name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="expiry-minutes">Expiry (minutes)</Label>
+                        <Input
+                          id="expiry-minutes"
+                          type="number"
+                          min="1"
+                          max="1440"
+                          value={expiryMinutes}
+                          onChange={(e) => setExpiryMinutes(e.target.value)}
+                          data-testid="input-expiry-minutes"
+                          required
+                        />
+                      </div>
+                      <Button 
+                        type="submit" 
+                        className="w-full"
+                        disabled={tokenMutation.isPending}
+                        data-testid="button-submit-token"
+                      >
+                        {tokenMutation.isPending ? "Generating..." : "Generate QR Code"}
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+                {(() => {
+                  const latestActiveToken = tokens.find(t => !t.isUsed && new Date(t.expiresAt) > new Date());
+                  return latestActiveToken ? (
+                    <div className="space-y-3 p-4 border rounded-md">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">{latestActiveToken.customerName || "Latest QR Code"}</p>
+                        <Badge>Active</Badge>
+                      </div>
+                      <div className="flex justify-center">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/spin/${latestActiveToken.token}`)}`}
+                          alt="Spin QR code"
+                          className="w-48 h-48"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`${window.location.origin}/spin/${latestActiveToken.token}`)}`;
+                          link.download = `spin-qr.png`;
+                          link.click();
+                        }}
+                      >
+                        Download QR
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No active QR code. Generate one to get started.
+                    </p>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>In-Store Wheel</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground text-sm">
+                  Open unlimited spin wheel on a tablet or display for in-store customers
+                </p>
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <Gauge className="w-32 h-32 text-chart-2" />
+                  <Button 
+                    size="lg"
+                    onClick={() => window.open(`/in-store-spin/${user?.id}`, '_blank')}
+                    data-testid="button-open-in-store-wheel"
+                    className="w-full"
+                  >
+                    <Gauge className="w-4 h-4 mr-2" />
+                    Open In-Store Wheel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
