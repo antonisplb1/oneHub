@@ -6,7 +6,7 @@ interface ServiceAccountCredentials {
   private_key: string;
 }
 
-interface LoyaltyPassData {
+export interface LoyaltyPassData {
   customerId: string;
   customerName: string;
   shopName: string;
@@ -25,9 +25,24 @@ export class GoogleWalletService {
     this.issuerId = process.env.GOOGLE_WALLET_ISSUER_ID!;
     
     try {
-      this.credentials = JSON.parse(process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON!);
-    } catch (error) {
-      throw new Error('Invalid GOOGLE_WALLET_SERVICE_ACCOUNT_JSON format');
+      const jsonString = process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON!;
+      
+      if (!jsonString || jsonString.trim() === '') {
+        throw new Error('GOOGLE_WALLET_SERVICE_ACCOUNT_JSON is empty');
+      }
+      
+      const trimmed = jsonString.trim();
+      if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+        this.credentials = JSON.parse(JSON.parse(jsonString));
+      } else {
+        this.credentials = JSON.parse(jsonString);
+      }
+      
+      if (!this.credentials.client_email || !this.credentials.private_key) {
+        throw new Error('Missing required fields: client_email or private_key');
+      }
+    } catch (error: any) {
+      throw new Error(`Invalid GOOGLE_WALLET_SERVICE_ACCOUNT_JSON format: ${error.message}`);
     }
 
     const auth = new google.auth.GoogleAuth({

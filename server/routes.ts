@@ -19,7 +19,7 @@ import passport from "passport";
 import { nanoid } from "nanoid";
 import Stripe from "stripe";
 import QRCode from "qrcode";
-import { GoogleWalletService } from "./googleWallet";
+import { GoogleWalletService, type LoyaltyPassData } from "./googleWallet";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-09-30.clover",
@@ -903,16 +903,18 @@ export function registerRoutes(app: Express) {
         return res.status(404).send("Loyalty card not found");
       }
 
+      const passData: LoyaltyPassData = {
+        customerId: result.customer.id,
+        customerName: result.customer.name,
+        shopName: result.user.shopName,
+        stamps: result.card.stamps,
+        maxStamps: result.card.maxStamps,
+        rewardText: result.card.rewardText || 'Loyalty Reward',
+        customerQrCode: result.customer.customerQrCode || result.customer.id,
+      };
+
       const saveUrl = await googleWalletService.createLoyaltyPass(
-        {
-          customerId: result.customer.id,
-          customerName: result.customer.name,
-          shopName: result.user.shopName,
-          stamps: result.card.stamps,
-          maxStamps: result.card.maxStamps,
-          rewardText: result.card.rewardText || 'Loyalty Reward',
-          customerQrCode: result.customer.customerQrCode || result.customer.id,
-        },
+        passData,
         result.user.id
       );
 
