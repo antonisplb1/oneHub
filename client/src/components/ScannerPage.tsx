@@ -1,17 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { QrCode, Check, X } from "lucide-react";
+import { QrCode, Check, Camera, CameraOff } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Html5Qrcode } from "html5-qrcode";
 
 export default function ScannerPage() {
-  const [qrCode, setQrCode] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
   const { toast } = useToast();
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isProcessingRef = useRef(false);
 
   const scanMutation = useMutation({
     mutationFn: async (qrCodeValue: string) => {
@@ -22,11 +23,11 @@ export default function ScannerPage() {
     },
     onSuccess: (data) => {
       setScanResult(data);
-      setQrCode("");
       toast({
         title: "Success!",
         description: data.message,
       });
+      isProcessingRef.current = false;
     },
     onError: (error: any) => {
       toast({
@@ -34,15 +35,63 @@ export default function ScannerPage() {
         description: error.message || "Customer not found",
         variant: "destructive",
       });
+      isProcessingRef.current = false;
     },
   });
 
-  const handleScan = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (qrCode.trim()) {
-      scanMutation.mutate(qrCode.trim());
+  const startScanning = async () => {
+    try {
+      const scanner = new Html5Qrcode("qr-reader");
+      scannerRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+        },
+        (decodedText) => {
+          if (!isProcessingRef.current) {
+            isProcessingRef.current = true;
+            scanMutation.mutate(decodedText);
+          }
+        },
+        (errorMessage) => {
+          // Ignore continuous scanning errors
+        }
+      );
+
+      setIsScanning(true);
+    } catch (err) {
+      console.error("Error starting scanner:", err);
+      toast({
+        title: "Camera Error",
+        description: "Unable to access camera. Please check permissions.",
+        variant: "destructive",
+      });
     }
   };
+
+  const stopScanning = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current = null;
+        setIsScanning(false);
+        isProcessingRef.current = false;
+      } catch (err) {
+        console.error("Error stopping scanner:", err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(console.error);
+      }
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -57,38 +106,62 @@ export default function ScannerPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <QrCode className="w-5 h-5" />
-            Scan Customer QR Code
+            Camera QR Scanner
           </CardTitle>
           <CardDescription>
-            Enter the QR code shown on the customer's loyalty card
+            Point your camera at the customer's QR code
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleScan} className="space-y-4">
-            <div>
-              <Label htmlFor="qrCode">QR Code Value</Label>
-              <Input
-                id="qrCode"
-                value={qrCode}
-                onChange={(e) => setQrCode(e.target.value)}
-                placeholder="Paste or type QR code here"
-                data-testid="input-qr-code"
-                disabled={scanMutation.isPending}
-                autoFocus
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                Tip: Use a QR scanner device to automatically fill this field
-              </p>
+        <CardContent className="space-y-4">
+          <div 
+            id="qr-reader" 
+            className="w-full"
+            style={{ 
+              display: isScanning ? 'block' : 'none',
+              maxWidth: '500px',
+              margin: '0 auto'
+            }}
+          />
+
+          {!isScanning && (
+            <div className="flex items-center justify-center p-12 bg-muted rounded-lg">
+              <div className="text-center space-y-4">
+                <Camera className="w-16 h-16 mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  Camera is ready to scan
+                </p>
+              </div>
             </div>
-            <Button
-              type="submit"
-              disabled={!qrCode.trim() || scanMutation.isPending}
-              data-testid="button-scan"
-              className="w-full"
-            >
-              {scanMutation.isPending ? "Scanning..." : "Add Stamp"}
-            </Button>
-          </form>
+          )}
+
+          <div className="flex gap-2">
+            {!isScanning ? (
+              <Button
+                onClick={startScanning}
+                className="flex-1"
+                data-testid="button-start-camera"
+              >
+                <Camera className="w-4 h-4 mr-2" />
+                Start Camera
+              </Button>
+            ) : (
+              <Button
+                onClick={stopScanning}
+                variant="destructive"
+                className="flex-1"
+                data-testid="button-stop-camera"
+              >
+                <CameraOff className="w-4 h-4 mr-2" />
+                Stop Camera
+              </Button>
+            )}
+          </div>
+
+          {isScanning && (
+            <p className="text-sm text-center text-muted-foreground">
+              Position the QR code within the scanning area
+            </p>
+          )}
         </CardContent>
       </Card>
 
