@@ -1,8 +1,45 @@
-# Merchant Engagement Platform
+# oneHub - Merchant Engagement Platform
 
 ## Overview
 
-This B2B SaaS platform offers digital loyalty card programs and spin-to-win campaigns to merchants through a unified dashboard. Merchants pay a monthly subscription to access tools for managing loyalty, creating spin campaigns, tracking customer engagement, and viewing analytics. Customers interact via mobile devices to collect loyalty stamps, use QR codes for merchant scanning, and participate in spin-to-win promotions, with optional integration into Apple Wallet or Google Wallet. The platform consolidates functionality from previously separate applications, providing unified authentication, subscription management, and shared customer data.
+oneHub is a B2B SaaS platform offering digital loyalty card programs and spin-to-win campaigns to merchants through a unified dashboard. Merchants pay a €25/month subscription to access tools for managing loyalty, creating spin campaigns, tracking customer engagement, and viewing analytics. Customers interact via mobile devices to collect loyalty stamps, use QR codes for merchant scanning, and participate in spin-to-win promotions, with optional integration into Apple Wallet or Google Wallet. The platform consolidates functionality from previously separate applications, providing unified authentication, subscription management, and shared customer data.
+
+## Recent Changes (October 2025)
+
+### Email Verification System
+- Implemented complete email verification flow with Resend integration
+- Users must verify their email before accessing the platform
+- Verification tokens expire after 24 hours
+- Verification email sent automatically upon registration
+- Email verification page at `/verify-email/:token`
+- Resend verification endpoint available at `/api/auth/resend-verification`
+
+### Password Reset System
+- Complete forgot password and reset password flow
+- Password reset tokens expire after 1 hour
+- Forgot password page at `/forgot-password`
+- Reset password page at `/reset-password/:token`
+- Backend endpoints: `/api/auth/forgot-password` and `/api/auth/reset-password`
+
+### Updated Registration & Authentication Flow
+1. User registers → receives verification email (no immediate Stripe redirect)
+2. User clicks verification link → email marked as verified, Stripe customer created
+3. User logs in → checked for email verification and subscription status
+4. If not subscribed → redirected to `/subscription-required` page
+5. User subscribes via Stripe checkout → gains dashboard access
+
+### Database Schema Updates
+Added to users table:
+- `emailVerified` (boolean, default false)
+- `verificationToken` (varchar, nullable)
+- `verificationTokenExpiry` (timestamp, nullable)
+- `resetPasswordToken` (varchar, nullable)
+- `resetPasswordExpiry` (timestamp, nullable)
+
+### Authentication Middleware
+- `requireAuth` middleware checks session authentication
+- `requireSubscription` middleware checks both `emailVerified` and `subscriptionStatus === 'active'`
+- Dashboard routes protected by both middleware layers
 
 ## User Preferences
 
@@ -40,6 +77,7 @@ Buttons for **Apple Wallet** and **Google Wallet** are present on customer loyal
 
 -   **Stripe Payment Processing**: For subscription billing using client-side `@stripe/stripe-js` and `@stripe/react-stripe-js`, and server-side Stripe Node SDK.
 -   **Neon Serverless PostgreSQL**: Managed database accessed via `@neondatabase/serverless` for WebSocket-supported connections.
+-   **Resend**: Transactional email service for sending verification and password reset emails.
 
 ### UI Component Libraries
 
