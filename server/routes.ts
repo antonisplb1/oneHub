@@ -709,8 +709,12 @@ export function registerRoutes(app: Express) {
   app.get("/api/spins", requireSubscription, async (req, res) => {
     try {
       const allSpins = await db
-        .select()
+        .select({
+          spin: spins,
+          customer: customers,
+        })
         .from(spins)
+        .leftJoin(customers, eq(spins.customerId, customers.id))
         .where(
           and(
             eq(spins.userId, req.user!.id),

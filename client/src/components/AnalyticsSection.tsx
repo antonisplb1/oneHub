@@ -42,6 +42,10 @@ export default function AnalyticsSection() {
     (item: any) => new Date(item.transaction.createdAt) >= startOfMonth
   ).length;
 
+  const rewardTransactions = transactions.filter(
+    (item: any) => item.transaction?.type === 'reward'
+  );
+
   const combinedActivities = [
     ...stampTransactions.map((item: any) => ({
       id: `stamp-${item.transaction.id}`,
@@ -50,12 +54,19 @@ export default function AnalyticsSection() {
       timestamp: item.transaction.createdAt,
       description: 'Received a stamp',
     })),
+    ...rewardTransactions.map((item: any) => ({
+      id: `reward-${item.transaction.id}`,
+      type: 'reward' as const,
+      customerName: item.customer?.name || 'Unknown',
+      timestamp: item.transaction.createdAt,
+      description: 'Redeemed reward',
+    })),
     ...spins.map((item: any) => ({
-      id: `spin-${item.id}`,
+      id: `spin-${item.spin.id}`,
       type: 'spin' as const,
-      customerName: 'Customer',
-      timestamp: item.spunAt,
-      description: `Won: ${item.prizeWon}`,
+      customerName: item.customer?.name || 'Unknown',
+      timestamp: item.spin.spunAt,
+      description: `Won: ${item.spin.prizeWon}`,
     })),
   ]
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
