@@ -95,8 +95,8 @@ export function registerRoutes(app: Express) {
             },
           ],
           mode: "subscription",
-          success_url: `${req.protocol}://${req.get("host")}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${req.protocol}://${req.get("host")}/auth`,
+          success_url: `${req.protocol}://${req.get("host")}/payment-processing?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${req.protocol}://${req.get("host")}/subscription-required`,
           metadata: {
             userId: newUser.id,
           },
@@ -702,14 +702,50 @@ export function registerRoutes(app: Express) {
           },
         ],
         mode: "subscription",
-        success_url: `${req.headers.origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${req.headers.origin}/dashboard`,
+        success_url: `${req.headers.origin}/payment-processing?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${req.headers.origin}/subscription-required`,
         metadata: {
           userId: req.user!.id,
         },
       });
 
       res.json({ url: session.url });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/stripe/verify-session/:sessionId", requireAuth, async (req, res) => {
+    try {
+      const session = await stripe.checkout.sessions.retrieve(req.params.sessionId);
+      
+      if (session.payment_status === "paid" && session.subscription) {
+        await db
+          .update(users)
+          .set({
+            stripeSubscriptionId: session.subscription as string,
+            subscriptionStatus: "active",
+          })
+          .where(eq(users.id, req.user!.id));
+        
+        const [updatedUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, req.user!.id))
+          .limit(1);
+        
+        return res.json({ 
+          success: true, 
+          subscriptionStatus: "active",
+          user: updatedUser 
+        });
+      }
+      
+      res.json({ 
+        success: false, 
+        subscriptionStatus: req.user!.subscriptionStatus,
+        paymentStatus: session.payment_status 
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

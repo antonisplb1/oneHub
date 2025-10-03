@@ -16,6 +16,7 @@ import JoinLoyalty from "@/components/JoinLoyalty";
 import InStoreSpinWheel from "@/components/InStoreSpinWheel";
 import SettingsPage from "@/components/SettingsPage";
 import SubscriptionRequired from "@/pages/SubscriptionRequired";
+import PaymentProcessing from "@/pages/PaymentProcessing";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/" component={LandingPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/subscription-required" component={SubscriptionRequired} />
+      <Route path="/payment-processing" component={PaymentProcessing} />
       <Route path="/dashboard">
         {() => (
           <DashboardLayout>
