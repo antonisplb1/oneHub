@@ -336,6 +336,39 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  app.get("/api/logo/:userId", async (req, res) => {
+    try {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.params.userId))
+        .limit(1);
+
+      if (!user || !user.logo) {
+        return res.status(404).send("Logo not found");
+      }
+
+      if (user.logo.startsWith('data:')) {
+        const matches = user.logo.match(/^data:(.+);base64,(.+)$/);
+        if (matches) {
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+          
+          res.setHeader('Content-Type', mimeType);
+          res.setHeader('Cache-Control', 'public, max-age=31536000');
+          res.send(buffer);
+        } else {
+          res.status(400).send("Invalid logo format");
+        }
+      } else {
+        res.redirect(user.logo);
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/loyalty-cards/scan-stamp", requireSubscription, async (req, res) => {
     try {
       const { qrCode } = req.body;

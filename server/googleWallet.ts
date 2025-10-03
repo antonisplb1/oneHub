@@ -75,7 +75,16 @@ export class GoogleWalletService {
     }
 
     const defaultLogoUrl = 'https://www.gstatic.com/images/branding/product/1x/googleg_64dp.png';
-    const validLogoUrl = (logoUrl && logoUrl.startsWith('https://')) ? logoUrl : defaultLogoUrl;
+    let validLogoUrl = defaultLogoUrl;
+    
+    if (logoUrl && logoUrl.startsWith('https://')) {
+      validLogoUrl = logoUrl;
+    } else if (logoUrl && logoUrl.startsWith('data:')) {
+      const domain = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+        : 'http://localhost:5000';
+      validLogoUrl = `${domain}/api/logo/${userId}`;
+    }
 
     const loyaltyClass: any = {
       id: classId,
