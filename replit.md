@@ -26,6 +26,9 @@ The application merges functionality from two separate apps into one cohesive pl
 - **Auto-Reset Rewards**: Removed manual redeem button - cards automatically reset to 0 when customer with 10/10 stamps is scanned again
 - **Reward Notifications**: Dashboard shows "Reward Ready" badge and colored highlight when customers reach 10/10 stamps
 - **Reward Tracking**: Total rewards count displayed for each customer showing how many rewards they've received
+- **Simplified Spin Wheel UI**: Reduced from 3 tabs to 2 (Rewards, Spin Wheel) with side-by-side cards showing one-time QR generation and in-store wheel button
+- **Reward Edit/Delete**: Added edit and delete functionality to reward settings with confirmation dialogs
+- **Smart QR Display**: Spin Wheel tab shows only the latest active (unused, non-expired) QR code with fallback message when none available
 
 ## User Preferences
 
