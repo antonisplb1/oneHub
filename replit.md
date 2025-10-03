@@ -14,7 +14,12 @@ The application merges functionality from two separate apps into one cohesive pl
 - **Simplified Customer Enrollment**: Join flow now only requires customer name (email and phone removed for faster signup)
 - **Customer QR Codes**: Loyalty cards display QR codes that merchants can scan to award stamps
 - **QR Scanner Dashboard**: Added `/dashboard/scanner` page for merchants to scan customer QR codes and add stamps directly
-- **Digital Wallet Integration**: Added Apple Wallet and Google Wallet buttons to customer loyalty cards (requires external credentials to activate)
+- **Prominent Scan Button**: Added large "Scan QR Code" button to loyalty dashboard for easy access to scanner
+- **Image Upload for Logos**: Settings page now supports direct file upload for logos (replaces URL input)
+- **Logo Serving Endpoint**: Added `/api/logo/:userId` to serve uploaded logos as images for Google Wallet
+- **Google Wallet Logo Fix**: Google Wallet now uses uploaded merchant logos via HTTPS endpoint
+- **Increased Body Limit**: Express body parser limit increased to 10mb to support base64 image uploads
+- **Digital Wallet Integration**: Added Apple Wallet and Google Wallet buttons to customer loyalty cards
 - **Payment Flow Fix**: Resolved webhook timing issue with payment processing page that actively verifies Stripe session status
 
 ## User Preferences
@@ -73,6 +78,7 @@ Preferred communication style: Simple, everyday language.
 - Loyalty endpoints: `/api/customers`, `/api/loyalty-cards`, `/api/loyalty-cards/:id/stamp`, `/api/loyalty-cards/:id/redeem`, `/api/loyalty-cards/scan-stamp`
 - Customer join: `/api/customers/join` (only requires name)
 - QR code endpoints: `/api/customer-qr/:customerId` (customer QR codes), `/api/qr-codes/:userId` (merchant QR codes)
+- Logo endpoint: `/api/logo/:userId` (serves uploaded logos as images with proper Content-Type)
 - Wallet endpoints: `/api/wallet/apple/:customerId`, `/api/wallet/google/:customerId` (placeholder implementation)
 - Spin wheel endpoints: `/api/rewards`, `/api/spin-tokens`, `/api/spin/:token`, `/api/spin-in-store/:userId`
 - Middleware for route protection via `requireAuth` function
