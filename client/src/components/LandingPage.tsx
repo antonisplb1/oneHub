@@ -37,9 +37,49 @@ export default function LandingPage() {
               </Link>
             </div>
           </div>
-          <div className="bg-gradient-to-br from-primary/20 to-chart-3/20 rounded-2xl p-12 aspect-video flex items-center justify-center shadow-sm">
-            <p className="text-muted-foreground text-lg">Dashboard Preview</p>
-          </div>
+          <Card className="p-6 aspect-video flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold">Dashboard</h3>
+              <div className="flex gap-2">
+                <div className="w-3 h-3 rounded-full bg-chart-2" />
+                <div className="w-3 h-3 rounded-full bg-chart-3" />
+                <div className="w-3 h-3 rounded-full bg-primary" />
+              </div>
+            </div>
+            <div className="flex-1 grid grid-cols-2 gap-4">
+              <Card className="p-4 bg-gradient-to-br from-primary/10 to-transparent">
+                <div className="flex items-center gap-2 mb-2">
+                  <Award className="w-5 h-5 text-primary" />
+                  <span className="text-sm font-medium">Loyalty Cards</span>
+                </div>
+                <p className="text-3xl font-bold">124</p>
+                <p className="text-xs text-muted-foreground">Active customers</p>
+              </Card>
+              <Card className="p-4 bg-gradient-to-br from-chart-3/10 to-transparent">
+                <div className="flex items-center gap-2 mb-2">
+                  <Gift className="w-5 h-5 text-chart-3" />
+                  <span className="text-sm font-medium">Prize Wheels</span>
+                </div>
+                <p className="text-3xl font-bold">48</p>
+                <p className="text-xs text-muted-foreground">Spins today</p>
+              </Card>
+              <Card className="p-4 bg-gradient-to-br from-chart-2/10 to-transparent col-span-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-5 h-5 text-chart-2" />
+                  <span className="text-sm font-medium">Engagement Growth</span>
+                </div>
+                <div className="flex items-end gap-1 h-12">
+                  {[40, 65, 45, 80, 60, 90, 75].map((height, i) => (
+                    <div
+                      key={i}
+                      className="flex-1 bg-chart-2 rounded-t"
+                      style={{ height: `${height}%` }}
+                    />
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </Card>
         </div>
       </section>
 
