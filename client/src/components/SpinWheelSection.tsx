@@ -101,23 +101,26 @@ export default function SpinWheelSection() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Spin Wheel</h1>
+    <div className="space-y-10">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-semibold tracking-tight">Spin Wheel</h1>
+          <p className="text-muted-foreground text-lg">Create rewards and manage your spin-to-win campaigns</p>
+        </div>
         <Dialog open={isRewardDialogOpen} onOpenChange={setIsRewardDialogOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="button-add-reward">
+            <Button size="lg" data-testid="button-add-reward">
               <Plus className="w-4 h-4 mr-2" />
               Add Reward
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Reward</DialogTitle>
+              <DialogTitle className="text-2xl font-semibold">Create New Reward</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreateReward} className="space-y-4">
-              <div>
-                <Label htmlFor="reward-name">Reward Name</Label>
+            <form onSubmit={handleCreateReward} className="space-y-6 pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="reward-name" className="text-sm font-medium">Reward Name</Label>
                 <Input
                   id="reward-name"
                   value={rewardName}
@@ -127,8 +130,8 @@ export default function SpinWheelSection() {
                   required
                 />
               </div>
-              <div>
-                <Label htmlFor="win-chance">Win Chance (%)</Label>
+              <div className="space-y-2">
+                <Label htmlFor="win-chance" className="text-sm font-medium">Win Chance (%)</Label>
                 <Input
                   id="win-chance"
                   type="number"
@@ -142,6 +145,7 @@ export default function SpinWheelSection() {
               </div>
               <Button 
                 type="submit" 
+                size="lg"
                 className="w-full" 
                 data-testid="button-create-reward"
                 disabled={rewardMutation.isPending}

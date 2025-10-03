@@ -20,35 +20,35 @@ export default function CustomersSection() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Customers</h1>
-        <p className="text-muted-foreground mt-2">
+    <div className="space-y-10">
+      <div className="space-y-2">
+        <h1 className="text-4xl font-semibold tracking-tight">Customers</h1>
+        <p className="text-muted-foreground text-lg">
           View all customers enrolled in your loyalty program
         </p>
       </div>
 
-      <div className="grid gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+      <div className="grid gap-6">
+        <Card className="hover-elevate border-card-border shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Users className="h-5 w-5" />
               Total Customers
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{customers.length}</p>
+            <p className="text-3xl font-semibold tracking-tight">{customers.length}</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Customer List</CardTitle>
+        <Card className="border-card-border shadow-sm">
+          <CardHeader className="pb-6">
+            <CardTitle className="text-xl font-semibold">Customer List</CardTitle>
           </CardHeader>
           <CardContent>
             {customers.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No customers yet</p>
+              <div className="text-center py-12">
+                <p className="text-muted-foreground text-lg">No customers yet</p>
                 <p className="text-sm text-muted-foreground mt-2">
                   Share your join QR code to get customers enrolled
                 </p>
@@ -58,25 +58,25 @@ export default function CustomersSection() {
                 {customers.map((customer) => (
                   <div
                     key={customer.id}
-                    className="flex items-center justify-between p-3 border rounded-md"
+                    className="flex items-center justify-between p-5 border rounded-xl hover-elevate"
                     data-testid={`customer-${customer.id}`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-sm font-semibold text-primary">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-base font-semibold text-primary">
                           {customer.name?.substring(0, 2).toUpperCase() || "??"}
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium">{customer.name || "Unknown"}</p>
+                        <p className="font-medium text-lg">{customer.name || "Unknown"}</p>
                         {customer.email && (
                           <p className="text-sm text-muted-foreground">{customer.email}</p>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <QrCode className="h-3 w-3" />
+                      <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1.5">
+                        <QrCode className="h-3.5 w-3.5" />
                         {customer.customerQrCode}
                       </Badge>
                     </div>

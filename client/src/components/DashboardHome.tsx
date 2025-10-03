@@ -89,46 +89,46 @@ export default function DashboardHome() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Here's your overview.</p>
+    <div className="space-y-10">
+      <div className="space-y-2">
+        <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground text-lg">Welcome back! Here's your overview.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.title} className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+          <Card key={stat.title} className="hover-elevate border-card-border shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
+              <stat.icon className={`h-5 w-5 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className="text-3xl font-semibold tracking-tight">{stat.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+      <Card className="border-card-border shadow-sm">
+        <CardHeader className="pb-6">
+          <CardTitle className="text-xl font-semibold">Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
           {combinedActivities.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No activity yet</p>
+            <p className="text-muted-foreground text-sm py-4">No activity yet</p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {combinedActivities.map((activity) => (
                 <div
                   key={activity.id}
-                  className="flex items-start gap-4 pb-4 border-b last:border-0"
+                  className="flex items-start justify-between gap-6 pb-5 border-b last:border-0 last:pb-0"
                   data-testid={`activity-${activity.id}`}
                 >
-                  <div className="flex-1">
-                    <p className="font-semibold">{activity.customerName}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground mb-1">{activity.customerName}</p>
                     <p className="text-sm text-muted-foreground">{activity.description}</p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground whitespace-nowrap">
                     {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
                   </p>
                 </div>
@@ -138,43 +138,43 @@ export default function DashboardHome() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="border-card-border shadow-sm">
+          <CardHeader className="pb-6">
+            <CardTitle className="text-xl font-semibold">Quick Actions</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <button className="w-full text-left p-3 rounded-md hover-elevate border" data-testid="button-quick-scan">
-              <p className="font-semibold">Scan QR Code</p>
-              <p className="text-sm text-muted-foreground">Add stamp or redeem reward</p>
+          <CardContent className="space-y-3">
+            <button className="w-full text-left p-4 rounded-xl hover-elevate border border-border" data-testid="button-quick-scan">
+              <p className="font-medium text-foreground">Scan QR Code</p>
+              <p className="text-sm text-muted-foreground mt-1">Add stamp or redeem reward</p>
             </button>
-            <button className="w-full text-left p-3 rounded-md hover-elevate border" data-testid="button-quick-token">
-              <p className="font-semibold">Generate Spin Token</p>
-              <p className="text-sm text-muted-foreground">Create new token for customers</p>
+            <button className="w-full text-left p-4 rounded-xl hover-elevate border border-border" data-testid="button-quick-token">
+              <p className="font-medium text-foreground">Generate Spin Token</p>
+              <p className="text-sm text-muted-foreground mt-1">Create new token for customers</p>
             </button>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>This Week</CardTitle>
+        <Card className="border-card-border shadow-sm">
+          <CardHeader className="pb-6">
+            <CardTitle className="text-xl font-semibold">This Week</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between">
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Stamps Added</span>
-              <span className="font-semibold" data-testid="text-stamps-week">{stampsThisWeek}</span>
+              <span className="text-lg font-semibold" data-testid="text-stamps-week">{stampsThisWeek}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Rewards Claimed</span>
-              <span className="font-semibold" data-testid="text-rewards-week">{rewardsThisWeek}</span>
+              <span className="text-lg font-semibold" data-testid="text-rewards-week">{rewardsThisWeek}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">New Customers</span>
-              <span className="font-semibold" data-testid="text-customers-week">{newCustomersThisWeek}</span>
+              <span className="text-lg font-semibold" data-testid="text-customers-week">{newCustomersThisWeek}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Wheel Spins</span>
-              <span className="font-semibold" data-testid="text-spins-week">{spinsThisWeek}</span>
+              <span className="text-lg font-semibold" data-testid="text-spins-week">{spinsThisWeek}</span>
             </div>
           </CardContent>
         </Card>

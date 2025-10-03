@@ -48,10 +48,13 @@ export default function LoyaltyCardsSection() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-3xl font-bold">Loyalty Cards</h1>
-        <div className="flex gap-2">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-semibold tracking-tight">Loyalty Cards</h1>
+          <p className="text-muted-foreground text-lg">Manage customer stamps and rewards</p>
+        </div>
+        <div className="flex gap-3">
           <Button
             onClick={() => setLocation("/dashboard/scanner")}
             size="lg"
@@ -62,18 +65,18 @@ export default function LoyaltyCardsSection() {
           </Button>
           <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" data-testid="button-card-settings">
+              <Button variant="outline" size="lg" data-testid="button-card-settings">
                 <Plus className="w-4 h-4 mr-2" />
                 Card Settings
               </Button>
             </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Loyalty Card Settings</DialogTitle>
+              <DialogTitle className="text-2xl font-semibold">Loyalty Card Settings</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSaveSettings} className="space-y-4">
-              <div>
-                <Label htmlFor="max-stamps">Stamps Required</Label>
+            <form onSubmit={handleSaveSettings} className="space-y-6 pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="max-stamps" className="text-sm font-medium">Stamps Required</Label>
                 <Input
                   id="max-stamps"
                   type="number"
@@ -84,8 +87,8 @@ export default function LoyaltyCardsSection() {
                   data-testid="input-max-stamps"
                 />
               </div>
-              <div>
-                <Label htmlFor="reward-text">Reward Description</Label>
+              <div className="space-y-2">
+                <Label htmlFor="reward-text" className="text-sm font-medium">Reward Description</Label>
                 <Input
                   id="reward-text"
                   value={rewardText}
@@ -94,7 +97,7 @@ export default function LoyaltyCardsSection() {
                   placeholder="e.g., Free Coffee, 10% Off"
                 />
               </div>
-              <Button type="submit" className="w-full" data-testid="button-save-settings">
+              <Button type="submit" className="w-full" size="lg" data-testid="button-save-settings">
                 Save Settings
               </Button>
             </form>
@@ -115,29 +118,29 @@ export default function LoyaltyCardsSection() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="customers" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Loyalty Cards</CardTitle>
+        <TabsContent value="customers" className="space-y-6 mt-6">
+          <Card className="border-card-border shadow-sm">
+            <CardHeader className="pb-6">
+              <CardTitle className="text-xl font-semibold">Active Loyalty Cards</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <p className="text-muted-foreground">Loading...</p>
+                <p className="text-muted-foreground py-4">Loading...</p>
               ) : cards.length === 0 ? (
-                <p className="text-muted-foreground">No loyalty cards yet. Customers will appear here once they scan your QR code.</p>
+                <p className="text-muted-foreground py-4">No loyalty cards yet. Customers will appear here once they scan your QR code.</p>
               ) : (
                 <div className="space-y-4">
                   {cards.map(({ card, customer }) => (
                     <div
                       key={card.id}
-                      className={`flex items-center justify-between p-4 border rounded-md hover-elevate ${
+                      className={`flex items-center justify-between gap-6 p-6 border rounded-xl hover-elevate ${
                         card.isRedeemable ? "border-chart-2 bg-chart-2/5" : ""
                       }`}
                       data-testid={`customer-card-${card.id}`}
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold">{customer?.name || "Anonymous Customer"}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                          <p className="font-semibold text-lg">{customer?.name || "Anonymous Customer"}</p>
                           {card.isRedeemable && (
                             <Badge variant="default" className="bg-chart-2" data-testid={`badge-reward-ready-${card.id}`}>
                               <Gift className="w-3 h-3 mr-1" />
@@ -152,26 +155,24 @@ export default function LoyaltyCardsSection() {
                           )}
                         </p>
                         {card.isRedeemable && (
-                          <p className="text-sm text-chart-2 font-medium mt-1">
+                          <p className="text-sm text-chart-2 font-medium mt-2">
                             Next scan will grant reward and reset card to 0
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex gap-1">
-                          {Array.from({ length: card.maxStamps }).map((_, i) => (
-                            <div
-                              key={i}
-                              className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs ${
-                                i < card.stamps
-                                  ? "bg-chart-2 border-chart-2 text-white"
-                                  : "border-muted"
-                              }`}
-                            >
-                              {i < card.stamps ? "✓" : ""}
-                            </div>
-                          ))}
-                        </div>
+                      <div className="flex items-center gap-2">
+                        {Array.from({ length: card.maxStamps }).map((_, i) => (
+                          <div
+                            key={i}
+                            className={`w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-medium ${
+                              i < card.stamps
+                                ? "bg-chart-2 border-chart-2 text-white"
+                                : "border-muted"
+                            }`}
+                          >
+                            {i < card.stamps ? "✓" : ""}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}
@@ -181,24 +182,24 @@ export default function LoyaltyCardsSection() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="qr-code">
-          <Card>
-            <CardHeader>
-              <CardTitle>Shop QR Code</CardTitle>
+        <TabsContent value="qr-code" className="mt-6">
+          <Card className="border-card-border shadow-sm">
+            <CardHeader className="pb-6">
+              <CardTitle className="text-xl font-semibold">Shop QR Code</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col items-center gap-4">
+            <CardContent className="flex flex-col items-center gap-6">
               {qrCodeData ? (
                 <img 
                   src={qrCodeData.qrCode} 
                   alt="Shop QR Code" 
-                  className="w-64 h-64 border rounded-md"
+                  className="w-72 h-72 border rounded-2xl shadow-sm"
                 />
               ) : (
-                <div className="w-64 h-64 bg-muted rounded-md flex items-center justify-center">
+                <div className="w-72 h-72 bg-muted rounded-2xl flex items-center justify-center">
                   <QrCode className="w-32 h-32 text-muted-foreground" />
                 </div>
               )}
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-muted-foreground text-center max-w-md">
                 Customers scan this QR code to join your loyalty program
               </p>
               {qrCodeData && (
@@ -206,7 +207,7 @@ export default function LoyaltyCardsSection() {
                   href={qrCodeData.qrCode} 
                   download="shop-qr-code.png"
                 >
-                  <Button variant="outline" data-testid="button-download-qr">
+                  <Button variant="outline" size="lg" data-testid="button-download-qr">
                     Download QR Code
                   </Button>
                 </a>
