@@ -17,6 +17,8 @@ import InStoreSpinWheel from "@/components/InStoreSpinWheel";
 import CustomerSpinOnce from "@/components/CustomerSpinOnce";
 import SettingsPage from "@/components/SettingsPage";
 import ScannerPage from "@/components/ScannerPage";
+import CustomersSection from "@/components/CustomersSection";
+import AnalyticsSection from "@/components/AnalyticsSection";
 import SubscriptionRequired from "@/pages/SubscriptionRequired";
 import PaymentProcessing from "@/pages/PaymentProcessing";
 
@@ -52,6 +54,20 @@ function Router() {
         {() => (
           <DashboardLayout>
             <SpinWheelSection />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/dashboard/customers">
+        {() => (
+          <DashboardLayout>
+            <CustomersSection />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/dashboard/analytics">
+        {() => (
+          <DashboardLayout>
+            <AnalyticsSection />
           </DashboardLayout>
         )}
       </Route>

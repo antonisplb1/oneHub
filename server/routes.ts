@@ -686,6 +686,19 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  app.get("/api/spins", requireSubscription, async (req, res) => {
+    try {
+      const allSpins = await db
+        .select()
+        .from(spins)
+        .where(eq(spins.userId, req.user!.id))
+        .orderBy(desc(spins.createdAt));
+      res.json(allSpins);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/spin-tokens", requireSubscription, async (req, res) => {
     try {
       const tokens = await db
