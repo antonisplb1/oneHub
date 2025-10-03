@@ -223,17 +223,17 @@ export default function SpinWheelSection() {
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>One-Time Spin QR</CardTitle>
+                <CardTitle>Customer Spin QR</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-muted-foreground text-sm">
-                  Share this QR code with customers. When scanned, they get a one-time spin link (expires in 5 minutes)
+                  Share this QR code with customers. When scanned, they can spin the wheel one time.
                 </p>
                 {user && (
                   <div className="space-y-3">
                     <div className="flex justify-center p-4 border rounded-md bg-background">
                       <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`${window.location.origin}/get-spin/${user.id}`)}`}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`${window.location.origin}/in-store-spin/${user.id}`)}`}
                         alt="Spin QR code"
                         className="w-64 h-64"
                       />
@@ -244,7 +244,7 @@ export default function SpinWheelSection() {
                       className="w-full"
                       onClick={() => {
                         const link = document.createElement('a');
-                        link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`${window.location.origin}/get-spin/${user.id}`)}`;
+                        link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`${window.location.origin}/in-store-spin/${user.id}`)}`;
                         link.download = `spin-qr.png`;
                         link.click();
                       }}

@@ -14,7 +14,6 @@ import CustomerSpinWheel from "@/components/CustomerSpinWheel";
 import CustomerLoyaltyCard from "@/components/CustomerLoyaltyCard";
 import JoinLoyalty from "@/components/JoinLoyalty";
 import InStoreSpinWheel from "@/components/InStoreSpinWheel";
-import GetSpinRedirect from "@/components/GetSpinRedirect";
 import SettingsPage from "@/components/SettingsPage";
 import ScannerPage from "@/components/ScannerPage";
 import SubscriptionRequired from "@/pages/SubscriptionRequired";
@@ -63,7 +62,6 @@ function Router() {
         )}
       </Route>
       <Route path="/join/:userId" component={JoinLoyalty} />
-      <Route path="/get-spin/:userId" component={GetSpinRedirect} />
       <Route path="/spin/:token" component={CustomerSpinWheel} />
       <Route path="/in-store-spin/:userId" component={InStoreSpinWheel} />
       <Route path="/card/:customerId" component={CustomerLoyaltyCard} />

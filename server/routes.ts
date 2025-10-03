@@ -722,43 +722,6 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/generate-spin-token/:userId", async (req, res) => {
-    try {
-      const { userId } = req.params;
-
-      const [merchant] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-
-      if (!merchant) {
-        return res.status(404).json({ error: "Merchant not found" });
-      }
-
-      if (merchant.subscriptionStatus !== "active") {
-        return res.status(403).json({ error: "Merchant subscription not active" });
-      }
-
-      const token = nanoid(8).toUpperCase();
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 5);
-
-      const [newToken] = await db
-        .insert(spinTokens)
-        .values({
-          userId,
-          token,
-          customerName: null,
-          expiresAt,
-        })
-        .returning();
-
-      res.json({ token: newToken.token });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
 
   app.post("/api/spin", async (req, res) => {
     try {

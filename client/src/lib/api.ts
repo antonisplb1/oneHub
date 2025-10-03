@@ -82,17 +82,6 @@ export async function deleteReward(rewardId: string) {
   });
 }
 
-export async function getSpinTokens() {
-  return apiRequest<SpinToken[]>("/api/spin-tokens");
-}
-
-export async function createSpinToken(data: { customerName?: string; expiryMinutes?: number }) {
-  return apiRequest<SpinToken>("/api/spin-tokens", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-}
-
 export async function spinWheel(token: string) {
   return apiRequest<{ reward: Reward }>("/api/spin", {
     method: "POST",
