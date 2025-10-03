@@ -1,185 +1,196 @@
-# Design Guidelines: Unified Merchant Engagement Platform
+# Design Guidelines: Elegant Merchant Engagement Platform
 
 ## Design Approach
 
-**Reference-Based Approach**: Blend of Linear's clean dashboard efficiency + Stripe's professional SaaS aesthetic + Airbnb's approachable warmth
+**Reference Blend**: Stripe's refined professionalism + Linear's pristine minimalism + Notion's approachable sophistication
 
-**Justification**: This is a utility-focused B2B SaaS platform where merchants need efficient tools to manage both loyalty programs and promotional campaigns. The design should inspire confidence and professionalism while remaining approachable for small business owners.
+**Justification**: Premium B2B SaaS requiring sophisticated merchant dashboard that commands €25/month value while maintaining playful customer interactions. Design must convey quality, trust, and polish.
 
 ## Core Design Principles
 
-1. **Dual Personality**: Professional merchant dashboard + playful customer-facing experiences
-2. **Feature Clarity**: Both loyalty and spin features clearly accessible without overwhelming
-3. **Trust & Credibility**: Clean, modern design that justifies €25/month subscription value
-4. **Mobile-First Customer Experience**: Customers primarily interact via mobile (scanning QR, spinning wheels, viewing cards)
+1. **Refined Elegance**: Generous whitespace, subtle depth, premium feel
+2. **Sophisticated Dual Nature**: Professional merchant tools + delightful customer experiences
+3. **Visual Restraint**: Muted palette with purposeful color moments
+4. **Quality Signaling**: Every detail communicates premium value
 
 ## Color Palette
 
-### Merchant Dashboard (Professional)
-- **Primary**: 220 70% 50% (deep blue) - trust, stability, professional
-- **Accent**: 142 70% 45% (emerald green) - success, growth, rewards
-- **Background Dark**: 220 15% 10% (deep slate)
-- **Background Light**: 0 0% 98% (off-white)
-- **Text**: 220 10% 20% (charcoal) for light mode, 0 0% 95% for dark
+### Merchant Dashboard (Sophisticated)
+- **Primary**: 220 10% 25% (refined charcoal) - authority, professionalism
+- **Accent**: 215 15% 55% (muted slate blue) - trust without loudness
+- **Success**: 155 40% 48% (sage green) - growth, subtle celebration
+- **Background Dark**: 220 8% 12% (deep sophisticated slate)
+- **Surface Dark**: 220 7% 17% (elevated surface)
+- **Background Light**: 210 20% 98% (warm off-white)
+- **Surface Light**: 0 0% 100% (pure white cards)
+- **Border**: 220 10% 88% (light) / 220 10% 22% (dark)
+- **Text Primary**: 220 10% 20% (light) / 220 5% 95% (dark)
+- **Text Secondary**: 220 8% 48% (both modes)
 
-### Customer Interface (Engaging)
-- **Primary**: Same blue for brand consistency
-- **Accent Vibrant**: 280 60% 60% (playful purple) for spin wheel, celebrations
-- **Reward Gold**: 45 90% 55% (warm gold) for stamp achievements
-- **Success**: 142 70% 45% (matching merchant accent)
+### Customer Interface (Playful Elegance)
+- **Spin Accent**: 270 55% 62% (sophisticated purple) - excitement with refinement
+- **Reward Gold**: 40 75% 58% (warm champagne gold) - achievement
+- **Celebration**: 320 60% 65% (elegant pink) - delight moments
 
 ## Typography
 
-**Fonts**: 
-- **Headlines**: Inter (bold, 700-800 weight) - modern, professional, excellent readability
-- **Body**: Inter (regular, 400-500 weight)
-- **Display/Marketing**: Outfit (for landing page hero) - friendly, approachable
+**Fonts**:
+- **Headlines**: Outfit (600-700 weight) - refined, geometric, premium
+- **UI/Body**: Inter (400-500 weight) - clarity, professionalism
+- **Numbers/Data**: Tabular nums variant of Inter
 
-**Scale**:
-- Hero/H1: text-5xl to text-6xl (48-60px)
-- H2 Dashboard: text-3xl (30px)
-- H3 Sections: text-2xl (24px)
-- Body: text-base (16px)
-- Captions: text-sm (14px)
+**Hierarchy**:
+- Dashboard Hero: text-4xl (36px), tracking-tight
+- Section Headers: text-2xl (24px), font-semibold
+- Card Titles: text-lg (18px), font-medium
+- Body: text-base (16px), leading-relaxed
+- Captions: text-sm (14px), text-secondary
 
 ## Layout System
 
-**Spacing Primitives**: Use Tailwind units of **4, 6, 8, 12, 16** for consistency
-- Tight spacing: p-4, gap-4 (cards, buttons)
-- Standard spacing: p-6, gap-6 (sections, containers)
-- Generous spacing: p-8 to p-16 (page sections, hero)
+**Spacing Scale**: Units of **6, 8, 12, 16, 20, 24** for generous breathing room
+
+**Container Strategy**:
+- Dashboard max-width: 1400px
+- Content sections: generous padding (px-8 md:px-12 lg:px-16)
+- Card internal: p-8 to p-10
+- Section vertical: py-16 to py-24
 
 **Grid Structure**:
-- Dashboard: 12-column grid with sidebar (1/5 width) + main content (4/5 width)
-- Feature cards: 2-column on desktop, 1-column mobile
-- Analytics: 3-column metric cards on desktop
+- Sidebar: 280px fixed width with subtle border-right
+- Main content: fluid with max-width constraints
+- Metrics: 3-column (lg) / 2-column (md) / 1-column (sm)
+- Feature grids: Generous gap-8 to gap-10
 
 ## Component Library
 
-### Merchant Dashboard Components
+### Merchant Dashboard
 
-**Navigation Sidebar**:
-- Fixed left sidebar (260px width)
-- Shop logo/name at top
-- Primary nav: Dashboard, Loyalty Cards, Spin Wheel, Customers, Analytics, Settings
-- Secondary: Billing, Support
-- Active state: subtle background with accent border-left
+**Navigation**:
+- Elegant sidebar with shop logo, subtle dividers between nav groups
+- Active state: soft background (220 15% 20% dark / 220 20% 95% light) with refined border-left accent
+- Icon + label pairs with generous padding (py-3 px-4)
+- Hover: subtle background shift
 
-**Dashboard Cards**:
-- White background (light mode) / 220 15% 15% (dark)
-- Rounded corners: rounded-xl
-- Shadow: shadow-sm with subtle border
-- Padding: p-6
-- Hover: subtle lift with shadow-md transition
+**Elevated Cards**:
+- Rounded: rounded-2xl for premium feel
+- Shadow: Subtle layered shadows (shadow-sm with border, hover: shadow-md)
+- Background: Surface colors (white light / elevated dark)
+- Border: 1px subtle for definition
+- Padding: p-8 for spaciousness
 
-**Data Tables**:
-- Striped rows for readability
-- Hover states: background highlight
-- Action buttons: icon-only (pencil, trash) with tooltips
-- Pagination: centered bottom
+**Data Presentation**:
+- Metric cards: Large numbers (text-3xl), label below (text-sm text-secondary)
+- Tables: Generous row height (py-4), zebra striping subtle, hover background shift
+- Charts: Muted color palette, refined axis labels
+- Status badges: Rounded-full, subtle backgrounds, uppercase text-xs
 
-**QR Code Displays**:
-- Centered in card
-- Download/Share buttons below
-- Label above explaining purpose
+**QR Elements**:
+- Centered in elevated card with ample padding (p-12)
+- Descriptive label above (text-sm text-secondary)
+- Download button below (outline variant with icon)
 
-### Customer-Facing Components
+### Customer-Facing
 
-**Spin Wheel**:
-- Vibrant gradient background (purple to blue)
-- Large, centered wheel (70% viewport width, max 400px)
-- Prizes with emojis + text
-- Animated pointer at top
-- Spin button: large, rounded-full, gradient, pulsing glow
-- Celebration confetti animation on win
+**Spin Wheel Interface**:
+- Premium gradient background (270 to 320 degrees, low saturation)
+- Wheel: Large (80% viewport, max 420px), smooth shadows
+- Prizes: Icon + text with refined spacing
+- Spin button: Large rounded-full, gradient, sophisticated glow (not garish)
+- Win state: Elegant confetti with gold/purple palette, smooth fade
 
-**Loyalty Card**:
-- Card-like container with rounded-2xl
-- Shop logo at top center
-- Stamp grid: max 10 stamps in 2 rows
-- Empty stamps: dashed border circles
-- Filled stamps: solid with checkmark or coffee icon
-- Progress indicator: "7/10 stamps"
-- Reward text highlighted when redeemable
+**Digital Loyalty Card**:
+- Card metaphor: rounded-3xl, layered shadow for depth
+- Shop branding: Logo centered top with generous margin
+- Stamp grid: Max 10 in elegant 2-row layout, gap-6
+- Empty stamps: Dashed circle (border-2), refined gray
+- Filled stamps: Solid with subtle scale animation, checkmark or brand icon
+- Progress: Elegant progress bar or "7/10" with refined typography
+- Reward CTA: Prominent when unlocked, sophisticated color treatment
 
-**Mobile QR Scanner** (for merchants):
-- Full-screen camera view
-- Overlay frame showing scan area
-- Instructions at top
-- Manual entry option below camera
+## Landing Page Structure
 
-## Landing Page Design
+**Hero** (85vh, not forced):
+- Two-column split: 45% compelling copy / 55% premium dashboard screenshot
+- Headline: "Elevate Customer Loyalty" (text-6xl, Outfit font, tracking-tight)
+- Subheadline: Refined explanation (text-xl, text-secondary, leading-relaxed)
+- CTA pair: Primary "Start 14-Day Trial" + outline "Watch Demo"
+- Background: Subtle gradient wash (blue-gray undertones, very low opacity)
+- **Hero Image**: Polished dashboard screenshot showing unified interface - loyalty cards panel on left, spin wheel customization on right, with elegant spacing and real data. Professional lighting, subtle depth shadows.
 
-**Hero Section** (80vh):
-- Split layout: 50% text + 50% mockup/screenshot
-- Large headline: "Boost Customer Loyalty & Engagement"
-- Subheadline: "All-in-one platform for digital stamp cards and prize wheels"
-- Dual CTA: "Start Free Trial" (primary) + "View Demo" (outline)
-- Background: subtle gradient (blue to purple, low opacity)
-- **Image**: Dashboard mockup showing both loyalty and spin features side-by-side
+**Value Proposition** (py-24, 3-column):
+- Feature cards with generous padding (p-10)
+- Icons: Lucide React (award, target, bar-chart-3) in accent color
+- Feature 1: "Premium Loyalty Programs" - sophisticated stamp mechanics
+- Feature 2: "Engaging Spin Campaigns" - gamified promotions
+- Feature 3: "Unified Analytics" - elegant insights dashboard
+- Supporting images: Mobile phone showing customer card view (320px width), merchant scanning interface, colorful spin wheel UI
 
-**Features Section** (3-column grid):
-- Icons: from Lucide React (award, gift, trending-up)
-- Feature 1: "Digital Loyalty Cards" - stamp collection, rewards
-- Feature 2: "Prize Wheel Campaigns" - spin tokens, promotions
-- Feature 3: "Unified Dashboard" - all tools in one place
+**How It Works** (py-20, 3-step horizontal):
+- Numbered cards (01, 02, 03) with refined typography
+- Step flow: Setup → Customer Engagement → Growth Analytics
+- Elegant icons and concise descriptions
 
-**How It Works** (3-step process):
-- Step cards with numbers
-- Icons showing: 1) Setup account 2) Customers scan QR 3) Track engagement
+**Social Proof** (py-16):
+- Testimonial cards: 2-column, elevated style, merchant photos
+- Trust indicators: "500+ Merchants" / "50k+ Customers Engaged"
+- Merchant logos: Grayscale with subtle spacing
 
-**Pricing** (single plan):
-- €25/month card centered
-- Feature checklist: unlimited customers, both features, analytics, support
-- Single prominent CTA
+**Pricing** (py-24):
+- Single plan centered, elevated card design (max-w-md)
+- €25/month in large refined typography
+- Feature checklist with checkmark icons
+- Highlighted features: Unlimited customers, both tools, priority support
+- Strong CTA: "Start Free Trial"
 
-**Social Proof** (if available):
-- Testimonial cards or merchant logos
-- Stats: "X merchants trust us" or "X rewards redeemed"
-
-**Footer**:
-- Links: About, Features, Pricing, Support, Terms, Privacy
-- Newsletter signup (optional)
-- Social icons
+**Footer** (py-16):
+- Multi-column: Product links, Company info, Resources, Legal
+- Newsletter signup: Refined input + button combo
+- Social links: Icon buttons with subtle hover states
 
 ## Images
 
 **Landing Page**:
-- **Hero Image**: Professional dashboard screenshot showing split view - left half displays loyalty card management with stamp grid, right half shows spin wheel customization. Should look crisp, modern, with subtle UI glow effects. Position: right 50% of hero section.
-- **Feature Section**: Three supporting images - 1) Mobile phone showing customer loyalty card view, 2) Merchant tablet scanning QR code, 3) Colorful spinning wheel interface. Small, accent images within feature cards.
+- **Hero**: Full dashboard interface (1200x800px) showing professional merchant view with both loyalty management and spin wheel features visible, modern UI with subtle shadows
+- **Features**: Three supporting visuals (400x300px each) - mobile loyalty card, QR scanning moment, vibrant spin wheel
+- **Social Proof**: Merchant headshots (80x80px, rounded-full)
 
 **Dashboard**:
-- Shop logo placeholders (if no logo uploaded)
-- Default reward icons/emojis
-- Empty state illustrations (when no customers/campaigns yet)
+- Default shop logo: Elegant placeholder with initials
+- Empty states: Refined illustrations (not cartoonish)
+- Reward icons: Sophisticated emoji or icon set
+
+## Shadows & Depth
+
+**Layered Shadow System**:
+- Cards: `shadow-sm` (subtle) with 1px border for definition
+- Hover: `shadow-md` (gentle elevation)
+- Modals: `shadow-xl` (clear separation)
+- Never harsh or heavy shadows - always refined and purposeful
 
 ## Animations
 
-**Merchant Dashboard**: Minimal, professional
-- Card hover: subtle lift (translateY -2px)
-- Button press: scale(0.98)
-- Page transitions: fade-in (200ms)
+**Merchant Dashboard**: Refined, subtle
+- Card hover: translateY(-2px) + shadow transition (200ms)
+- Button interactions: Scale(0.98) on press
+- Page transitions: Fade + subtle slide (250ms)
 
-**Customer Interface**: Engaging, celebratory
-- Spin wheel: smooth rotation with easing
-- Win celebration: confetti burst, scale pulse
-- Stamp collection: satisfying "pop" when stamp added
-- Reward unlocked: gold shimmer effect
+**Customer Experience**: Delightful, smooth
+- Spin wheel: Smooth rotation with elegant easing (2s)
+- Win celebration: Sophisticated confetti (gold/purple), fade out
+- Stamp addition: Gentle scale pop (0.95 → 1.05 → 1)
+- All animations: <400ms, respect reduced-motion
 
-**General**: All animations should be <300ms, respect prefers-reduced-motion
+## Responsive Strategy
 
-## Responsive Behavior
-
-**Desktop** (1024px+): Full sidebar, multi-column grids, tables
-**Tablet** (768-1023px): Collapsible sidebar, 2-column grids
-**Mobile** (<768px): Bottom nav bar, single column, full-width cards, stack everything vertically
+- **Desktop (1024px+)**: Full sidebar, 3-column grids, spacious padding
+- **Tablet (768-1023px)**: Collapsible sidebar, 2-column, reduced spacing
+- **Mobile (<768px)**: Bottom nav, single column, card stack, touch-optimized targets (min 44px)
 
 ## Accessibility
 
-- Dark mode fully implemented across all screens
-- Form inputs maintain consistent styling in dark mode
-- High contrast ratios (WCAG AA minimum)
-- Focus indicators: 2px accent ring
-- Skip navigation links
-- Screen reader labels on icon buttons
-- Keyboard navigation for all interactive elements
+- WCAG AA contrast ratios minimum (AAA preferred for body text)
+- Dark mode: Fully implemented with consistent form styling
+- Focus rings: 2px accent with offset for clarity
+- Keyboard navigation: All interactive elements accessible
+- Screen reader: Proper ARIA labels on icon buttons and status indicators
