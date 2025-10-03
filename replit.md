@@ -19,6 +19,7 @@ The application merges functionality from two separate apps into one cohesive pl
 - **Image Upload for Logos**: Settings page now supports direct file upload for logos (replaces URL input)
 - **Logo Serving Endpoint**: Added `/api/logo/:userId` to serve uploaded logos as images for Google Wallet
 - **Google Wallet Logo Fix**: Google Wallet now uses uploaded merchant logos via HTTPS endpoint
+- **Google Wallet Stamp Sync**: Stamps now automatically update in Google Wallet passes when added or redeemed
 - **Increased Body Limit**: Express body parser limit increased to 10mb to support base64 image uploads
 - **Digital Wallet Integration**: Added Apple Wallet and Google Wallet buttons to customer loyalty cards
 - **Payment Flow Fix**: Resolved webhook timing issue with payment processing page that actively verifies Stripe session status
