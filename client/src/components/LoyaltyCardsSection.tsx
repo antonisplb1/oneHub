@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, QrCode, Users, Scan } from "lucide-react";
-import { getLoyaltyCards, addStamp, redeemReward, getShopQRCode } from "@/lib/api";
+import { Plus, QrCode, Users, Scan, Gift } from "lucide-react";
+import { getLoyaltyCards, addStamp, getShopQRCode } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 
 export default function LoyaltyCardsSection() {
@@ -36,17 +37,6 @@ export default function LoyaltyCardsSection() {
       toast({
         title: "Stamp added!",
         description: "Customer stamp has been recorded.",
-      });
-    },
-  });
-
-  const redeemMutation = useMutation({
-    mutationFn: redeemReward,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api", "loyalty-cards"] });
-      toast({
-        title: "Reward redeemed!",
-        description: "Customer reward has been claimed.",
       });
     },
   });
@@ -140,14 +130,32 @@ export default function LoyaltyCardsSection() {
                   {cards.map(({ card, customer }) => (
                     <div
                       key={card.id}
-                      className="flex items-center justify-between p-4 border rounded-md hover-elevate"
+                      className={`flex items-center justify-between p-4 border rounded-md hover-elevate ${
+                        card.isRedeemable ? "border-chart-2 bg-chart-2/5" : ""
+                      }`}
                       data-testid={`customer-card-${card.id}`}
                     >
-                      <div>
-                        <p className="font-semibold">{customer?.name || "Anonymous Customer"}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold">{customer?.name || "Anonymous Customer"}</p>
+                          {card.isRedeemable && (
+                            <Badge variant="default" className="bg-chart-2" data-testid={`badge-reward-ready-${card.id}`}>
+                              <Gift className="w-3 h-3 mr-1" />
+                              Reward Ready
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {card.stamps}/{card.maxStamps} stamps
+                          {card.totalRewards > 0 && (
+                            <span className="ml-2">• {card.totalRewards} rewards granted</span>
+                          )}
                         </p>
+                        {card.isRedeemable && (
+                          <p className="text-sm text-chart-2 font-medium mt-1">
+                            Next scan will grant reward and reset card to 0
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="flex gap-1">
@@ -163,28 +171,6 @@ export default function LoyaltyCardsSection() {
                               {i < card.stamps ? "✓" : ""}
                             </div>
                           ))}
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => stampMutation.mutate(card.id)}
-                            disabled={stampMutation.isPending || card.stamps >= card.maxStamps}
-                            data-testid={`button-stamp-${card.id}`}
-                          >
-                            Add Stamp
-                          </Button>
-                          {card.isRedeemable && (
-                            <Button 
-                              size="sm" 
-                              variant="default" 
-                              onClick={() => redeemMutation.mutate(card.id)}
-                              disabled={redeemMutation.isPending}
-                              data-testid={`button-redeem-${card.id}`}
-                            >
-                              Redeem
-                            </Button>
-                          )}
                         </div>
                       </div>
                     </div>

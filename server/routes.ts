@@ -407,24 +407,48 @@ export function registerRoutes(app: Express) {
         return res.status(404).json({ error: "Loyalty card not found" });
       }
 
-      const newStamps = Math.min(card.stamps + 1, card.maxStamps);
-      const isRedeemable = newStamps >= card.maxStamps;
+      // Check if customer already has max stamps (reward eligible)
+      const wasRewardEligible = card.stamps >= card.maxStamps;
+      
+      let newStamps: number;
+      let isRedeemable: boolean;
+      let totalRewards = card.totalRewards;
+      let message: string;
+      let rewardGranted = false;
+
+      if (wasRewardEligible) {
+        // Customer had 10/10 stamps - reset to 0 and count as reward
+        newStamps = 0;
+        isRedeemable = false;
+        totalRewards = card.totalRewards + 1;
+        message = `Reward granted! Card reset to 0/${card.maxStamps}`;
+        rewardGranted = true;
+      } else {
+        // Normal stamp addition
+        newStamps = card.stamps + 1;
+        isRedeemable = newStamps >= card.maxStamps;
+        message = isRedeemable 
+          ? `Card complete! Customer eligible for reward (${newStamps}/${card.maxStamps})`
+          : `Stamp added! ${newStamps}/${card.maxStamps}`;
+      }
 
       const [updatedCard] = await db
         .update(loyaltyCards)
         .set({
           stamps: newStamps,
           isRedeemable,
+          totalRewards,
           lastStampAt: new Date(),
         })
         .where(eq(loyaltyCards.id, card.id))
         .returning();
 
+      // Create transaction record
       await db.insert(loyaltyTransactions).values({
         loyaltyCardId: card.id,
-        type: "stamp",
-        amount: 1,
-        description: "Stamp added via QR scan",
+        type: rewardGranted ? "reward" : "stamp",
+        amount: rewardGranted ? -card.maxStamps : 1,
+        description: rewardGranted ? "Reward granted - auto reset" : "Stamp added via QR scan",
       });
 
       if (googleWalletService) {
@@ -443,7 +467,8 @@ export function registerRoutes(app: Express) {
         success: true, 
         card: updatedCard, 
         customer,
-        message: `Stamp added! ${newStamps}/${card.maxStamps}` 
+        message,
+        rewardGranted
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

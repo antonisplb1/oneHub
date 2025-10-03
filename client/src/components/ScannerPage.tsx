@@ -181,11 +181,11 @@ export default function ScannerPage() {
       </Card>
 
       {scanResult && (
-        <Card className="bg-chart-2/10 border-chart-2">
+        <Card className={scanResult.rewardGranted ? "bg-green-500/10 border-green-500" : "bg-chart-2/10 border-chart-2"}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-chart-2">
+            <CardTitle className={`flex items-center gap-2 ${scanResult.rewardGranted ? "text-green-600" : "text-chart-2"}`}>
               <Check className="w-5 h-5" />
-              Stamp Added Successfully!
+              {scanResult.rewardGranted ? "Reward Granted!" : "Stamp Added Successfully!"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -193,16 +193,24 @@ export default function ScannerPage() {
               <p className="text-sm font-medium">Customer</p>
               <p className="text-lg">{scanResult.customer.name || "Anonymous"}</p>
             </div>
-            <div>
-              <p className="text-sm font-medium">Progress</p>
-              <p className="text-2xl font-bold text-chart-2">
-                {scanResult.card.stamps}/{scanResult.card.maxStamps} Stamps
-              </p>
-            </div>
-            {scanResult.card.isRedeemable && (
-              <div className="bg-chart-2 text-white p-4 rounded-lg text-center">
-                <p className="font-bold text-lg">Reward Ready!</p>
+            {scanResult.rewardGranted ? (
+              <div className="bg-green-500 text-white p-4 rounded-lg text-center">
+                <p className="font-bold text-lg">Reward Granted!</p>
                 <p className="text-sm mt-1">{scanResult.card.rewardText}</p>
+                <p className="text-sm mt-2">Card has been reset to start collecting again</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm font-medium">Progress</p>
+                <p className="text-2xl font-bold text-chart-2">
+                  {scanResult.card.stamps}/{scanResult.card.maxStamps} Stamps
+                </p>
+              </div>
+            )}
+            {scanResult.card.isRedeemable && !scanResult.rewardGranted && (
+              <div className="bg-chart-2 text-white p-4 rounded-lg text-center">
+                <p className="font-bold text-lg">Card Complete!</p>
+                <p className="text-sm mt-1">Next scan will grant {scanResult.card.rewardText}</p>
               </div>
             )}
           </CardContent>
