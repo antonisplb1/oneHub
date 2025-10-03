@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiRequest } from "@/lib/queryClient";
 import type { Reward } from "@shared/schema";
 
-export default function InStoreSpinWheel() {
+export default function CustomerSpinOnce() {
   const { userId } = useParams();
+  const [hasSpun, setHasSpun] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [prizeWon, setPrizeWon] = useState<string | null>(null);
   const [rotation, setRotation] = useState(0);
@@ -18,43 +19,46 @@ export default function InStoreSpinWheel() {
     queryFn: () => apiRequest<Reward[]>(`/api/rewards/public/${userId}`),
   });
 
+  useEffect(() => {
+    const hasSpunBefore = sessionStorage.getItem(`spin-${userId}`);
+    if (hasSpunBefore) {
+      setHasSpun(true);
+    }
+  }, [userId]);
+
   const spinMutation = useMutation({
     mutationFn: () => apiRequest<{ reward: Reward }>(`/api/spin-in-store/${userId}`, {
       method: "POST",
     }),
     onSuccess: (data) => {
       const winningReward = data.reward;
-      const activeRewards = rewards.filter(r => r.isActive);
-      const winningIndex = activeRewards.findIndex(r => r.id === winningReward.id);
+      const winningIndex = rewards.findIndex(r => r.id === winningReward.id);
       
       let targetAngle = 0;
       let cumulative = 0;
       for (let i = 0; i < winningIndex; i++) {
-        cumulative += activeRewards[i].winChance;
+        cumulative += rewards[i].winChance;
       }
-      targetAngle = cumulative + (activeRewards[winningIndex].winChance / 2);
+      targetAngle = cumulative + (rewards[winningIndex].winChance / 2);
       const normalizedAngle = 360 - targetAngle + 90;
       const spinRotations = 360 * 5;
-      const finalRotation = rotation + spinRotations + normalizedAngle;
+      const finalRotation = spinRotations + normalizedAngle;
       
       setRotation(finalRotation);
       
       setTimeout(() => {
         setPrizeWon(winningReward.name);
         setIsSpinning(false);
+        setHasSpun(true);
+        sessionStorage.setItem(`spin-${userId}`, 'true');
       }, 3000);
     },
   });
 
   const handleSpin = () => {
-    setPrizeWon(null);
+    if (hasSpun) return;
     setIsSpinning(true);
     spinMutation.mutate();
-  };
-
-  const handleReset = () => {
-    setPrizeWon(null);
-    spinMutation.reset();
   };
 
   const activeRewards = rewards.filter(r => r.isActive);
@@ -150,7 +154,7 @@ export default function InStoreSpinWheel() {
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Spin to Win!</CardTitle>
-          <p className="text-muted-foreground">Try your luck - unlimited spins!</p>
+          <p className="text-muted-foreground">One spin per customer</p>
         </CardHeader>
         <CardContent className="space-y-6">
           {!prizeWon && activeRewards.length > 0 ? (
@@ -164,13 +168,19 @@ export default function InStoreSpinWheel() {
 
               <Button
                 onClick={handleSpin}
-                disabled={isSpinning}
+                disabled={isSpinning || hasSpun}
                 className="w-full"
                 size="lg"
                 data-testid="button-spin"
               >
-                {isSpinning ? "Spinning..." : "Spin Now!"}
+                {hasSpun ? "Already Spun" : isSpinning ? "Spinning..." : "Spin Now!"}
               </Button>
+              
+              {hasSpun && !prizeWon && (
+                <p className="text-center text-muted-foreground text-sm">
+                  You've already used your spin!
+                </p>
+              )}
             </>
           ) : prizeWon ? (
             <div className="text-center space-y-4">
@@ -178,13 +188,6 @@ export default function InStoreSpinWheel() {
               <h3 className="text-2xl font-bold">Congratulations!</h3>
               <p className="text-xl">You won: {prizeWon}</p>
               <p className="text-sm text-muted-foreground">Show this screen to claim your prize!</p>
-              <Button
-                onClick={handleReset}
-                className="w-full"
-                data-testid="button-spin-again"
-              >
-                Spin Again
-              </Button>
             </div>
           ) : (
             <p className="text-center text-muted-foreground">No active rewards configured.</p>
