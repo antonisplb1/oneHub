@@ -6,6 +6,36 @@ uniHub is a B2B SaaS platform offering digital loyalty card programs and spin-to
 
 ## Recent Changes (October 2025)
 
+### Anti-Spam Security System (Production Ready)
+Three-layer security implementation to prevent spam registrations:
+
+**Phase 1 - Rate Limiting:**
+- Express rate-limit middleware on signup endpoint
+- 5 failed attempts per 15 minutes per IP
+- Trust proxy configured for single hop (prevents IP spoofing)
+- Only counts failed signup attempts (skipSuccessfulRequests: true)
+- Returns 429 status with clear error message when limit exceeded
+
+**Phase 2 - Cloudflare Turnstile CAPTCHA:**
+- Frontend widget integrated in signup form
+- Backend verification with Cloudflare API
+- Environment-aware security:
+  - Production: Strict CAPTCHA enforcement required
+  - Development: Allows missing tokens (for testing flexibility)
+- User-friendly error messaging for domain restrictions
+- Requires TURNSTILE_SECRET_KEY and VITE_TURNSTILE_SITE_KEY in production
+
+**Phase 3 - Automated Cleanup:**
+- Scheduled cron job runs daily at 2:00 AM
+- Removes unverified accounts older than 48 hours
+- Preserves recent unverified and all verified accounts
+- Tested and verified with manual test harness
+
+**Configuration Notes:**
+- Trust proxy set to 1 (trusts only Replit's proxy layer)
+- Turnstile widget may show "Invalid domain" in development unless Replit domain whitelisted in Cloudflare
+- All security layers tested and architect-approved for production deployment
+
 ### Email Verification System
 - Implemented complete email verification flow with Resend integration
 - Users must verify their email before accessing the platform
