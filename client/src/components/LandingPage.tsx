@@ -159,7 +159,7 @@ export default function LandingPage() {
             <div className="text-center mb-8">
               <h4 className="text-2xl font-bold mb-2">Professional Plan</h4>
               <div className="flex items-baseline justify-center gap-2">
-                <span className="text-5xl font-bold">€25</span>
+                <span className="text-5xl font-bold">€20</span>
                 <span className="text-muted-foreground">/month</span>
               </div>
             </div>
