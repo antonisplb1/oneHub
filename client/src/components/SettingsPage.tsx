@@ -74,6 +74,24 @@ export default function SettingsPage() {
     },
   });
 
+  const manageSubscriptionMutation = useMutation({
+    mutationFn: () => {
+      return apiRequest("/api/stripe/create-portal-session", {
+        method: "POST",
+      });
+    },
+    onSuccess: (data: { url: string }) => {
+      window.location.href = data.url;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to open billing portal",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateMutation.mutate({
@@ -371,8 +389,14 @@ export default function SettingsPage() {
                 </Button>
               )}
               {user?.subscriptionStatus === "active" && (
-                <Button size="lg" variant="outline" data-testid="button-manage-subscription">
-                  Manage Subscription
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  onClick={() => manageSubscriptionMutation.mutate()}
+                  disabled={manageSubscriptionMutation.isPending}
+                  data-testid="button-manage-subscription"
+                >
+                  {manageSubscriptionMutation.isPending ? "Loading..." : "Manage Subscription"}
                 </Button>
               )}
             </div>
