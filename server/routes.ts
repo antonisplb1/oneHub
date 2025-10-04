@@ -27,6 +27,43 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-09-30.clover",
 });
 
+// Product pricing configuration
+const PRODUCT_PRICES = {
+  'loyalty': 1500, // €15 in cents
+  'spin': 1000,    // €10 in cents
+  'both': 2000,    // €20 in cents (bundle discount)
+};
+
+// Calculate price based on selected products
+function calculateProductPrice(products: string[]): number {
+  const sortedProducts = [...products].sort();
+  
+  if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin')) {
+    return PRODUCT_PRICES.both;
+  } else if (sortedProducts.includes('loyalty')) {
+    return PRODUCT_PRICES.loyalty;
+  } else if (sortedProducts.includes('spin')) {
+    return PRODUCT_PRICES.spin;
+  }
+  
+  return 0;
+}
+
+// Get product description based on selected products
+function getProductDescription(products: string[]): string {
+  const sortedProducts = [...products].sort();
+  
+  if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin')) {
+    return "Full access: Loyalty Cards & Spin Wheel campaigns";
+  } else if (sortedProducts.includes('loyalty')) {
+    return "Access to Loyalty Cards feature";
+  } else if (sortedProducts.includes('spin')) {
+    return "Access to Spin Wheel feature";
+  }
+  
+  return "No products selected";
+}
+
 let googleWalletService: GoogleWalletService | null = null;
 try {
   googleWalletService = new GoogleWalletService();
@@ -344,6 +381,40 @@ export function registerRoutes(app: Express) {
       res.json({ success: true, message: "Password reset successfully" });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Password reset failed" });
+    }
+  });
+
+  // Save selected products (must be authenticated and email verified)
+  app.post("/api/user/select-products", requireEmailVerification, async (req, res) => {
+    try {
+      const { products } = req.body;
+      
+      if (!Array.isArray(products) || products.length === 0) {
+        return res.status(400).json({ error: "Please select at least one product" });
+      }
+
+      const validProducts = ['loyalty', 'spin'];
+      const invalidProducts = products.filter(p => !validProducts.includes(p));
+      
+      if (invalidProducts.length > 0) {
+        return res.status(400).json({ error: "Invalid product selection" });
+      }
+
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          selectedProducts: products,
+        })
+        .where(eq(users.id, req.user!.id))
+        .returning();
+
+      res.json({
+        success: true,
+        selectedProducts: updatedUser.selectedProducts,
+        price: calculateProductPrice(products),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -1185,6 +1256,16 @@ export function registerRoutes(app: Express) {
 
   app.post("/api/stripe/create-checkout-session", requireAuth, async (req, res) => {
     try {
+      // Get user's selected products
+      const selectedProducts = req.user!.selectedProducts || [];
+      
+      if (selectedProducts.length === 0) {
+        return res.status(400).json({ error: "Please select products before subscribing" });
+      }
+
+      const price = calculateProductPrice(selectedProducts);
+      const description = getProductDescription(selectedProducts);
+
       const session = await stripe.checkout.sessions.create({
         customer: req.user!.stripeCustomerId!,
         payment_method_types: ["card"],
@@ -1193,10 +1274,10 @@ export function registerRoutes(app: Express) {
             price_data: {
               currency: "eur",
               product_data: {
-                name: "Professional Plan",
-                description: "Unlimited customers, loyalty cards & prize wheels",
+                name: "uniHub Subscription",
+                description: description,
               },
-              unit_amount: 2500,
+              unit_amount: price,
               recurring: {
                 interval: "month",
               },
@@ -1206,9 +1287,10 @@ export function registerRoutes(app: Express) {
         ],
         mode: "subscription",
         success_url: `${req.headers.origin}/payment-processing?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${req.headers.origin}/subscription-required`,
+        cancel_url: `${req.headers.origin}/select-products`,
         metadata: {
           userId: req.user!.id,
+          selectedProducts: JSON.stringify(selectedProducts),
         },
       });
 

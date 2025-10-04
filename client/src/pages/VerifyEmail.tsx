@@ -25,7 +25,7 @@ export default function VerifyEmail() {
 
         setStatus("success");
         setTimeout(() => {
-          setLocation("/auth");
+          setLocation("/select-products");
         }, 2000);
       } catch (error: any) {
         setStatus("error");
@@ -63,7 +63,7 @@ export default function VerifyEmail() {
               </div>
               <CardTitle className="text-2xl font-semibold mb-2">Email Verified!</CardTitle>
               <CardDescription className="text-base">
-                Your email has been verified successfully. Redirecting to login...
+                Your email has been verified successfully. Redirecting to product selection...
               </CardDescription>
             </CardHeader>
           </>

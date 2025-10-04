@@ -25,6 +25,7 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import Demo from "@/pages/Demo";
+import SelectProducts from "@/pages/SelectProducts";
 
 function Router() {
   return (
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/verify-email/:token" component={VerifyEmail} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password/:token" component={ResetPassword} />
+      <Route path="/select-products" component={SelectProducts} />
       <Route path="/subscription-required" component={SubscriptionRequired} />
       <Route path="/payment-processing" component={PaymentProcessing} />
       <Route path="/dashboard">
