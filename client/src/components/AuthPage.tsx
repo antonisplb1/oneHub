@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function AuthPage() {
   const [loginEmail, setLoginEmail] = useState("");
@@ -15,6 +16,8 @@ export default function AuthPage() {
   const [signupPassword, setSignupPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [shopName, setShopName] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileError, setTurnstileError] = useState(false);
   
   const { login, signup, isLoggingIn, isSigningUp, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
@@ -35,7 +38,7 @@ export default function AuthPage() {
     if (signupPassword !== confirmPassword) {
       return;
     }
-    signup({ email: signupEmail, password: signupPassword, confirmPassword, shopName });
+    signup({ email: signupEmail, password: signupPassword, confirmPassword, shopName, turnstileToken });
   };
 
   return (
@@ -153,6 +156,29 @@ export default function AuthPage() {
                     />
                     {confirmPassword && signupPassword !== confirmPassword && (
                       <p className="text-sm text-destructive mt-1">Passwords don't match</p>
+                    )}
+                  </div>
+                  <div className="space-y-2" data-testid="turnstile-widget">
+                    <div className="flex justify-center">
+                      <Turnstile
+                        siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                        onSuccess={(token) => {
+                          setTurnstileToken(token);
+                          setTurnstileError(false);
+                        }}
+                        onError={() => {
+                          setTurnstileToken(null);
+                          setTurnstileError(true);
+                        }}
+                        onExpire={() => {
+                          setTurnstileToken(null);
+                        }}
+                      />
+                    </div>
+                    {turnstileError && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Note: CAPTCHA widget may not load in development. This is expected and won't prevent testing.
+                      </p>
                     )}
                   </div>
                   <Button 

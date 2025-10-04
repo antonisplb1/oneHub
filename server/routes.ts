@@ -66,10 +66,51 @@ const signupLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
+// Verify Turnstile token with Cloudflare
+async function verifyTurnstile(token: string, remoteip?: string): Promise<boolean> {
+  try {
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        secret: process.env.TURNSTILE_SECRET_KEY,
+        response: token,
+        remoteip,
+      }),
+    });
+
+    const data = await response.json();
+    return data.success === true;
+  } catch (error) {
+    console.error('Turnstile verification error:', error);
+    return false;
+  }
+}
+
 export function registerRoutes(app: Express) {
   app.post("/api/auth/signup", signupLimiter, async (req, res) => {
     try {
       const validatedData = signupSchema.parse(req.body);
+      
+      // Verify Turnstile CAPTCHA token
+      const turnstileToken = req.body.turnstileToken;
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      
+      if (!turnstileToken && !isDevelopment) {
+        // Production requires CAPTCHA token
+        return res.status(400).json({ error: "CAPTCHA verification required" });
+      }
+      
+      if (turnstileToken) {
+        const isValidCaptcha = await verifyTurnstile(turnstileToken, req.ip);
+        if (!isValidCaptcha) {
+          return res.status(400).json({ error: "CAPTCHA verification failed. Please try again." });
+        }
+      } else if (isDevelopment) {
+        console.log('[DEV] Signup proceeding without CAPTCHA token (development mode)');
+      }
       
       const existingUser = await db
         .select()

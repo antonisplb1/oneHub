@@ -2,13 +2,15 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupAuth } from "./auth";
+import { startCleanupService } from "./cleanup";
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
-// Trust proxy headers for rate limiting and IP detection
-app.set('trust proxy', true);
+// Trust first proxy hop only (Replit's proxy layer)
+// This prevents IP spoofing while still allowing rate limiting to work correctly
+app.set('trust proxy', 1);
 
 setupAuth(app);
 
@@ -61,6 +63,9 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
   });
+
+  // Start cleanup service for unverified accounts
+  startCleanupService();
 
   if (app.get("env") === "development") {
     await setupVite(app, server);
