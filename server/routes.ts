@@ -21,6 +21,7 @@ import Stripe from "stripe";
 import QRCode from "qrcode";
 import { GoogleWalletService, type LoyaltyPassData } from "./googleWallet";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
+import rateLimit from "express-rate-limit";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-09-30.clover",
@@ -54,8 +55,19 @@ function requireSubscription(req: Request, res: Response, next: Function) {
   res.status(403).json({ error: "Active subscription required" });
 }
 
+// Rate limiter for signup endpoint - prevents spam registrations
+const signupLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 signup requests per windowMs
+  message: { error: "Too many signup attempts from this IP, please try again after 15 minutes" },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Skip rate limiting for successful signups (only count failed attempts)
+  skipSuccessfulRequests: true,
+});
+
 export function registerRoutes(app: Express) {
-  app.post("/api/auth/signup", async (req, res) => {
+  app.post("/api/auth/signup", signupLimiter, async (req, res) => {
     try {
       const validatedData = signupSchema.parse(req.body);
       

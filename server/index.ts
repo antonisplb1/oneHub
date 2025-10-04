@@ -7,6 +7,9 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
+// Trust proxy headers for rate limiting and IP detection
+app.set('trust proxy', true);
+
 setupAuth(app);
 
 app.use((req, res, next) => {
