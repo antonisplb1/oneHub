@@ -2,7 +2,7 @@
 
 ## Overview
 
-uniHub is a B2B SaaS platform offering digital loyalty card programs and spin-to-win campaigns to merchants through a unified dashboard. Merchants pay a €25/month subscription to access tools for managing loyalty, creating spin campaigns, tracking customer engagement, and viewing analytics. Customers interact via mobile devices to collect loyalty stamps, use QR codes for merchant scanning, and participate in spin-to-win promotions, with optional integration into Apple Wallet or Google Wallet. The platform consolidates functionality from previously separate applications, providing unified authentication, subscription management, and shared customer data.
+uniHub is a B2B SaaS platform offering digital loyalty card programs and spin-to-win campaigns to merchants through a unified dashboard. Merchants choose which products to subscribe to: Loyalty Cards (€15/month), Spin Wheel (€10/month), or Both (€20/month bundled). The platform provides tools for managing loyalty, creating spin campaigns, tracking customer engagement, and viewing analytics. Customers interact via mobile devices to collect loyalty stamps, use QR codes for merchant scanning, and participate in spin-to-win promotions, with optional integration into Apple Wallet or Google Wallet. The platform consolidates functionality from previously separate applications, providing unified authentication, subscription management, and shared customer data.
 
 ## Recent Changes (October 2025)
 
@@ -51,12 +51,33 @@ Three-layer security implementation to prevent spam registrations:
 - Reset password page at `/reset-password/:token`
 - Backend endpoints: `/api/auth/forgot-password` and `/api/auth/reset-password`
 
+### Flexible Product Selection & Pricing
+Three subscription tiers with flexible product selection:
+1. **Loyalty Cards Only**: €15/month - Access to loyalty cards and QR scanner features
+2. **Spin Wheel Only**: €10/month - Access to spin-to-win campaign features  
+3. **Both Products (Bundle)**: €20/month - Full access to all features with €5/month savings
+
+**Product Selection Flow:**
+- After email verification, users are directed to `/select-products` page
+- Users choose products before subscribing (mandatory step)
+- Product changes can be made post-subscription via Settings page
+- Stripe automatically handles proration when products are changed
+- Dashboard menu dynamically filters to show only relevant features
+
+**Dynamic Dashboard Menu:**
+- Menu items are filtered based on `selectedProducts` array
+- Always visible: Dashboard, Customers, Analytics, Settings
+- Loyalty-only items: Loyalty Cards, QR Scanner (requires 'loyalty' in selectedProducts)
+- Spin-only items: Spin Wheel (requires 'spin' in selectedProducts)
+- Real-time menu updates when products are changed
+
 ### Updated Registration & Authentication Flow
 1. User registers → receives verification email (no immediate Stripe redirect)
 2. User clicks verification link → email marked as verified, Stripe customer created
-3. User logs in → checked for email verification and subscription status
-4. If not subscribed → redirected to `/subscription-required` page
-5. User subscribes via Stripe checkout → gains dashboard access
+3. User selects products → redirected to `/select-products` page (mandatory)
+4. User continues → redirected to `/subscription-required` with dynamic pricing
+5. User subscribes via Stripe checkout → gains dashboard access with filtered menu
+6. User can modify product selection in Settings → Stripe updates subscription with proration
 
 ### Database Schema Updates
 Added to users table:
@@ -65,6 +86,7 @@ Added to users table:
 - `verificationTokenExpiry` (timestamp, nullable)
 - `resetPasswordToken` (varchar, nullable)
 - `resetPasswordExpiry` (timestamp, nullable)
+- `selectedProducts` (text array, stores 'loyalty' and/or 'spin')
 
 ### Authentication Middleware
 - `requireAuth` middleware checks session authentication
@@ -89,9 +111,16 @@ The backend uses **Express.js with TypeScript**, **Passport.js** for session-bas
 
 The core database schema includes tables for `users` (merchants), `customers`, `loyaltyCards`, `loyaltyTransactions`, `rewards`, `spinTokens`, and `spins`. Key design decisions include UUID primary keys, cascade deletes for referential integrity, and timestamps for audit trails. Customer information is kept optional for privacy.
 
+The `users` table tracks product selections via the `selectedProducts` text array field, which stores 'loyalty' and/or 'spin' values to determine feature access and pricing.
+
 ### Payment Integration
 
-**Stripe** is integrated for subscription billing (€25/month), managing customer and subscription statuses. Frontend uses `@stripe/stripe-js` and `@stripe/react-stripe-js`, while the backend uses the Stripe Node SDK.
+**Stripe** is integrated for flexible subscription billing with three pricing tiers based on selected products:
+- Loyalty Cards only: €15/month
+- Spin Wheel only: €10/month  
+- Both products (bundle): €20/month
+
+Stripe products are created programmatically with helper functions managing the three product options. When users change their product selection post-subscription, Stripe automatically handles proration. Frontend uses `@stripe/stripe-js` and `@stripe/react-stripe-js`, while the backend uses the Stripe Node SDK.
 
 ### QR Code System
 
