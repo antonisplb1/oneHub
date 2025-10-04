@@ -1,13 +1,31 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Ticket, Gift } from "lucide-react";
+
+const PRODUCT_INFO = [
+  {
+    id: 'loyalty',
+    name: 'Loyalty Cards',
+    description: 'Digital loyalty card program with stamp collection',
+    price: 15,
+    icon: Ticket,
+  },
+  {
+    id: 'spin',
+    name: 'Spin Wheel',
+    description: 'Prize wheel campaigns for customer engagement',
+    price: 10,
+    icon: Gift,
+  },
+];
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -15,6 +33,7 @@ export default function SettingsPage() {
   const [shopName, setShopName] = useState(user?.shopName || "");
   const [logoUrl, setLogoUrl] = useState(user?.logo || "");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>(user?.selectedProducts || []);
 
   const updateMutation = useMutation({
     mutationFn: (data: { shopName: string; logo?: string }) => {
@@ -28,6 +47,29 @@ export default function SettingsPage() {
       toast({
         title: "Settings updated!",
         description: "Your shop information has been saved.",
+      });
+    },
+  });
+
+  const updateProductsMutation = useMutation({
+    mutationFn: (products: string[]) => {
+      return apiRequest("/api/user/select-products", {
+        method: "POST",
+        body: JSON.stringify({ products }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api", "auth", "me"] });
+      toast({
+        title: "Products updated!",
+        description: "Your subscription will be adjusted accordingly.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -91,6 +133,39 @@ export default function SettingsPage() {
 
   const handleRemoveLogo = () => {
     setLogoUrl("");
+  };
+
+  const toggleProduct = (productId: string) => {
+    setSelectedProducts(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const calculatePrice = (products: string[]) => {
+    if (products.length === 2) return 20;
+    if (products.includes('loyalty')) return 15;
+    if (products.includes('spin')) return 10;
+    return 0;
+  };
+
+  const handleUpdateProducts = () => {
+    if (selectedProducts.length === 0) {
+      toast({
+        title: "No products selected",
+        description: "Please select at least one product",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateProductsMutation.mutate(selectedProducts);
+  };
+
+  const hasProductChanges = () => {
+    const current = [...(user?.selectedProducts || [])].sort();
+    const selected = [...selectedProducts].sort();
+    return JSON.stringify(current) !== JSON.stringify(selected);
   };
 
   return (
@@ -185,19 +260,114 @@ export default function SettingsPage() {
 
       <Card className="border-card-border shadow-sm">
         <CardHeader className="pb-6">
+          <CardTitle className="text-xl font-semibold">Product Selection</CardTitle>
+          <CardDescription>
+            Choose which features you want to include in your subscription
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {PRODUCT_INFO.map((product) => {
+            const Icon = product.icon;
+            const isSelected = selectedProducts.includes(product.id);
+            
+            return (
+              <div
+                key={product.id}
+                className={`flex items-start gap-4 p-4 rounded-md border cursor-pointer transition-all hover-elevate ${
+                  isSelected ? 'border-primary bg-primary/5' : ''
+                }`}
+                onClick={() => toggleProduct(product.id)}
+                data-testid={`card-product-${product.id}`}
+              >
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => toggleProduct(product.id)}
+                  data-testid={`checkbox-product-${product.id}`}
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon className="w-4 h-4 text-primary" />
+                    <h3 className="font-semibold" data-testid={`text-product-name-${product.id}`}>
+                      {product.name}
+                    </h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground" data-testid={`text-product-description-${product.id}`}>
+                    {product.description}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-xl font-bold" data-testid={`text-product-price-${product.id}`}>
+                    €{product.price}
+                  </div>
+                  <div className="text-xs text-muted-foreground">per month</div>
+                </div>
+              </div>
+            );
+          })}
+
+          {selectedProducts.length === 2 && (
+            <div className="p-4 bg-primary/5 border border-primary rounded-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-primary" data-testid="text-bundle-discount">
+                    Bundle Discount Applied! 🎉
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Save €5/month with both products
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground line-through">€25</div>
+                  <div className="text-xl font-bold text-primary">€20</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between p-4 bg-muted rounded-md">
+            <span className="font-semibold">New Total:</span>
+            <span className="text-xl font-bold" data-testid="text-total-price">
+              €{calculatePrice(selectedProducts)}/month
+            </span>
+          </div>
+
+          {hasProductChanges() && (
+            <Button
+              onClick={handleUpdateProducts}
+              disabled={selectedProducts.length === 0 || updateProductsMutation.isPending}
+              size="lg"
+              data-testid="button-update-products"
+            >
+              {updateProductsMutation.isPending ? "Updating..." : "Update Products"}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-card-border shadow-sm">
+        <CardHeader className="pb-6">
           <CardTitle className="text-xl font-semibold">Subscription</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
             <div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Status: <span className="font-semibold text-lg text-foreground">
-                  {user?.subscriptionStatus === "active" ? "Active" : "Inactive"}
-                </span>
-              </p>
-              {user?.subscriptionStatus !== "active" && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Status: <span className="font-semibold text-lg text-foreground">
+                    {user?.subscriptionStatus === "active" ? "Active" : "Inactive"}
+                  </span>
+                </p>
+                {user?.selectedProducts && user.selectedProducts.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Current Plan: <span className="font-semibold text-foreground">
+                      €{calculatePrice(user.selectedProducts)}/month
+                    </span>
+                  </p>
+                )}
+              </div>
+              {user?.subscriptionStatus !== "active" && user?.selectedProducts && user.selectedProducts.length > 0 && (
                 <Button size="lg" data-testid="button-subscribe">
-                  Subscribe Now - €25/month
+                  Subscribe Now - €{calculatePrice(user.selectedProducts)}/month
                 </Button>
               )}
               {user?.subscriptionStatus === "active" && (

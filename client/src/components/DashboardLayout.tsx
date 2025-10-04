@@ -27,16 +27,16 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 
 const menuItems = [
-  { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { title: "Loyalty Cards", icon: CreditCard, href: "/dashboard/loyalty" },
-  { title: "QR Scanner", icon: Scan, href: "/dashboard/scanner" },
-  { title: "Spin Wheel", icon: Gauge, href: "/dashboard/spin-wheel" },
-  { title: "Customers", icon: Users, href: "/dashboard/customers" },
-  { title: "Analytics", icon: BarChart3, href: "/dashboard/analytics" },
+  { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", products: [] },
+  { title: "Loyalty Cards", icon: CreditCard, href: "/dashboard/loyalty", products: ['loyalty'] },
+  { title: "QR Scanner", icon: Scan, href: "/dashboard/scanner", products: ['loyalty'] },
+  { title: "Spin Wheel", icon: Gauge, href: "/dashboard/spin-wheel", products: ['spin'] },
+  { title: "Customers", icon: Users, href: "/dashboard/customers", products: [] },
+  { title: "Analytics", icon: BarChart3, href: "/dashboard/analytics", products: [] },
 ];
 
 const secondaryItems = [
-  { title: "Settings", icon: Settings, href: "/dashboard/settings" },
+  { title: "Settings", icon: Settings, href: "/dashboard/settings", products: [] },
 ];
 
 interface DashboardLayoutProps {
@@ -73,6 +73,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const shopInitials = user.shopName.substring(0, 2).toUpperCase();
 
+  const filterMenuItems = (items: typeof menuItems) => {
+    const selectedProducts = user.selectedProducts || [];
+    return items.filter(item => {
+      if (item.products.length === 0) return true;
+      return item.products.some(product => selectedProducts.includes(product));
+    });
+  };
+
+  const filteredMenuItems = filterMenuItems(menuItems);
+  const filteredSecondaryItems = filterMenuItems(secondaryItems);
+
   const style = {
     "--sidebar-width": "17rem",
   };
@@ -101,7 +112,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <SidebarGroupLabel className="text-xs font-medium">Main Menu</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {menuItems.map((item) => (
+                  {filteredMenuItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         asChild
@@ -122,7 +133,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {secondaryItems.map((item) => (
+                  {filteredSecondaryItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         asChild
