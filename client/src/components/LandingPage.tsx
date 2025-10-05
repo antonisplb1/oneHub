@@ -2,14 +2,15 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Award, Gift, TrendingUp, Check } from "lucide-react";
-import logoPath from "@assets/uniHub_logo_1759660809500.png";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto px-6 py-5 flex items-center justify-between">
-          <img src={logoPath} alt="uniHub" className="h-12" data-testid="img-logo" />
+          <Link href="/" data-testid="link-home">
+            <h1 className="text-2xl font-semibold text-primary cursor-pointer">uniHub</h1>
+          </Link>
           <Link href="/auth">
             <Button variant="outline" size="lg" data-testid="button-login">Login</Button>
           </Link>
