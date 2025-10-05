@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Award, Gift, TrendingUp, Check } from "lucide-react";
+import logoImage from "@assets/blob-3c16366_1759662322473.png";
 
 export default function LandingPage() {
   return (
@@ -9,7 +10,10 @@ export default function LandingPage() {
       <header className="border-b">
         <div className="container mx-auto px-6 py-5 flex items-center justify-between">
           <Link href="/" data-testid="link-home">
-            <h1 className="text-2xl font-semibold text-primary cursor-pointer">uniHub</h1>
+            <div className="flex items-center gap-3 cursor-pointer">
+              <img src={logoImage} alt="uniHub logo" className="h-8 w-8" />
+              <h1 className="text-2xl font-semibold text-primary">uniHub</h1>
+            </div>
           </Link>
           <Link href="/auth">
             <Button variant="outline" size="lg" data-testid="button-login">Login</Button>

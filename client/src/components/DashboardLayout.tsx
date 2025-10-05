@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import logoImage from "@assets/blob-3c16366_1759662322473.png";
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", products: [] },
@@ -95,7 +96,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <SidebarHeader className="p-5 border-b">
             <div className="flex flex-col gap-4">
               <Link href="/dashboard" data-testid="link-home">
-                <h1 className="text-2xl font-semibold text-primary cursor-pointer">uniHub</h1>
+                <div className="flex items-center gap-3 cursor-pointer">
+                  <img src={logoImage} alt="uniHub logo" className="h-8 w-8" />
+                  <h1 className="text-2xl font-semibold text-primary">uniHub</h1>
+                </div>
               </Link>
               <div className="flex items-center gap-3">
                 <Avatar className="h-11 w-11">
