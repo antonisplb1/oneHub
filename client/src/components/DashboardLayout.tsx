@@ -71,8 +71,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  const shopInitials = user.shopName.substring(0, 2).toUpperCase();
-
   const filterMenuItems = (items: typeof menuItems) => {
     const selectedProducts = user.selectedProducts || [];
     return items.filter(item => {
