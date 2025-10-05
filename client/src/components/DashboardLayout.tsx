@@ -25,7 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import logoImage from "@assets/blob-3c16366_1759662322473.png";
+import logoImage from "@assets/blob-b137548_1759662451793.png";
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", products: [] },

@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Award, Gift, TrendingUp, Check } from "lucide-react";
-import logoImage from "@assets/blob-3c16366_1759662322473.png";
+import logoImage from "@assets/blob-b137548_1759662451793.png";
 
 export default function LandingPage() {
   return (
