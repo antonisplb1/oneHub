@@ -23,7 +23,6 @@ import {
   Scan,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import logoImage from "@assets/blob-b137548_1759662451793.png";
 
@@ -102,11 +101,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
               </Link>
               <div className="flex items-center gap-3">
-                <Avatar className="h-11 w-11">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-base font-semibold">
-                    {shopInitials}
-                  </AvatarFallback>
-                </Avatar>
+                {user.logo && (
+                  <img 
+                    src={user.logo} 
+                    alt={`${user.shopName} logo`}
+                    className="h-11 w-11 object-contain rounded-md"
+                    data-testid="img-shop-logo"
+                  />
+                )}
                 <div>
                   <p className="font-semibold">{user.shopName}</p>
                   <p className="text-xs text-muted-foreground">
