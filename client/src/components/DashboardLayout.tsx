@@ -111,9 +111,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 )}
                 <div>
                   <p className="font-semibold">{user.shopName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {user.subscriptionStatus === "active" ? "Pro Plan" : "Free Trial"}
-                  </p>
                 </div>
               </div>
             </div>
