@@ -85,7 +85,7 @@ function Router() {
           </DashboardLayout>
         )}
       </Route>
-      <Route path="/dashboard/settings">
+      <Route path="/dashboard/account">
         {() => (
           <DashboardLayout>
             <SettingsPage />

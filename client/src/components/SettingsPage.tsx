@@ -189,7 +189,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-10">
       <div className="space-y-2">
-        <h1 className="text-4xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="text-4xl font-semibold tracking-tight">Account</h1>
         <p className="text-muted-foreground text-lg">Manage your shop information</p>
       </div>
 

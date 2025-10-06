@@ -37,7 +37,7 @@ const menuItems = [
 ];
 
 const secondaryItems = [
-  { title: "Account", icon: Settings, href: "/dashboard/settings", products: [] },
+  { title: "Account", icon: Settings, href: "/dashboard/account", products: [] },
 ];
 
 interface DashboardLayoutProps {
