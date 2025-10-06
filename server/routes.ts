@@ -273,10 +273,16 @@ export function registerRoutes(app: Express) {
         .where(eq(users.id, user.id))
         .returning();
 
-      res.json({ 
-        success: true, 
-        message: "Email verified successfully! You can now log in.",
-        user: updatedUser
+      // Automatically log the user in after verification
+      req.login(updatedUser, (err) => {
+        if (err) {
+          return res.status(500).json({ error: "Verification successful but login failed" });
+        }
+        res.json({ 
+          success: true, 
+          message: "Email verified successfully! You are now logged in.",
+          user: updatedUser
+        });
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Email verification failed" });
