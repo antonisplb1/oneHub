@@ -26,6 +26,8 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import Demo from "@/pages/Demo";
 import SelectProducts from "@/pages/SelectProducts";
+import AdminLogin from "@/pages/AdminLogin";
+import AdminDashboard from "@/pages/AdminDashboard";
 
 function Router() {
   return (
@@ -33,6 +35,8 @@ function Router() {
       <Route path="/" component={LandingPage} />
       <Route path="/demo" component={Demo} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/admin" component={AdminLogin} />
+      <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/verify-email/:token" component={VerifyEmail} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password/:token" component={ResetPassword} />

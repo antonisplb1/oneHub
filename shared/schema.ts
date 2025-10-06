@@ -92,6 +92,23 @@ export const spins = pgTable("spins", {
   spunAt: timestamp("spun_at").defaultNow(),
 });
 
+// Admin tables
+export const adminUsers = pgTable("admin_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const adminSecurity = pgTable("admin_security", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id").notNull().references(() => adminUsers.id, { onDelete: "cascade" }).unique(),
+  consecutiveFailures: integer("consecutive_failures").default(0),
+  lockedUntil: timestamp("locked_until"),
+  lastFailureIp: text("last_failure_ip"),
+  lastFailureAt: timestamp("last_failure_at"),
+});
+
 // Sessions
 export const sessions = pgTable(
   "sessions",
@@ -181,4 +198,33 @@ export const createRewardSchema = insertRewardSchema.extend({
 export const createTokenSchema = z.object({
   customerName: z.string().optional(),
   expiryMinutes: z.number().min(1).max(1440).default(30),
+});
+
+// Admin schemas
+export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAdminSecuritySchema = createInsertSchema(adminSecurity).omit({
+  id: true,
+});
+
+// Admin types
+export type AdminUser = typeof adminUsers.$inferSelect;
+export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
+export type AdminSecurity = typeof adminSecurity.$inferSelect;
+export type InsertAdminSecurity = z.infer<typeof insertAdminSecuritySchema>;
+
+// Admin validation schemas
+export const adminLoginSchema = z.object({
+  email: z.string().email("Please enter a valid email"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export const adminCreateUserSchema = z.object({
+  email: z.string().email("Please enter a valid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  shopName: z.string().min(1, "Shop name is required"),
+  selectedProducts: z.array(z.enum(['loyalty', 'spin'])).default(['loyalty', 'spin']),
 });

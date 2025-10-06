@@ -8,13 +8,17 @@ import {
   rewards,
   spinTokens,
   spins,
+  adminUsers,
+  adminSecurity,
   signupSchema,
   loginSchema,
   createRewardSchema,
   createTokenSchema,
+  adminLoginSchema,
+  adminCreateUserSchema,
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { hashPassword, generateToken } from "./auth";
+import { hashPassword, generateToken, comparePasswords } from "./auth";
 import passport from "passport";
 import { nanoid } from "nanoid";
 import Stripe from "stripe";
@@ -102,6 +106,14 @@ const signupLimiter = rateLimit({
   // Skip rate limiting for successful signups (only count failed attempts)
   skipSuccessfulRequests: true,
 });
+
+// Admin authentication middleware
+function requireAdminAuth(req: Request, res: Response, next: Function) {
+  if (req.session && req.session.adminId) {
+    return next();
+  }
+  res.status(401).json({ error: "Admin authentication required" });
+}
 
 // Verify Turnstile token with Cloudflare
 async function verifyTurnstile(token: string, remoteip?: string): Promise<boolean> {
@@ -381,6 +393,190 @@ export function registerRoutes(app: Express) {
       res.json({ success: true, message: "Password reset successfully" });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Password reset failed" });
+    }
+  });
+
+  // Admin authentication routes
+  app.post("/api/admin/login", async (req, res) => {
+    try {
+      const validatedData = adminLoginSchema.parse(req.body);
+      const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+      
+      const [admin] = await db
+        .select()
+        .from(adminUsers)
+        .where(eq(adminUsers.email, validatedData.email))
+        .limit(1);
+
+      if (!admin) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      const [security] = await db
+        .select()
+        .from(adminSecurity)
+        .where(eq(adminSecurity.adminId, admin.id))
+        .limit(1);
+
+      if (security) {
+        if (security.lockedUntil && security.lockedUntil > new Date()) {
+          const remainingTime = Math.ceil((security.lockedUntil.getTime() - Date.now()) / (1000 * 60 * 60));
+          return res.status(403).json({ 
+            error: `Account locked due to too many failed attempts. Please try again in ${remainingTime} hours.`,
+            lockedUntil: security.lockedUntil
+          });
+        }
+      }
+
+      const isValid = await comparePasswords(validatedData.password, admin.passwordHash);
+
+      if (!isValid) {
+        const currentFailures = (security?.consecutiveFailures || 0) + 1;
+        const now = new Date();
+        const lockoutDuration = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
+        const lockedUntil = currentFailures >= 3 ? new Date(now.getTime() + lockoutDuration) : null;
+
+        if (security) {
+          await db
+            .update(adminSecurity)
+            .set({
+              consecutiveFailures: currentFailures,
+              lockedUntil,
+              lastFailureIp: clientIp,
+              lastFailureAt: now,
+            })
+            .where(eq(adminSecurity.adminId, admin.id));
+        } else {
+          await db
+            .insert(adminSecurity)
+            .values({
+              adminId: admin.id,
+              consecutiveFailures: currentFailures,
+              lockedUntil,
+              lastFailureIp: clientIp,
+              lastFailureAt: now,
+            });
+        }
+
+        if (currentFailures >= 3) {
+          return res.status(403).json({ 
+            error: `Too many failed attempts. Account locked for 2 days.`,
+            lockedUntil
+          });
+        }
+
+        return res.status(401).json({ 
+          error: "Invalid email or password",
+          attemptsRemaining: 3 - currentFailures
+        });
+      }
+
+      if (security) {
+        await db
+          .update(adminSecurity)
+          .set({
+            consecutiveFailures: 0,
+            lockedUntil: null,
+          })
+          .where(eq(adminSecurity.adminId, admin.id));
+      } else {
+        await db
+          .insert(adminSecurity)
+          .values({
+            adminId: admin.id,
+            consecutiveFailures: 0,
+            lockedUntil: null,
+            lastFailureIp: clientIp,
+            lastFailureAt: new Date(),
+          });
+      }
+
+      req.session.adminId = admin.id;
+      res.json({ 
+        success: true,
+        admin: {
+          id: admin.id,
+          email: admin.email
+        }
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Login failed" });
+    }
+  });
+
+  app.get("/api/admin/me", (req, res) => {
+    if (req.session && req.session.adminId) {
+      db.select()
+        .from(adminUsers)
+        .where(eq(adminUsers.id, req.session.adminId))
+        .limit(1)
+        .then(([admin]) => {
+          if (admin) {
+            res.json({ 
+              admin: {
+                id: admin.id,
+                email: admin.email
+              }
+            });
+          } else {
+            res.status(401).json({ error: "Not authenticated" });
+          }
+        });
+    } else {
+      res.status(401).json({ error: "Not authenticated" });
+    }
+  });
+
+  app.post("/api/admin/logout", (req, res) => {
+    if (req.session) {
+      req.session.adminId = undefined;
+    }
+    res.json({ success: true });
+  });
+
+  // Admin: Create fully-activated user (bypasses email verification and subscription)
+  app.post("/api/admin/users", requireAdminAuth, async (req, res) => {
+    try {
+      const validatedData = adminCreateUserSchema.parse(req.body);
+      
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, validatedData.email))
+        .limit(1);
+
+      if (existingUser.length > 0) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+
+      const passwordHash = await hashPassword(validatedData.password);
+      
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          email: validatedData.email,
+          passwordHash,
+          shopName: validatedData.shopName,
+          emailVerified: true,
+          subscriptionStatus: 'active',
+          selectedProducts: validatedData.selectedProducts,
+          verificationToken: null,
+          verificationTokenExpiry: null,
+        })
+        .returning();
+
+      res.json({ 
+        success: true,
+        message: "User created successfully",
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          shopName: newUser.shopName,
+          selectedProducts: newUser.selectedProducts,
+        }
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "User creation failed" });
     }
   });
 
