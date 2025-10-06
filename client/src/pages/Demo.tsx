@@ -1,7 +1,8 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Award, Gift, QrCode, Smartphone, TrendingUp, Users, ArrowRight, Check, Sparkles } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Award, Gift, QrCode, Smartphone, TrendingUp, Users, ArrowRight, Check, Sparkles, CreditCard, Wallet, ScanLine, BarChart3, Bell } from "lucide-react";
 
 export default function Demo() {
   return (
@@ -20,207 +21,461 @@ export default function Demo() {
       <section className="py-16 px-6">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h1 className="text-5xl font-semibold mb-6">See uniHub in Action</h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Discover how uniHub helps businesses like yours boost customer loyalty and engagement with digital loyalty cards and prize wheels.
+            <h1 className="text-5xl font-semibold mb-6">How uniHub Works</h1>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              A complete digital loyalty and engagement platform for businesses. Choose the features you need, 
+              start rewarding customers immediately, and watch engagement grow.
             </p>
           </div>
 
+          {/* Pricing Overview */}
+          <div className="mb-24">
+            <h2 className="text-3xl font-semibold text-center mb-10">Simple, Flexible Pricing</h2>
+            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="w-5 h-5 text-primary" />
+                    Loyalty Cards
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">€15<span className="text-lg text-muted-foreground">/month</span></div>
+                  <p className="text-sm text-muted-foreground mb-4">Perfect for coffee shops, restaurants, salons</p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Digital stamp cards</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Google Wallet integration</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Customer management</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>QR code scanning</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Gift className="w-5 h-5 text-chart-3" />
+                    Spin Wheel
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">€10<span className="text-lg text-muted-foreground">/month</span></div>
+                  <p className="text-sm text-muted-foreground mb-4">Great for events, promotions, giveaways</p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Customizable prize wheels</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Set win probabilities</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>QR code campaigns</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Track prize distribution</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary">
+                <CardHeader>
+                  <div className="flex items-center justify-between mb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      Both Products
+                    </CardTitle>
+                    <Badge>Best Value</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">€20<span className="text-lg text-muted-foreground">/month</span></div>
+                  <p className="text-sm text-muted-foreground mb-4">Complete engagement toolkit, save €5/month</p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>All Loyalty features</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>All Spin Wheel features</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Unified customer data</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Maximum engagement</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* How It Works - Loyalty */}
           <div className="space-y-24">
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <Award className="w-8 h-8 text-primary" />
-                  <h2 className="text-3xl font-semibold">Digital Loyalty Cards</h2>
+            <div>
+              <div className="text-center mb-12">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <Award className="w-10 h-10 text-primary" />
+                  <h2 className="text-4xl font-semibold">Digital Loyalty Cards</h2>
                 </div>
-                <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                  Say goodbye to paper punch cards. Customers collect digital stamps on their phones, making it easy to track rewards and never lose their progress.
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  Replace paper punch cards with digital stamp collection. Customers track their progress on their phones, 
+                  and you scan their QR codes to award stamps instantly.
                 </p>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Customers scan QR code to join instantly</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Award stamps by scanning customer QR codes</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Customize rewards and stamp limits</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Track repeat customer visits</span>
-                  </li>
-                </ul>
               </div>
-              <Card className="p-8" data-testid="card-loyalty-demo">
-                <div className="aspect-square bg-gradient-to-br from-primary/20 to-chart-3/20 rounded-xl flex flex-col items-center justify-center gap-6">
-                  <div className="text-center">
-                    <Award className="w-20 h-20 text-primary mx-auto mb-4" />
-                    <div className="text-sm text-muted-foreground mb-2">Customer Loyalty Card</div>
-                    <div className="flex gap-2 justify-center mb-4">
-                      {[...Array(10)].map((_, i) => (
-                        <div
-                          key={i}
-                          className={`w-8 h-8 rounded-full ${
-                            i < 7 ? 'bg-primary' : 'bg-muted'
-                          }`}
-                          data-testid={`stamp-${i}`}
-                        />
-                      ))}
+
+              <div className="grid md:grid-cols-3 gap-6 mb-8">
+                <Card>
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                      <QrCode className="w-6 h-6 text-primary" />
                     </div>
-                    <div className="text-lg font-semibold" data-testid="text-stamp-count">7 of 10 stamps</div>
+                    <CardTitle className="text-lg">1. Customer Joins</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Display your merchant QR code at checkout. Customers scan it with their phone camera to 
+                      instantly register and get their digital loyalty card.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-lg bg-chart-2/10 flex items-center justify-center mb-3">
+                      <ScanLine className="w-6 h-6 text-chart-2" />
+                    </div>
+                    <CardTitle className="text-lg">2. Award Stamps</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Use the built-in camera scanner in your dashboard. Customers show their QR code from their 
+                      phone, you scan it, and they instantly get a stamp. Safe scanning prevents accidents.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-lg bg-chart-3/10 flex items-center justify-center mb-3">
+                      <Gift className="w-6 h-6 text-chart-3" />
+                    </div>
+                    <CardTitle className="text-lg">3. Reward Collected</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      When customers reach 10/10 stamps, the next scan automatically grants the reward and 
+                      resets their card to 0/10 to start collecting again.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="p-8 bg-gradient-to-br from-primary/5 to-chart-2/5">
+                <div className="grid md:grid-cols-2 gap-8 items-center">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-4">Key Features</h3>
+                    <ul className="space-y-3">
+                      <li className="flex items-start gap-2">
+                        <Wallet className="w-5 h-5 text-primary mt-0.5" />
+                        <div>
+                          <div className="font-medium">Google Wallet Integration</div>
+                          <div className="text-sm text-muted-foreground">Customers can add cards to Google Wallet for quick access</div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Users className="w-5 h-5 text-primary mt-0.5" />
+                        <div>
+                          <div className="font-medium">Customer Management</div>
+                          <div className="text-sm text-muted-foreground">View all customers, track their progress, and see loyalty history</div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <BarChart3 className="w-5 h-5 text-primary mt-0.5" />
+                        <div>
+                          <div className="font-medium">Analytics Dashboard</div>
+                          <div className="text-sm text-muted-foreground">Track total customers, active cards, and rewards given</div>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="bg-background rounded-lg p-6">
+                    <div className="text-sm text-muted-foreground mb-2">Example Loyalty Card</div>
+                    <div className="aspect-[1.6/1] bg-gradient-to-br from-primary to-primary/70 rounded-xl p-6 text-primary-foreground flex flex-col justify-between">
+                      <div>
+                        <div className="text-xs opacity-80 mb-1">Coffee Shop Rewards</div>
+                        <div className="text-lg font-semibold">Sarah Johnson</div>
+                      </div>
+                      <div>
+                        <div className="flex gap-1.5 mb-2">
+                          {[...Array(10)].map((_, i) => (
+                            <div
+                              key={i}
+                              className={`w-6 h-6 rounded-full ${
+                                i < 7 ? 'bg-primary-foreground' : 'bg-primary-foreground/30'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <div className="text-sm">7 of 10 stamps • Next: Free Coffee</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </Card>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <Card className="p-8 md:order-first" data-testid="card-prizewheel-demo">
-                <div className="aspect-square bg-gradient-to-br from-chart-3/20 to-primary/20 rounded-xl flex flex-col items-center justify-center gap-6">
-                  <div className="relative">
-                    <div className="w-48 h-48 rounded-full border-8 border-primary/30 flex items-center justify-center">
-                      <Gift className="w-20 h-20 text-chart-3" />
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-                      <Sparkles className="w-8 h-8 text-primary-foreground" />
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-semibold" data-testid="text-prizewheel-title">Prize Wheel</div>
-                    <div className="text-sm text-muted-foreground">Spin to Win!</div>
-                  </div>
+            {/* How It Works - Spin Wheel */}
+            <div>
+              <div className="text-center mb-12">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <Gift className="w-10 h-10 text-chart-3" />
+                  <h2 className="text-4xl font-semibold">Spin Wheel Campaigns</h2>
                 </div>
-              </Card>
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <Gift className="w-8 h-8 text-chart-3" />
-                  <h2 className="text-3xl font-semibold">Prize Wheel Campaigns</h2>
-                </div>
-                <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                  Create excitement with customizable spin-to-win wheels. Perfect for promotions, special events, or rewarding loyal customers.
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  Create excitement with customizable prize wheels. Perfect for grand openings, special events, 
+                  or rewarding customers during promotions.
                 </p>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Create custom prizes and set win probabilities</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Generate unique QR codes for one-time spins</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Run unlimited in-store spins during events</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Track prize distribution and engagement</span>
-                  </li>
-                </ul>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-8 items-center mb-8">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-4">Two Ways to Run Campaigns</h3>
+                    <div className="space-y-4">
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-chart-3/10 flex items-center justify-center shrink-0">
+                              <QrCode className="w-5 h-5 text-chart-3" />
+                            </div>
+                            <div>
+                              <div className="font-semibold mb-1">QR Code Tokens</div>
+                              <p className="text-sm text-muted-foreground">
+                                Generate unique QR codes (e.g., 100 codes). Share them via social media, email, 
+                                or print flyers. Each code allows one spin only—perfect for customer acquisition campaigns.
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                              <Smartphone className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <div className="font-semibold mb-1">In-Store Unlimited Spins</div>
+                              <p className="text-sm text-muted-foreground">
+                                Display a single QR code at your store during events. Customers can scan and spin 
+                                as many times as they want—great for grand openings and special occasions.
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Prize Configuration</h3>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                        <span>Create up to 8 different prizes per wheel</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                        <span>Set custom win probabilities (0-100% per prize)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                        <span>Choose colors for each prize segment</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                        <span>Track total spins and prize distribution in real-time</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <Card className="p-8" data-testid="card-spinwheel-demo">
+                  <div className="aspect-square bg-gradient-to-br from-chart-3/20 to-primary/20 rounded-xl flex flex-col items-center justify-center gap-6">
+                    <div className="relative">
+                      <div className="w-56 h-56 rounded-full border-[16px] border-dashed border-chart-3/30 flex items-center justify-center relative overflow-hidden">
+                        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+                          <div className="bg-red-500/20"></div>
+                          <div className="bg-yellow-500/20"></div>
+                          <div className="bg-blue-500/20"></div>
+                          <div className="bg-green-500/20"></div>
+                        </div>
+                        <div className="relative z-10 w-20 h-20 rounded-full bg-primary flex items-center justify-center">
+                          <Sparkles className="w-10 h-10 text-primary-foreground" />
+                        </div>
+                      </div>
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-3 w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[30px] border-t-chart-3"></div>
+                    </div>
+                    <div className="text-center space-y-2">
+                      <div className="text-xl font-bold">Grand Opening Special</div>
+                      <div className="text-sm text-muted-foreground">Prizes: Free Coffee • 10% Off • 20% Off • Try Again</div>
+                      <Badge variant="secondary" className="mt-2">147 spins today</Badge>
+                    </div>
+                  </div>
+                </Card>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <QrCode className="w-8 h-8 text-primary" />
-                  <h2 className="text-3xl font-semibold">QR Code System</h2>
+            {/* Dashboard Overview */}
+            <div>
+              <div className="text-center mb-12">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <TrendingUp className="w-10 h-10 text-chart-2" />
+                  <h2 className="text-4xl font-semibold">Unified Merchant Dashboard</h2>
                 </div>
-                <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                  Everything works with QR codes. Display your merchant QR for customer signups, scan customer QR codes to award stamps, or share spin QR codes for campaigns.
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  Everything you need in one place. Manage customers, scan QR codes with your device camera, 
+                  view analytics, and control all your campaigns.
                 </p>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2">
-                    <Smartphone className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Built-in camera scanner in dashboard</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <QrCode className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Unique QR codes for each customer</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Users className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Instant customer registration</span>
-                  </li>
-                </ul>
               </div>
-              <Card className="p-8" data-testid="card-qrcode-demo">
-                <div className="aspect-square bg-gradient-to-br from-primary/20 to-chart-2/20 rounded-xl flex flex-col items-center justify-center gap-6">
-                  <QrCode className="w-32 h-32 text-primary" />
-                  <div className="text-center">
-                    <div className="text-lg font-semibold mb-2" data-testid="text-qr-title">Scan to Join</div>
-                    <div className="text-sm text-muted-foreground">Customer scans your QR code</div>
-                  </div>
-                </div>
-              </Card>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ScanLine className="w-5 h-5" />
+                      Built-in QR Scanner
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Access camera-based scanning directly from your dashboard. Scan customer QR codes to award 
+                      stamps with safety confirmations to prevent accidental double-scans.
+                    </p>
+                    <Badge variant="secondary">Camera permission required</Badge>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                      Customer Management
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      View complete customer list with loyalty card status, total rewards earned, and registration dates. 
+                      Search and filter to find specific customers quickly.
+                    </p>
+                    <Badge variant="secondary">Export available</Badge>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5" />
+                      Real-Time Analytics
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Track key metrics: total customers, active loyalty cards, rewards given, and spin wheel activity. 
+                      Monitor engagement trends over time.
+                    </p>
+                    <Badge variant="secondary">Live updates</Badge>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="w-5 h-5" />
+                      Flexible Subscriptions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Powered by Stripe. Switch between Loyalty, Spin Wheel, or Both at any time. 
+                      Cancel anytime—no long-term contracts or hidden fees.
+                    </p>
+                    <Badge variant="secondary">Secure payments</Badge>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <Card className="p-8 md:order-first" data-testid="card-dashboard-demo">
-                <div className="aspect-square bg-gradient-to-br from-chart-2/20 to-primary/20 rounded-xl flex flex-col items-center justify-center p-6">
-                  <TrendingUp className="w-16 h-16 text-chart-2 mb-6" />
-                  <div className="w-full space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Total Customers</span>
-                      <span className="text-2xl font-bold" data-testid="text-total-customers">247</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Active Cards</span>
-                      <span className="text-2xl font-bold" data-testid="text-active-cards">189</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Rewards Given</span>
-                      <span className="text-2xl font-bold" data-testid="text-rewards-given">45</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Spins Today</span>
-                      <span className="text-2xl font-bold" data-testid="text-spins-today">23</span>
-                    </div>
+            {/* Real Use Cases */}
+            <div className="bg-muted/50 rounded-2xl p-8 md:p-12">
+              <h2 className="text-3xl font-semibold text-center mb-10">Perfect For</h2>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                    <Award className="w-8 h-8 text-primary" />
                   </div>
+                  <h3 className="font-semibold text-lg">Coffee Shops & Cafes</h3>
+                  <p className="text-sm text-muted-foreground">
+                    "Buy 9 coffees, get the 10th free" with digital stamp cards. No more lost paper cards.
+                  </p>
                 </div>
-              </Card>
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <TrendingUp className="w-8 h-8 text-chart-2" />
-                  <h2 className="text-3xl font-semibold">Unified Dashboard</h2>
+
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 rounded-full bg-chart-3/10 flex items-center justify-center mx-auto">
+                    <Gift className="w-8 h-8 text-chart-3" />
+                  </div>
+                  <h3 className="font-semibold text-lg">Retail Stores</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Run spin wheel promotions during sales. Give customers a chance to win discounts at checkout.
+                  </p>
                 </div>
-                <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                  Manage everything from one elegant dashboard. Track customer engagement, view analytics, and control both loyalty and prize wheel features seamlessly.
-                </p>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Real-time customer engagement metrics</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Camera-based QR code scanning</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Manage rewards and campaigns</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-1" />
-                    <span>Access customer loyalty history</span>
-                  </li>
-                </ul>
+
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 rounded-full bg-chart-2/10 flex items-center justify-center mx-auto">
+                    <Users className="w-8 h-8 text-chart-2" />
+                  </div>
+                  <h3 className="font-semibold text-lg">Salons & Spas</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Reward repeat visits with loyalty stamps. Offer spin wheel prizes for referrals and special occasions.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
+          {/* CTA Section */}
           <div className="mt-24 text-center">
-            <h2 className="text-3xl font-semibold mb-6">Ready to Get Started?</h2>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join hundreds of businesses using uniHub to build lasting customer relationships.
+            <h2 className="text-3xl font-semibold mb-4">Ready to Boost Customer Loyalty?</h2>
+            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Start with a free account. Choose your subscription after email verification. 
+              Cancel anytime—no commitments.
             </p>
             <div className="flex gap-4 justify-center flex-wrap">
               <Link href="/auth">
                 <Button size="lg" className="text-base px-8" data-testid="button-start-now">
-                  Start Now <ArrowRight className="ml-2 w-4 h-4" />
+                  Get Started Free <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </Link>
               <Link href="/">
@@ -233,7 +488,7 @@ export default function Demo() {
         </div>
       </section>
 
-      <footer className="border-t py-8 px-6">
+      <footer className="border-t py-8 px-6 mt-16">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
           <p>© 2025 uniHub. All rights reserved.</p>
         </div>
