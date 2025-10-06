@@ -6,10 +6,18 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function ScannerPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
+  const [showResultDialog, setShowResultDialog] = useState(false);
   const { toast } = useToast();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isProcessingRef = useRef(false);
@@ -24,10 +32,7 @@ export default function ScannerPage() {
     onSuccess: async (data) => {
       await stopScanning();
       setScanResult(data);
-      toast({
-        title: "Success!",
-        description: data.message,
-      });
+      setShowResultDialog(true);
       isProcessingRef.current = false;
     },
     onError: (error: any) => {
@@ -43,6 +48,7 @@ export default function ScannerPage() {
   const startScanning = async () => {
     try {
       setScanResult(null);
+      setShowResultDialog(false);
       const qrElement = document.getElementById("qr-reader");
       if (!qrElement) {
         throw new Error("QR reader element not found");
@@ -182,51 +188,56 @@ export default function ScannerPage() {
         </CardContent>
       </Card>
 
-      {scanResult && (
-        <Card className={scanResult.rewardGranted ? "bg-green-500/10 border-green-500" : "bg-chart-2/10 border-chart-2"}>
-          <CardHeader>
-            <CardTitle className={`flex items-center gap-2 ${scanResult.rewardGranted ? "text-green-600" : "text-chart-2"}`}>
-              <Check className="w-5 h-5" />
-              {scanResult.rewardGranted ? "Reward Granted!" : "Stamp Awarded!"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-medium">Customer</p>
-              <p className="text-lg">{scanResult.customer.name || "Anonymous"}</p>
-            </div>
-            {scanResult.rewardGranted ? (
-              <div className="bg-green-500 text-white p-4 rounded-lg text-center">
-                <p className="font-bold text-lg">Reward Granted!</p>
-                <p className="text-sm mt-1">{scanResult.card.rewardText}</p>
-                <p className="text-sm mt-2">Card has been reset to start collecting again</p>
-              </div>
-            ) : (
+      <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className={`flex items-center gap-2 text-2xl ${scanResult?.rewardGranted ? "text-green-600" : "text-chart-2"}`}>
+              <Check className="w-6 h-6" />
+              {scanResult?.rewardGranted ? "Reward Granted!" : "Stamp Awarded!"}
+            </DialogTitle>
+            <DialogDescription>
+              Scan completed successfully
+            </DialogDescription>
+          </DialogHeader>
+          {scanResult && (
+            <div className="space-y-4 py-4">
               <div>
-                <p className="text-sm font-medium">Progress</p>
-                <p className="text-2xl font-bold text-chart-2">
-                  {scanResult.card.stamps}/{scanResult.card.maxStamps} Stamps
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Customer</p>
+                <p className="text-xl font-semibold">{scanResult.customer.name || "Anonymous"}</p>
               </div>
-            )}
-            {scanResult.card.isRedeemable && !scanResult.rewardGranted && (
-              <div className="bg-chart-2 text-white p-4 rounded-lg text-center">
-                <p className="font-bold text-lg">Card Complete!</p>
-                <p className="text-sm mt-1">Next scan will grant {scanResult.card.rewardText}</p>
-              </div>
-            )}
-            <Button
-              onClick={startScanning}
-              className="w-full"
-              size="lg"
-              data-testid="button-scan-again"
-            >
-              <Camera className="w-4 h-4 mr-2" />
-              Scan Again
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+              {scanResult.rewardGranted ? (
+                <div className="bg-green-500 text-white p-4 rounded-lg text-center">
+                  <p className="font-bold text-lg">Reward Granted!</p>
+                  <p className="text-sm mt-1">{scanResult.card.rewardText}</p>
+                  <p className="text-sm mt-2">Card has been reset to start collecting again</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Progress</p>
+                  <p className="text-3xl font-bold text-chart-2">
+                    {scanResult.card.stamps}/{scanResult.card.maxStamps} Stamps
+                  </p>
+                </div>
+              )}
+              {scanResult.card.isRedeemable && !scanResult.rewardGranted && (
+                <div className="bg-chart-2 text-white p-4 rounded-lg text-center">
+                  <p className="font-bold text-lg">Card Complete!</p>
+                  <p className="text-sm mt-1">Next scan will grant {scanResult.card.rewardText}</p>
+                </div>
+              )}
+              <Button
+                onClick={startScanning}
+                className="w-full"
+                size="lg"
+                data-testid="button-scan-again"
+              >
+                <Camera className="w-4 h-4 mr-2" />
+                Scan Again
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
