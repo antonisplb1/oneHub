@@ -21,7 +21,8 @@ export default function ScannerPage() {
         body: JSON.stringify({ qrCode: qrCodeValue }),
       });
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      await stopScanning();
       setScanResult(data);
       toast({
         title: "Success!",
@@ -41,6 +42,7 @@ export default function ScannerPage() {
 
   const startScanning = async () => {
     try {
+      setScanResult(null);
       const qrElement = document.getElementById("qr-reader");
       if (!qrElement) {
         throw new Error("QR reader element not found");
@@ -185,10 +187,10 @@ export default function ScannerPage() {
           <CardHeader>
             <CardTitle className={`flex items-center gap-2 ${scanResult.rewardGranted ? "text-green-600" : "text-chart-2"}`}>
               <Check className="w-5 h-5" />
-              {scanResult.rewardGranted ? "Reward Granted!" : "Stamp Added Successfully!"}
+              {scanResult.rewardGranted ? "Reward Granted!" : "Stamp Awarded!"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <div>
               <p className="text-sm font-medium">Customer</p>
               <p className="text-lg">{scanResult.customer.name || "Anonymous"}</p>
@@ -213,6 +215,15 @@ export default function ScannerPage() {
                 <p className="text-sm mt-1">Next scan will grant {scanResult.card.rewardText}</p>
               </div>
             )}
+            <Button
+              onClick={startScanning}
+              className="w-full"
+              size="lg"
+              data-testid="button-scan-again"
+            >
+              <Camera className="w-4 h-4 mr-2" />
+              Scan Again
+            </Button>
           </CardContent>
         </Card>
       )}
