@@ -12,6 +12,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
   SidebarHeader,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
@@ -43,6 +44,76 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+function SidebarMenuItems() {
+  const [location] = useLocation();
+  const { user } = useAuth();
+  const { setOpenMobile, isMobile } = useSidebar();
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
+
+  const filterMenuItems = (items: typeof menuItems) => {
+    const selectedProducts = user?.selectedProducts || [];
+    return items.filter(item => {
+      if (item.products.length === 0) return true;
+      return item.products.some(product => selectedProducts.includes(product));
+    });
+  };
+
+  const filteredMenuItems = filterMenuItems(menuItems);
+  const filteredSecondaryItems = filterMenuItems(secondaryItems);
+
+  return (
+    <>
+      <SidebarGroup>
+        <SidebarGroupLabel className="text-xs font-medium">Main Menu</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {filteredMenuItems.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location === item.href}
+                  data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}
+                >
+                  <Link href={item.href} onClick={handleLinkClick}>
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {filteredSecondaryItems.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location === item.href}
+                  data-testid={`link-${item.title.toLowerCase()}`}
+                >
+                  <Link href={item.href} onClick={handleLinkClick}>
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    </>
+  );
+}
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [location, setLocation] = useLocation();
   const { user, logout, isAuthenticated, isLoading } = useAuth();
@@ -70,17 +141,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
     );
   }
-
-  const filterMenuItems = (items: typeof menuItems) => {
-    const selectedProducts = user.selectedProducts || [];
-    return items.filter(item => {
-      if (item.products.length === 0) return true;
-      return item.products.some(product => selectedProducts.includes(product));
-    });
-  };
-
-  const filteredMenuItems = filterMenuItems(menuItems);
-  const filteredSecondaryItems = filterMenuItems(secondaryItems);
 
   const style = {
     "--sidebar-width": "17rem",
@@ -114,48 +174,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </SidebarHeader>
           <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-medium">Main Menu</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {filteredMenuItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === item.href}
-                        data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}
-                      >
-                        <Link href={item.href}>
-                          <item.icon className="w-4 h-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {filteredSecondaryItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === item.href}
-                        data-testid={`link-${item.title.toLowerCase()}`}
-                      >
-                        <Link href={item.href}>
-                          <item.icon className="w-4 h-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            <SidebarMenuItems />
           </SidebarContent>
         </Sidebar>
 
