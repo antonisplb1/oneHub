@@ -55,7 +55,7 @@ export default function AuthPage() {
             <CardDescription className="text-base">Login or create your account to get started</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login">
+            <Tabs defaultValue="signup">
               <TabsList className="grid w-full grid-cols-2 mb-8">
                 <TabsTrigger value="login" data-testid="tab-login">Login</TabsTrigger>
                 <TabsTrigger value="signup" data-testid="tab-signup">Sign Up</TabsTrigger>
