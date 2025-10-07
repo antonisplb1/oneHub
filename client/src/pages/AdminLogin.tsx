@@ -15,7 +15,7 @@ export default function AdminLogin() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const { data: adminData } = useQuery({
+  const { data: adminData } = useQuery<{ admin?: any }>({
     queryKey: ['/api/admin/me'],
   });
 

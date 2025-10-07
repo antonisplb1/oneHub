@@ -18,7 +18,7 @@ export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const { data: adminData, isLoading } = useQuery({
+  const { data: adminData, isLoading } = useQuery<{ admin?: any }>({
     queryKey: ['/api/admin/me'],
   });
 

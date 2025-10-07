@@ -80,8 +80,8 @@ export class GoogleWalletService {
     if (logoUrl && logoUrl.startsWith('https://')) {
       validLogoUrl = logoUrl;
     } else if (logoUrl && logoUrl.startsWith('data:')) {
-      const domain = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+      const domain = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}` 
         : 'http://localhost:5000';
       validLogoUrl = `${domain}/api/logo/${userId}`;
     }
