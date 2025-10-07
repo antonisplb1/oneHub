@@ -98,16 +98,10 @@ export class GoogleWalletService {
 
     try {
       await this.client.loyaltyclass.get({ resourceId: classId });
-      // Class exists, update only the background color (logo can't be updated after approval)
-      await this.client.loyaltyclass.patch({
-        resourceId: classId,
-        requestBody: {
-          hexBackgroundColor: loyaltyClass.hexBackgroundColor
-        }
-      });
+      // Class exists, just use it (can't update once approved)
     } catch (err: any) {
       if (err.response?.status === 404) {
-        // Class doesn't exist, create it
+        // Class doesn't exist, create it with the selected color
         await this.client.loyaltyclass.insert({
           requestBody: loyaltyClass
         });
