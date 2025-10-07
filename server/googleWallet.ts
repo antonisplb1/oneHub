@@ -129,6 +129,12 @@ export class GoogleWalletService {
           loyaltyPoints: {
             label: 'Stamps',
             balance: {
+              int: passData.stamps
+            }
+          },
+          secondaryLoyaltyPoints: {
+            label: 'Progress',
+            balance: {
               string: `${passData.stamps}/${passData.maxStamps}`
             }
           },
@@ -182,6 +188,12 @@ export class GoogleWalletService {
       const patchBody = {
         loyaltyPoints: {
           label: 'Stamps',
+          balance: {
+            int: stamps
+          }
+        },
+        secondaryLoyaltyPoints: {
+          label: 'Progress',
           balance: {
             string: `${stamps}/${maxStamps}`
           }
