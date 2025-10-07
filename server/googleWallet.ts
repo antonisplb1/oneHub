@@ -102,20 +102,7 @@ export class GoogleWalletService {
           header: 'Rewards',
           body: 'Collect stamps to earn rewards'
         }
-      ],
-      classTemplateInfo: {
-        listTemplateOverride: {
-          firstRowOption: {
-            fieldOption: {
-              fields: [
-                {
-                  fieldPath: 'object.loyaltyPoints'
-                }
-              ]
-            }
-          }
-        }
-      }
+      ]
     };
 
     await this.client.loyaltyclass.insert({
@@ -142,7 +129,7 @@ export class GoogleWalletService {
           loyaltyPoints: {
             label: 'Stamps',
             balance: {
-              int: passData.stamps
+              string: `${passData.stamps}/${passData.maxStamps}`
             }
           },
           barcode: {
@@ -154,10 +141,6 @@ export class GoogleWalletService {
             {
               header: 'Reward',
               body: passData.rewardText
-            },
-            {
-              header: 'Progress',
-              body: `${passData.stamps} / ${passData.maxStamps}`
             }
           ]
         };
@@ -200,7 +183,7 @@ export class GoogleWalletService {
         loyaltyPoints: {
           label: 'Stamps',
           balance: {
-            int: stamps
+            string: `${stamps}/${maxStamps}`
           }
         }
       };
