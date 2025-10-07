@@ -19,7 +19,7 @@ export default function LandingPage() {
             <Link href="/demo">
               <Button variant="ghost" data-testid="button-demo">Demo</Button>
             </Link>
-            <Link href="/auth">
+            <Link href="/auth?mode=login">
               <Button variant="outline" data-testid="button-login">Login</Button>
             </Link>
           </div>

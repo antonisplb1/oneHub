@@ -22,6 +22,11 @@ export default function AuthPage() {
   const { login, signup, isLoggingIn, isSigningUp, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
 
+  // Check URL for mode parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const mode = urlParams.get('mode');
+  const defaultTab = mode === 'login' ? 'login' : 'signup';
+
   useEffect(() => {
     if (isAuthenticated) {
       setLocation("/dashboard");
@@ -55,7 +60,7 @@ export default function AuthPage() {
             <CardDescription className="text-base">Login or create your account to get started</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signup">
+            <Tabs defaultValue={defaultTab}>
               <TabsList className="grid w-full grid-cols-2 mb-8">
                 <TabsTrigger value="login" data-testid="tab-login">Login</TabsTrigger>
                 <TabsTrigger value="signup" data-testid="tab-signup">Sign Up</TabsTrigger>
