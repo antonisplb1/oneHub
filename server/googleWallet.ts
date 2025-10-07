@@ -102,7 +102,20 @@ export class GoogleWalletService {
           header: 'Rewards',
           body: 'Collect stamps to earn rewards'
         }
-      ]
+      ],
+      classTemplateInfo: {
+        listTemplateOverride: {
+          firstRowOption: {
+            fieldOption: {
+              fields: [
+                {
+                  fieldPath: 'object.loyaltyPoints'
+                }
+              ]
+            }
+          }
+        }
+      }
     };
 
     await this.client.loyaltyclass.insert({
