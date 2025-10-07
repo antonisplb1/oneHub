@@ -280,7 +280,8 @@ export default function SettingsPage() {
         <CardHeader className="pb-6">
           <CardTitle className="text-xl font-semibold">Product Selection</CardTitle>
           <CardDescription>
-            Choose which features you want to include in your subscription
+            Choose which features you want to include in your subscription.
+            Subscription amount gets applied on next recurring payment. No additional actions required.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
