@@ -1603,7 +1603,8 @@ export function registerRoutes(app: Express) {
       const saveUrl = await googleWalletService.createLoyaltyPass(
         passData,
         result.user.id,
-        result.user.logo
+        result.user.logo,
+        result.user.walletColor
       );
 
       res.redirect(saveUrl);
