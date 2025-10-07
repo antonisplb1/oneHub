@@ -622,14 +622,13 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/user/profile", requireSubscription, async (req, res) => {
     try {
-      const { shopName, logo, walletColor } = req.body;
+      const { shopName, logo } = req.body;
       
       const [updatedUser] = await db
         .update(users)
         .set({
           shopName: shopName || req.user!.shopName,
           logo: logo || req.user!.logo,
-          walletColor: walletColor || req.user!.walletColor,
         })
         .where(eq(users.id, req.user!.id))
         .returning();
@@ -1604,8 +1603,7 @@ export function registerRoutes(app: Express) {
       const saveUrl = await googleWalletService.createLoyaltyPass(
         passData,
         result.user.id,
-        result.user.logo,
-        result.user.walletColor
+        result.user.logo
       );
 
       res.redirect(saveUrl);

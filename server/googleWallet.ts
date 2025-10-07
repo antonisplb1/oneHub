@@ -62,8 +62,17 @@ export class GoogleWalletService {
     });
   }
 
-  async createLoyaltyClass(userId: string, shopName: string, logoUrl?: string | null, walletColor?: string | null) {
+  async createLoyaltyClass(userId: string, shopName: string, logoUrl?: string | null) {
     const classId = `${this.issuerId}.loyalty_${userId}`;
+
+    try {
+      await this.client.loyaltyclass.get({ resourceId: classId });
+      return classId;
+    } catch (err: any) {
+      if (err.response?.status !== 404) {
+        throw err;
+      }
+    }
 
     const defaultLogoUrl = 'https://www.gstatic.com/images/branding/product/1x/googleg_64dp.png';
     let validLogoUrl = defaultLogoUrl;
@@ -87,34 +96,37 @@ export class GoogleWalletService {
           uri: validLogoUrl
         }
       },
-      hexBackgroundColor: walletColor || '#4285F4',
+      hexBackgroundColor: '#4285F4',
       textModulesData: [
         {
           header: 'Rewards',
           body: 'Collect stamps to earn rewards'
         }
-      ]
+      ],
+      classTemplateInfo: {
+        listTemplateOverride: {
+          firstRowOption: {
+            fieldOption: {
+              fields: [
+                {
+                  fieldPath: 'object.loyaltyPoints'
+                }
+              ]
+            }
+          }
+        }
+      }
     };
 
-    try {
-      await this.client.loyaltyclass.get({ resourceId: classId });
-      // Class exists, just use it (can't update once approved)
-    } catch (err: any) {
-      if (err.response?.status === 404) {
-        // Class doesn't exist, create it with the selected color
-        await this.client.loyaltyclass.insert({
-          requestBody: loyaltyClass
-        });
-      } else {
-        throw err;
-      }
-    }
+    await this.client.loyaltyclass.insert({
+      requestBody: loyaltyClass
+    });
 
     return classId;
   }
 
-  async createLoyaltyPass(passData: LoyaltyPassData, userId: string, logoUrl?: string | null, walletColor?: string | null): Promise<string> {
-    const classId = await this.createLoyaltyClass(userId, passData.shopName, logoUrl, walletColor);
+  async createLoyaltyPass(passData: LoyaltyPassData, userId: string, logoUrl?: string | null): Promise<string> {
+    const classId = await this.createLoyaltyClass(userId, passData.shopName, logoUrl);
     const objectId = `${this.issuerId}.customer_${passData.customerId}`;
 
     try {
@@ -130,7 +142,7 @@ export class GoogleWalletService {
           loyaltyPoints: {
             label: 'Stamps',
             balance: {
-              string: `${passData.stamps}/${passData.maxStamps}`
+              int: passData.stamps
             }
           },
           barcode: {
@@ -142,6 +154,10 @@ export class GoogleWalletService {
             {
               header: 'Reward',
               body: passData.rewardText
+            },
+            {
+              header: 'Progress',
+              body: `${passData.stamps} / ${passData.maxStamps}`
             }
           ]
         };
@@ -184,7 +200,7 @@ export class GoogleWalletService {
         loyaltyPoints: {
           label: 'Stamps',
           balance: {
-            string: `${stamps}/${maxStamps}`
+            int: stamps
           }
         }
       };
