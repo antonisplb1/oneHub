@@ -3,10 +3,12 @@ import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function VerifyEmail() {
   const [, params] = useRoute("/verify-email/:token");
   const [, setLocation] = useLocation();
+  const { logout } = useAuth();
   const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -86,6 +88,14 @@ export default function VerifyEmail() {
                   data-testid="button-go-to-login"
                 >
                   Go to Login
+                </Button>
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  onClick={() => logout()}
+                  data-testid="button-logout"
+                >
+                  Logout
                 </Button>
               </div>
             </CardContent>

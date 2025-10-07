@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Ticket, Gift, Loader2 } from "lucide-react";
 
 interface Product {
@@ -36,6 +37,7 @@ const products: Product[] = [
 export default function SelectProducts() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { logout } = useAuth();
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
   const selectProductsMutation = useMutation({
@@ -104,10 +106,22 @@ export default function SelectProducts() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle data-testid="text-page-title">Choose Your Products</CardTitle>
-          <CardDescription data-testid="text-page-description">
-            Select the features you want to include in your subscription
-          </CardDescription>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle data-testid="text-page-title">Choose Your Products</CardTitle>
+              <CardDescription data-testid="text-page-description">
+                Select the features you want to include in your subscription
+              </CardDescription>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => logout()}
+              data-testid="button-logout"
+            >
+              Logout
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {products.map((product) => {

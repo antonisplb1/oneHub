@@ -3,9 +3,11 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function PaymentProcessing() {
   const [, setLocation] = useLocation();
+  const { logout } = useAuth();
   const [status, setStatus] = useState<"processing" | "success" | "error">("processing");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -119,6 +121,14 @@ export default function PaymentProcessing() {
                   data-testid="button-go-back"
                 >
                   Go Back
+                </Button>
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  onClick={() => logout()}
+                  data-testid="button-logout"
+                >
+                  Logout
                 </Button>
               </div>
             </CardContent>
