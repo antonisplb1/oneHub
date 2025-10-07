@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Award, Gift, QrCode, Smartphone, TrendingUp, Users, ArrowRight, Check, Sparkles, CreditCard, Wallet, ScanLine, BarChart3, Bell } from "lucide-react";
+import logoImage from "@assets/blob-b137548_1759662451793.png";
 
 export default function Demo() {
   return (
@@ -10,7 +11,10 @@ export default function Demo() {
       <header className="border-b">
         <div className="container mx-auto px-6 py-5 flex items-center justify-between">
           <Link href="/" data-testid="link-home">
-            <h1 className="text-2xl font-semibold text-primary cursor-pointer">uniHub</h1>
+            <div className="flex items-center gap-3 cursor-pointer">
+              <img src={logoImage} alt="uniHub logo" className="h-8 w-8" />
+              <h1 className="text-2xl font-semibold text-primary">uniHub</h1>
+            </div>
           </Link>
           <Link href="/auth">
             <Button variant="outline" size="lg" data-testid="button-get-started">Get Started</Button>

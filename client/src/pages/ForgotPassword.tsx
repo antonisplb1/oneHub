@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
+import logoImage from "@assets/blob-b137548_1759662451793.png";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -51,7 +52,12 @@ export default function ForgotPassword() {
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-semibold text-primary mb-3 tracking-tight">uniHub</h1>
+          <Link href="/">
+            <div className="flex items-center justify-center gap-3 cursor-pointer hover:opacity-80 transition-opacity mb-3">
+              <img src={logoImage} alt="uniHub logo" className="h-10 w-10" />
+              <h1 className="text-4xl font-semibold text-primary tracking-tight">uniHub</h1>
+            </div>
+          </Link>
           <p className="text-muted-foreground text-lg">Reset your password</p>
         </div>
 

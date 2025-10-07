@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { useEffect } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
+import logoImage from "@assets/blob-b137548_1759662451793.png";
 
 export default function AuthPage() {
   const [loginEmail, setLoginEmail] = useState("");
@@ -51,7 +52,10 @@ export default function AuthPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
           <Link href="/">
-            <h1 className="text-4xl font-semibold text-primary mb-3 tracking-tight cursor-pointer hover:opacity-80 transition-opacity">uniHub</h1>
+            <div className="flex items-center justify-center gap-3 cursor-pointer hover:opacity-80 transition-opacity mb-3">
+              <img src={logoImage} alt="uniHub logo" className="h-10 w-10" />
+              <h1 className="text-4xl font-semibold text-primary tracking-tight">uniHub</h1>
+            </div>
           </Link>
           <p className="text-muted-foreground text-lg">Manage loyalty & engagement</p>
         </div>
