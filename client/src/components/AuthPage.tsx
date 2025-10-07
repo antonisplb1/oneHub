@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useEffect } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 
@@ -50,7 +50,9 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-semibold text-primary mb-3 tracking-tight">uniHub</h1>
+          <Link href="/">
+            <h1 className="text-4xl font-semibold text-primary mb-3 tracking-tight cursor-pointer hover:opacity-80 transition-opacity">uniHub</h1>
+          </Link>
           <p className="text-muted-foreground text-lg">Manage loyalty & engagement</p>
         </div>
 
