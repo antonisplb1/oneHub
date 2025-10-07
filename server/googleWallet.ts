@@ -145,12 +145,6 @@ export class GoogleWalletService {
               int: passData.stamps
             }
           },
-          secondaryLoyaltyPoints: {
-            label: 'Progress',
-            balance: {
-              string: `${passData.stamps}/${passData.maxStamps}`
-            }
-          },
           barcode: {
             type: 'QR_CODE',
             value: passData.customerQrCode,
@@ -160,6 +154,10 @@ export class GoogleWalletService {
             {
               header: 'Reward',
               body: passData.rewardText
+            },
+            {
+              header: 'Progress',
+              body: `${passData.stamps} / ${passData.maxStamps}`
             }
           ]
         };
@@ -203,12 +201,6 @@ export class GoogleWalletService {
           label: 'Stamps',
           balance: {
             int: stamps
-          }
-        },
-        secondaryLoyaltyPoints: {
-          label: 'Progress',
-          balance: {
-            string: `${stamps}/${maxStamps}`
           }
         }
       };
