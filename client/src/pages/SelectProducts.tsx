@@ -56,10 +56,10 @@ export default function SelectProducts() {
     onSuccess: (data) => {
       toast({
         title: "Products selected",
-        description: "Redirecting to checkout...",
+        description: "Opening checkout in new tab...",
       });
-      // Redirect to Stripe checkout
-      window.location.href = data.url;
+      // Open Stripe checkout in new tab (fixes Replit iframe sandbox restrictions)
+      window.open(data.url, '_blank');
     },
     onError: (error: Error) => {
       toast({
