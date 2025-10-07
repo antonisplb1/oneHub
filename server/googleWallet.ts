@@ -65,15 +65,6 @@ export class GoogleWalletService {
   async createLoyaltyClass(userId: string, shopName: string, logoUrl?: string | null, walletColor?: string | null) {
     const classId = `${this.issuerId}.loyalty_${userId}`;
 
-    try {
-      await this.client.loyaltyclass.get({ resourceId: classId });
-      return classId;
-    } catch (err: any) {
-      if (err.response?.status !== 404) {
-        throw err;
-      }
-    }
-
     const defaultLogoUrl = 'https://www.gstatic.com/images/branding/product/1x/googleg_64dp.png';
     let validLogoUrl = defaultLogoUrl;
     
@@ -105,9 +96,26 @@ export class GoogleWalletService {
       ]
     };
 
-    await this.client.loyaltyclass.insert({
-      requestBody: loyaltyClass
-    });
+    try {
+      await this.client.loyaltyclass.get({ resourceId: classId });
+      // Class exists, update it with new color/logo
+      await this.client.loyaltyclass.patch({
+        resourceId: classId,
+        requestBody: {
+          programLogo: loyaltyClass.programLogo,
+          hexBackgroundColor: loyaltyClass.hexBackgroundColor
+        }
+      });
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        // Class doesn't exist, create it
+        await this.client.loyaltyclass.insert({
+          requestBody: loyaltyClass
+        });
+      } else {
+        throw err;
+      }
+    }
 
     return classId;
   }
