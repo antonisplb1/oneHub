@@ -32,7 +32,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [shopName, setShopName] = useState(user?.shopName || "");
   const [logoUrl, setLogoUrl] = useState(user?.logo || "");
-  const [walletColor, setWalletColor] = useState(user?.walletColor || "#4285F4");
+  const [walletColor, setWalletColor] = useState(user?.walletColor || "#a78bbd");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>(user?.selectedProducts || []);
 
@@ -286,7 +286,7 @@ export default function SettingsPage() {
                   type="text"
                   value={walletColor}
                   onChange={(e) => setWalletColor(e.target.value)}
-                  placeholder="#4285F4"
+                  placeholder="#a78bbd"
                   className="max-w-32"
                   pattern="^#[0-9A-Fa-f]{6}$"
                   data-testid="input-wallet-color-hex"

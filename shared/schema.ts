@@ -10,7 +10,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   shopName: text("shop_name").notNull(),
   logo: text("logo"),
-  walletColor: text("wallet_color").default("#4285F4"),
+  walletColor: text("wallet_color").default("#a78bbd"),
   emailVerified: boolean("email_verified").default(false),
   verificationToken: text("verification_token"),
   verificationTokenExpiry: timestamp("verification_token_expiry"),
