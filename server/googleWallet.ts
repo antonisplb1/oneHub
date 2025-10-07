@@ -96,7 +96,7 @@ export class GoogleWalletService {
           uri: validLogoUrl
         }
       },
-      hexBackgroundColor: walletColor || '#a78bbd',
+      hexBackgroundColor: walletColor || '#4285F4',
       textModulesData: [
         {
           header: 'Rewards',
