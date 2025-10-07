@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { queryClient } from "@/lib/queryClient";
 
 export default function PaymentProcessing() {
   const [, setLocation] = useLocation();
@@ -39,6 +40,10 @@ export default function PaymentProcessing() {
 
         if (data.success && data.subscriptionStatus === "active") {
           setStatus("success");
+          
+          // Invalidate user cache to refetch updated subscription status
+          await queryClient.invalidateQueries({ queryKey: ["/api", "auth", "me"] });
+          
           setTimeout(() => {
             setLocation("/dashboard");
           }, 1500);
