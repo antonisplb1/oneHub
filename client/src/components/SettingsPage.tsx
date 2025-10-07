@@ -32,11 +32,12 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [shopName, setShopName] = useState(user?.shopName || "");
   const [logoUrl, setLogoUrl] = useState(user?.logo || "");
+  const [walletColor, setWalletColor] = useState(user?.walletColor || "#4285F4");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>(user?.selectedProducts || []);
 
   const updateMutation = useMutation({
-    mutationFn: (data: { shopName: string; logo?: string }) => {
+    mutationFn: (data: { shopName: string; logo?: string; walletColor?: string }) => {
       return apiRequest("/api/user/profile", {
         method: "PATCH",
         body: JSON.stringify(data),
@@ -97,6 +98,7 @@ export default function SettingsPage() {
     updateMutation.mutate({
       shopName,
       logo: logoUrl || undefined,
+      walletColor: walletColor || undefined,
     });
   };
 
@@ -264,6 +266,44 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
+            
+            <div className="space-y-3">
+              <Label htmlFor="wallet-color" className="text-sm font-medium">
+                Google Wallet Card Color
+              </Label>
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Input
+                    id="wallet-color"
+                    type="color"
+                    value={walletColor}
+                    onChange={(e) => setWalletColor(e.target.value)}
+                    className="h-12 w-20 cursor-pointer"
+                    data-testid="input-wallet-color"
+                  />
+                </div>
+                <Input
+                  type="text"
+                  value={walletColor}
+                  onChange={(e) => setWalletColor(e.target.value)}
+                  placeholder="#4285F4"
+                  className="max-w-32"
+                  pattern="^#[0-9A-Fa-f]{6}$"
+                  data-testid="input-wallet-color-hex"
+                />
+                <div 
+                  className="flex-1 h-12 rounded-md border-2 flex items-center justify-center text-white font-semibold text-sm px-4"
+                  style={{ backgroundColor: walletColor }}
+                  data-testid="preview-wallet-color"
+                >
+                  Wallet Card Preview
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This color will be used as the background for your loyalty cards in Google Wallet.
+              </p>
+            </div>
+
             <Button
               type="submit"
               size="lg"
