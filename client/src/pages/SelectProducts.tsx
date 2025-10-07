@@ -40,18 +40,26 @@ export default function SelectProducts() {
 
   const selectProductsMutation = useMutation({
     mutationFn: async (products: string[]) => {
-      const res = await apiRequest('/api/user/select-products', {
+      // First, save the selected products
+      await apiRequest('/api/user/select-products', {
         method: 'POST',
         body: JSON.stringify({ products }),
       });
-      return res;
+      
+      // Then, create a checkout session
+      const checkoutRes = await apiRequest<{ url: string }>('/api/stripe/create-checkout-session', {
+        method: 'POST',
+      });
+      
+      return checkoutRes;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Products selected",
         description: "Redirecting to checkout...",
       });
-      setLocation("/subscription-required");
+      // Redirect to Stripe checkout
+      window.location.href = data.url;
     },
     onError: (error: Error) => {
       toast({
