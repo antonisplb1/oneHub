@@ -238,15 +238,15 @@ export default function DashboardHome() {
 
       {/* Send Customer Notification */}
       <Card className="border-card-border shadow-sm">
-        <CardHeader className="pb-6">
+        <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-primary" />
-            <CardTitle className="text-xl font-semibold">Loyalty Card Notification - Notify Your Customers</CardTitle>
+            <CardTitle className="text-lg font-semibold">Loyalty Card Notification - Notify Your Customers</CardTitle>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
               <FormField
                 control={form.control}
                 name="header"
