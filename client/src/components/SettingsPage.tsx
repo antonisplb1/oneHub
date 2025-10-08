@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -35,6 +35,15 @@ export default function SettingsPage() {
   const [cardBackgroundColor, setCardBackgroundColor] = useState(user?.cardBackgroundColor || "#4285F4");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>(user?.selectedProducts || []);
+
+  useEffect(() => {
+    if (user) {
+      setShopName(user.shopName || "");
+      setLogoUrl(user.logo || "");
+      setCardBackgroundColor(user.cardBackgroundColor || "#4285F4");
+      setSelectedProducts(user.selectedProducts || []);
+    }
+  }, [user]);
 
   const updateMutation = useMutation({
     mutationFn: (data: { shopName: string; logo?: string; cardBackgroundColor?: string }) => {
