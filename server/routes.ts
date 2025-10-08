@@ -10,12 +10,14 @@ import {
   spins,
   adminUsers,
   adminSecurity,
+  messages,
   signupSchema,
   loginSchema,
   createRewardSchema,
   createTokenSchema,
   adminLoginSchema,
   adminCreateUserSchema,
+  insertMessageSchema,
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { hashPassword, generateToken, comparePasswords } from "./auth";
@@ -26,6 +28,7 @@ import QRCode from "qrcode";
 import { GoogleWalletService, type LoyaltyPassData } from "./googleWallet";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import rateLimit from "express-rate-limit";
+import { z } from "zod";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-09-30.clover",
@@ -137,6 +140,14 @@ async function verifyTurnstile(token: string, remoteip?: string): Promise<boolea
     return false;
   }
 }
+
+// Message validation schema
+const sendMessageSchema = z.object({
+  header: z.string().optional(),
+  body: z.string().min(1, "Message body is required"),
+  displayStartTime: z.coerce.date(),
+  displayEndTime: z.coerce.date(),
+});
 
 export function registerRoutes(app: Express) {
   app.post("/api/auth/signup", signupLimiter, async (req, res) => {
@@ -1673,6 +1684,47 @@ export function registerRoutes(app: Express) {
       `);
     } catch (error: any) {
       res.status(500).send(error.message);
+    }
+  });
+
+  app.post("/api/messages", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const validatedData = sendMessageSchema.parse(req.body);
+      const user = req.user!;
+
+      const customerList = await db
+        .select()
+        .from(customers)
+        .where(eq(customers.userId, user.id));
+
+      const classId = `${process.env.GOOGLE_WALLET_ISSUER_ID}.loyalty_${user.id}`;
+
+      if (googleWalletService) {
+        await googleWalletService.sendMessage(
+          classId,
+          validatedData.header || null,
+          validatedData.body,
+          validatedData.displayStartTime,
+          validatedData.displayEndTime
+        );
+      }
+
+      const [message] = await db
+        .insert(messages)
+        .values({
+          userId: user.id,
+          header: validatedData.header || null,
+          body: validatedData.body,
+          displayStartTime: validatedData.displayStartTime,
+          displayEndTime: validatedData.displayEndTime,
+          messageType: "TEXT_AND_NOTIFY",
+          recipientCount: customerList.length,
+        })
+        .returning();
+
+      res.json({ success: true, message });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to send message" });
     }
   });
 
