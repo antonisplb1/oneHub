@@ -86,6 +86,10 @@ export class GoogleWalletService {
       validLogoUrl = `${domain}/api/logo/${userId}`;
     }
 
+    const validBackgroundColor = (cardBackgroundColor && /^#[0-9A-Fa-f]{6}$/.test(cardBackgroundColor)) 
+      ? cardBackgroundColor 
+      : '#4285F4';
+
     const loyaltyClass: any = {
       id: classId,
       issuerName: shopName,
@@ -96,7 +100,7 @@ export class GoogleWalletService {
           uri: validLogoUrl
         }
       },
-      hexBackgroundColor: cardBackgroundColor || '#4285F4',
+      hexBackgroundColor: validBackgroundColor,
       textModulesData: [
         {
           header: 'Rewards',
