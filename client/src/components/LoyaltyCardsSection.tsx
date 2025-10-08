@@ -165,16 +165,122 @@ export default function LoyaltyCardsSection() {
       </div>
 
       <Tabs defaultValue="customers">
-        <TabsList>
-          <TabsTrigger value="customers" data-testid="tab-customers">
-            <Users className="w-4 h-4 mr-2" />
-            Customers
-          </TabsTrigger>
-          <TabsTrigger value="qr-code" data-testid="tab-qr-code">
-            <QrCode className="w-4 h-4 mr-2" />
-            Shop QR Code
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <TabsList>
+            <TabsTrigger value="customers" data-testid="tab-customers">
+              <Users className="w-4 h-4 mr-2" />
+              Customers
+            </TabsTrigger>
+            <TabsTrigger value="qr-code" data-testid="tab-qr-code">
+              <QrCode className="w-4 h-4 mr-2" />
+              Shop QR Code
+            </TabsTrigger>
+          </TabsList>
+          
+          <Dialog open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
+            <DialogTrigger asChild>
+              <Button size="lg" data-testid="button-send-notification-trigger">
+                <Bell className="w-4 h-4 mr-2" />
+                Send Notification
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-semibold">Send Customer Notification</DialogTitle>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Send a push notification to all customers who have added your loyalty card to Google Wallet
+                </p>
+              </DialogHeader>
+              <Form {...notificationForm}>
+                <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-4 pt-4">
+                  <FormField
+                    control={notificationForm.control}
+                    name="header"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Header (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Optional header"
+                            data-testid="input-notification-header"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={notificationForm.control}
+                    name="body"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Message</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter notification message"
+                            data-testid="textarea-notification-body"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={notificationForm.control}
+                      name="displayStartTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Display Start Time</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="datetime-local"
+                              data-testid="input-notification-start-time"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={notificationForm.control}
+                      name="displayEndTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Display End Time</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="datetime-local"
+                              data-testid="input-notification-end-time"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={sendNotificationMutation.isPending}
+                    className="w-full"
+                    size="lg"
+                    data-testid="button-send-notification"
+                  >
+                    {sendNotificationMutation.isPending ? "Sending..." : "Send Notification"}
+                  </Button>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <TabsContent value="customers" className="space-y-6 mt-6">
           <Card className="border-card-border shadow-sm">
@@ -260,121 +366,16 @@ export default function LoyaltyCardsSection() {
               <p className="text-muted-foreground text-center max-w-md">
                 Customers scan this QR code to join your loyalty program
               </p>
-              <div className="flex gap-3">
-                {qrCodeData && (
-                  <a 
-                    href={qrCodeData.qrCode} 
-                    download="shop-qr-code.png"
-                  >
-                    <Button variant="outline" size="lg" data-testid="button-download-qr">
-                      Download QR Code
-                    </Button>
-                  </a>
-                )}
-                <Dialog open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="lg" data-testid="button-send-notification-trigger">
-                      <Bell className="w-4 h-4 mr-2" />
-                      Send Notification
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl font-semibold">Send Customer Notification</DialogTitle>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Send a push notification to all customers who have added your loyalty card to Google Wallet
-                      </p>
-                    </DialogHeader>
-                    <Form {...notificationForm}>
-                      <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-4 pt-4">
-                        <FormField
-                          control={notificationForm.control}
-                          name="header"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Header (Optional)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Optional header"
-                                  data-testid="input-notification-header"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={notificationForm.control}
-                          name="body"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Message</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Enter notification message"
-                                  data-testid="textarea-notification-body"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <FormField
-                            control={notificationForm.control}
-                            name="displayStartTime"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Display Start Time</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="datetime-local"
-                                    data-testid="input-notification-start-time"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={notificationForm.control}
-                            name="displayEndTime"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Display End Time</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="datetime-local"
-                                    data-testid="input-notification-end-time"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <Button
-                          type="submit"
-                          disabled={sendNotificationMutation.isPending}
-                          className="w-full"
-                          size="lg"
-                          data-testid="button-send-notification"
-                        >
-                          {sendNotificationMutation.isPending ? "Sending..." : "Send Notification"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              </div>
+              {qrCodeData && (
+                <a 
+                  href={qrCodeData.qrCode} 
+                  download="shop-qr-code.png"
+                >
+                  <Button variant="outline" size="lg" data-testid="button-download-qr">
+                    Download QR Code
+                  </Button>
+                </a>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
