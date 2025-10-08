@@ -622,14 +622,24 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/user/profile", requireSubscription, async (req, res) => {
     try {
-      const { shopName, logo } = req.body;
+      const { shopName, logo, cardBackgroundColor } = req.body;
+      
+      if (cardBackgroundColor && !/^#[0-9A-Fa-f]{6}$/.test(cardBackgroundColor)) {
+        return res.status(400).json({ error: "Invalid color format. Please use hex format (e.g., #4285F4)" });
+      }
+      
+      const updateData: any = {
+        shopName: shopName || req.user!.shopName,
+        logo: logo || req.user!.logo,
+      };
+      
+      if (cardBackgroundColor) {
+        updateData.cardBackgroundColor = cardBackgroundColor;
+      }
       
       const [updatedUser] = await db
         .update(users)
-        .set({
-          shopName: shopName || req.user!.shopName,
-          logo: logo || req.user!.logo,
-        })
+        .set(updateData)
         .where(eq(users.id, req.user!.id))
         .returning();
 
