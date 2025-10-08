@@ -121,6 +121,19 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+// Messages table - notification history
+export const messages = pgTable("messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  header: text("header"),
+  body: text("body").notNull(),
+  displayStartTime: timestamp("display_start_time").notNull(),
+  displayEndTime: timestamp("display_end_time").notNull(),
+  messageType: text("message_type").default("TEXT_AND_NOTIFY").notNull(),
+  sentAt: timestamp("sent_at").defaultNow(),
+  recipientCount: integer("recipient_count").default(0),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -156,6 +169,11 @@ export const insertSpinTokenSchema = createInsertSchema(spinTokens).omit({
   createdAt: true,
 });
 
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  sentAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -175,6 +193,9 @@ export type SpinToken = typeof spinTokens.$inferSelect;
 export type InsertSpinToken = z.infer<typeof insertSpinTokenSchema>;
 
 export type Spin = typeof spins.$inferSelect;
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
 // Validation schemas
 export const signupSchema = z.object({
