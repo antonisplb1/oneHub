@@ -217,4 +217,47 @@ export class GoogleWalletService {
       console.error('Error updating loyalty points:', err.message);
     }
   }
+
+  async sendMessage(
+    classId: string,
+    header: string | null | undefined,
+    body: string,
+    displayStartTime: Date,
+    displayEndTime: Date
+  ) {
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const startDateString = displayStartTime.toISOString();
+    const endDateString = displayEndTime.toISOString();
+    
+    const message: any = {
+      id: messageId,
+      messageType: 'TEXT_AND_NOTIFY',
+      body: body,
+      displayInterval: {
+        start: {
+          date: startDateString
+        },
+        end: {
+          date: endDateString
+        }
+      }
+    };
+
+    if (header) {
+      message.header = header;
+    }
+
+    try {
+      await this.client.loyaltyclass.addmessage({
+        resourceId: classId,
+        requestBody: { message }
+      });
+
+      return { success: true, messageId };
+    } catch (err: any) {
+      console.error('Error sending message to Google Wallet:', err.message);
+      throw new Error(`Failed to send message: ${err.message}`);
+    }
+  }
 }
