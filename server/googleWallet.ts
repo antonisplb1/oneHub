@@ -62,7 +62,7 @@ export class GoogleWalletService {
     });
   }
 
-  async createLoyaltyClass(userId: string, shopName: string, logoUrl?: string | null) {
+  async createLoyaltyClass(userId: string, shopName: string, logoUrl?: string | null, cardBackgroundColor?: string | null) {
     const classId = `${this.issuerId}.loyalty_${userId}`;
 
     try {
@@ -96,7 +96,7 @@ export class GoogleWalletService {
           uri: validLogoUrl
         }
       },
-      hexBackgroundColor: '#4285F4',
+      hexBackgroundColor: cardBackgroundColor || '#4285F4',
       textModulesData: [
         {
           header: 'Rewards',
@@ -125,8 +125,8 @@ export class GoogleWalletService {
     return classId;
   }
 
-  async createLoyaltyPass(passData: LoyaltyPassData, userId: string, logoUrl?: string | null): Promise<string> {
-    const classId = await this.createLoyaltyClass(userId, passData.shopName, logoUrl);
+  async createLoyaltyPass(passData: LoyaltyPassData, userId: string, logoUrl?: string | null, cardBackgroundColor?: string | null): Promise<string> {
+    const classId = await this.createLoyaltyClass(userId, passData.shopName, logoUrl, cardBackgroundColor);
     const objectId = `${this.issuerId}.customer_${passData.customerId}`;
 
     try {
