@@ -32,11 +32,12 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [shopName, setShopName] = useState(user?.shopName || "");
   const [logoUrl, setLogoUrl] = useState(user?.logo || "");
+  const [cardBackgroundColor, setCardBackgroundColor] = useState(user?.cardBackgroundColor || "#4285F4");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>(user?.selectedProducts || []);
 
   const updateMutation = useMutation({
-    mutationFn: (data: { shopName: string; logo?: string }) => {
+    mutationFn: (data: { shopName: string; logo?: string; cardBackgroundColor?: string }) => {
       return apiRequest("/api/user/profile", {
         method: "PATCH",
         body: JSON.stringify(data),
@@ -97,6 +98,7 @@ export default function SettingsPage() {
     updateMutation.mutate({
       shopName,
       logo: logoUrl || undefined,
+      cardBackgroundColor,
     });
   };
 
@@ -263,6 +265,38 @@ export default function SettingsPage() {
                   Upload your shop logo (PNG, JPG, max 2MB). It will be displayed on customer loyalty cards and Google Wallet passes.
                 </p>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="card-color">Loyalty Card Background Color</Label>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="card-color"
+                    type="color"
+                    value={cardBackgroundColor}
+                    onChange={(e) => setCardBackgroundColor(e.target.value)}
+                    className="h-12 w-20 cursor-pointer"
+                    data-testid="input-card-color"
+                  />
+                  <Input
+                    type="text"
+                    value={cardBackgroundColor}
+                    onChange={(e) => setCardBackgroundColor(e.target.value)}
+                    placeholder="#4285F4"
+                    className="w-32 font-mono"
+                    pattern="^#[0-9A-Fa-f]{6}$"
+                    data-testid="input-card-color-text"
+                  />
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 rounded-md border" style={{ backgroundColor: cardBackgroundColor }}>
+                  <span className="text-sm text-white font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+                    Card Preview
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This color will be used as the background for loyalty cards added to Google Wallet.
+              </p>
             </div>
             <Button
               type="submit"
