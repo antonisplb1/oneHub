@@ -6,6 +6,33 @@ uniHub is a B2B SaaS platform offering digital loyalty card programs and spin-to
 
 ## Recent Changes (October 2025)
 
+### Customer Notification Messaging (October 2025)
+Push notification system for merchants to send messages to loyalty card customers via Google Wallet:
+
+**Features:**
+- Dashboard UI at top of home page for sending notifications
+- Message fields: Header (optional), Body (required), Display Start/End Times (required)
+- All times based on merchant's local timezone
+- Message type: TEXT_AND_NOTIFY (triggers push notifications to customer devices)
+- Messages saved to database for history tracking with recipient count
+
+**Implementation:**
+- New `messages` table in database schema
+- Backend endpoint: POST /api/messages (requires auth + subscription)
+- Google Wallet API integration via loyaltyclass.addmessage endpoint
+- Frontend form with validation, loading states, and success/error toasts
+- Sends to all customers who have added merchant's loyalty card to Google Wallet
+
+**Rate Limits:**
+- Google Wallet API: Maximum 3 push notifications per 24 hours per loyalty class
+- Exceeding limit returns QuotaExceededException
+
+**Technical Notes:**
+- Messages include displayInterval with start/end timestamps in ISO 8601 format
+- Recipients must have Google Wallet notifications enabled
+- Hyperlinks allowed in message body (must be related to the pass per Google's Acceptable Use Policy)
+- Push notification appearance controlled by Google Wallet
+
 ### Anti-Spam Security System (Production Ready)
 Three-layer security implementation to prevent spam registrations:
 
