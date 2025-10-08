@@ -10,7 +10,8 @@ uniHub is a B2B SaaS platform offering digital loyalty card programs and spin-to
 Push notification system for merchants to send messages to loyalty card customers via Google Wallet:
 
 **Features:**
-- Dashboard UI at top of home page for sending notifications
+- Dialog popup UI in Loyalty Cards section (Shop QR Code tab) for sending notifications
+- Accessed via "Send Notification" button next to "Download QR Code" button
 - Message fields: Header (optional), Body (required), Display Start/End Times (required)
 - All times based on merchant's local timezone
 - Message type: TEXT_AND_NOTIFY (triggers push notifications to customer devices)
@@ -20,7 +21,7 @@ Push notification system for merchants to send messages to loyalty card customer
 - New `messages` table in database schema
 - Backend endpoint: POST /api/messages (requires auth + subscription)
 - Google Wallet API integration via loyaltyclass.addmessage endpoint
-- Frontend form with validation, loading states, and success/error toasts
+- Frontend dialog in LoyaltyCardsSection component with validation, loading states, and success/error toasts
 - Sends to all customers who have added merchant's loyalty card to Google Wallet
 
 **Rate Limits:**

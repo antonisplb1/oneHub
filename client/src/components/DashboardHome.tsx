@@ -1,71 +1,11 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { Users, Award, Gift, TrendingUp, Calendar, ArrowRight, QrCode, Trophy, Activity, Bell } from "lucide-react";
+import { Users, Award, Gift, Calendar, QrCode, Trophy, Activity } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "wouter";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
-const notificationSchema = z.object({
-  header: z.string().optional(),
-  body: z.string().min(1, "Message is required"),
-  displayStartTime: z.string().min(1, "Start time is required"),
-  displayEndTime: z.string().min(1, "End time is required"),
-});
-
-type NotificationFormValues = z.infer<typeof notificationSchema>;
 
 export default function DashboardHome() {
-  const { toast } = useToast();
-
-  const form = useForm<NotificationFormValues>({
-    resolver: zodResolver(notificationSchema),
-    defaultValues: {
-      header: "",
-      body: "",
-      displayStartTime: "",
-      displayEndTime: "",
-    },
-  });
-
-  const sendNotificationMutation = useMutation({
-    mutationFn: async (values: NotificationFormValues) => {
-      return apiRequest("/api/messages", {
-        method: "POST",
-        body: JSON.stringify({
-          header: values.header || undefined,
-          body: values.body,
-          displayStartTime: new Date(values.displayStartTime).toISOString(),
-          displayEndTime: new Date(values.displayEndTime).toISOString(),
-        }),
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Notification sent successfully to all customers",
-      });
-      form.reset();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send notification",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const onSubmit = (values: NotificationFormValues) => {
-    sendNotificationMutation.mutate(values);
-  };
   const { data: customers = [] } = useQuery({
     queryKey: ["/api/customers"],
     queryFn: () => apiRequest<any[]>("/api/customers"),
@@ -235,103 +175,6 @@ export default function DashboardHome() {
         <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground text-lg">Your loyalty program at a glance</p>
       </div>
-
-      {/* Send Customer Notification */}
-      <Card className="border-card-border shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg font-semibold">Loyalty Card Notification - Notify Your Customers</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-              <FormField
-                control={form.control}
-                name="header"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Header (Optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Optional header"
-                        data-testid="input-notification-header"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="body"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Message</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Enter notification message"
-                        data-testid="textarea-notification-body"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="displayStartTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Display Start Time</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="datetime-local"
-                          data-testid="input-notification-start-time"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="displayEndTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Display End Time</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="datetime-local"
-                          data-testid="input-notification-end-time"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={sendNotificationMutation.isPending}
-                data-testid="button-send-notification"
-              >
-                {sendNotificationMutation.isPending ? "Sending..." : "Send Notification"}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
 
       {/* Key Metrics */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
