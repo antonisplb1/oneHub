@@ -241,7 +241,7 @@ export default function DashboardHome() {
         <CardHeader className="pb-6">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-primary" />
-            <CardTitle className="text-xl font-semibold">Loyalty Card Notification{'\n'}Notify Your Customers</CardTitle>
+            <CardTitle className="text-xl font-semibold">Loyalty Card NotificationNotify Your Customers</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
