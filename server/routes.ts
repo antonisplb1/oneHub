@@ -42,34 +42,55 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const PRODUCT_PRICES = {
   'loyalty': 1500, // €15 in cents
   'spin': 1000,    // €10 in cents
-  'both': 2000,    // €20 in cents (bundle discount)
+  'menu': 500,     // €5 in cents
 };
 
 // Calculate price based on selected products
 function calculateProductPrice(products: string[]): number {
   const sortedProducts = [...products].sort();
   
-  if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin')) {
-    return PRODUCT_PRICES.both;
-  } else if (sortedProducts.includes('loyalty')) {
-    return PRODUCT_PRICES.loyalty;
-  } else if (sortedProducts.includes('spin')) {
-    return PRODUCT_PRICES.spin;
+  // All three products
+  if (sortedProducts.length === 3 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
+    return 2300;
   }
-  
-  return 0;
+  // Loyalty + Spin
+  else if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin')) {
+    return 2000;
+  }
+  // Loyalty + Menu
+  else if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('menu')) {
+    return 2000;
+  }
+  // Spin + Menu
+  else if (sortedProducts.length === 2 && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
+    return 1500;
+  }
+  // Individual prices
+  else {
+    return sortedProducts.reduce((sum, product) => {
+      return sum + (PRODUCT_PRICES[product as keyof typeof PRODUCT_PRICES] || 0);
+    }, 0);
+  }
 }
 
 // Get product description based on selected products
 function getProductDescription(products: string[]): string {
   const sortedProducts = [...products].sort();
   
-  if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin')) {
+  if (sortedProducts.length === 3 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
+    return "Full access: Loyalty Cards, Spin Wheel & Menu Builder";
+  } else if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin')) {
     return "Full access: Loyalty Cards & Spin Wheel campaigns";
+  } else if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('menu')) {
+    return "Access to Loyalty Cards & Menu Builder";
+  } else if (sortedProducts.length === 2 && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
+    return "Access to Spin Wheel & Menu Builder";
   } else if (sortedProducts.includes('loyalty')) {
     return "Access to Loyalty Cards feature";
   } else if (sortedProducts.includes('spin')) {
     return "Access to Spin Wheel feature";
+  } else if (sortedProducts.includes('menu')) {
+    return "Access to Menu Builder feature";
   }
   
   return "No products selected";

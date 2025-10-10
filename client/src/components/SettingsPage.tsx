@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Upload, X, Ticket, Gift } from "lucide-react";
+import { Upload, X, Ticket, Gift, UtensilsCrossed } from "lucide-react";
 
 const PRODUCT_INFO = [
   {
@@ -24,6 +24,13 @@ const PRODUCT_INFO = [
     description: 'Prize wheel campaigns for customer engagement',
     price: 10,
     icon: Gift,
+  },
+  {
+    id: 'menu',
+    name: 'Menu Builder',
+    description: 'Create and manage your digital menu',
+    price: 5,
+    icon: UtensilsCrossed,
   },
 ];
 
@@ -173,9 +180,32 @@ export default function SettingsPage() {
   };
 
   const calculatePrice = (products: string[]) => {
-    if (products.length === 2) return 20;
-    if (products.includes('loyalty')) return 15;
-    if (products.includes('spin')) return 10;
+    const sorted = [...products].sort();
+    
+    // All three products
+    if (sorted.length === 3 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu')) {
+      return 23;
+    }
+    // Loyalty + Spin
+    else if (sorted.length === 2 && sorted.includes('loyalty') && sorted.includes('spin')) {
+      return 20;
+    }
+    // Loyalty + Menu
+    else if (sorted.length === 2 && sorted.includes('loyalty') && sorted.includes('menu')) {
+      return 20;
+    }
+    // Spin + Menu
+    else if (sorted.length === 2 && sorted.includes('spin') && sorted.includes('menu')) {
+      return 15;
+    }
+    // Individual prices
+    else if (products.includes('loyalty')) {
+      return 15;
+    } else if (products.includes('spin')) {
+      return 10;
+    } else if (products.includes('menu')) {
+      return 5;
+    }
     return 0;
   };
 
@@ -367,7 +397,26 @@ export default function SettingsPage() {
             );
           })}
 
-          {selectedProducts.length === 2 && (
+          {selectedProducts.length === 3 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && (
+            <div className="p-4 bg-primary/5 border border-primary rounded-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-primary" data-testid="text-bundle-discount">
+                    Bundle Discount Applied! 🎉
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Save €7/month with all three products
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground line-through">€30</div>
+                  <div className="text-xl font-bold text-primary">€23</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedProducts.length === 2 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && (
             <div className="p-4 bg-primary/5 border border-primary rounded-md">
               <div className="flex items-center justify-between">
                 <div>

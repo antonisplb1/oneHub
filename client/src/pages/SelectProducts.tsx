@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Ticket, Gift, Loader2 } from "lucide-react";
+import { Ticket, Gift, Loader2, UtensilsCrossed } from "lucide-react";
 
 interface Product {
   id: string;
@@ -31,6 +31,13 @@ const products: Product[] = [
     description: 'Interactive prize wheel campaigns for customer engagement',
     price: 10,
     icon: Gift,
+  },
+  {
+    id: 'menu',
+    name: 'Menu Builder',
+    description: 'Create and manage your digital menu for customers',
+    price: 5,
+    icon: UtensilsCrossed,
   },
 ];
 
@@ -81,13 +88,31 @@ export default function SelectProducts() {
   };
 
   const calculateTotal = () => {
-    if (selectedProducts.length === 2) {
+    const sorted = [...selectedProducts].sort();
+    
+    // All three products
+    if (sorted.length === 3 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu')) {
+      return 23;
+    }
+    // Loyalty + Spin
+    else if (sorted.length === 2 && sorted.includes('loyalty') && sorted.includes('spin')) {
       return 20;
     }
-    return selectedProducts.reduce((total, id) => {
-      const product = products.find(p => p.id === id);
-      return total + (product?.price || 0);
-    }, 0);
+    // Loyalty + Menu
+    else if (sorted.length === 2 && sorted.includes('loyalty') && sorted.includes('menu')) {
+      return 20;
+    }
+    // Spin + Menu
+    else if (sorted.length === 2 && sorted.includes('spin') && sorted.includes('menu')) {
+      return 15;
+    }
+    // Individual prices
+    else {
+      return selectedProducts.reduce((total, id) => {
+        const product = products.find(p => p.id === id);
+        return total + (product?.price || 0);
+      }, 0);
+    }
   };
 
   const handleContinue = () => {
@@ -140,7 +165,7 @@ export default function SelectProducts() {
                 <CardContent className="flex items-start gap-4 p-6">
                   <Checkbox
                     checked={isSelected}
-                    onCheckedChange={() => toggleProduct(product.id)}
+                    onClick={(e) => e.stopPropagation()}
                     data-testid={`checkbox-product-${product.id}`}
                   />
                   <div className="flex-1">
@@ -165,7 +190,28 @@ export default function SelectProducts() {
             );
           })}
 
-          {selectedProducts.length === 2 && (
+          {selectedProducts.length === 3 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && (
+            <Card className="bg-primary/5 border-primary">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-primary" data-testid="text-bundle-discount">
+                      Bundle Discount Applied! 🎉
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Save €7/month when you get all three products
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground line-through">€30</div>
+                    <div className="text-2xl font-bold text-primary">€23</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {selectedProducts.length === 2 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && (
             <Card className="bg-primary/5 border-primary">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
