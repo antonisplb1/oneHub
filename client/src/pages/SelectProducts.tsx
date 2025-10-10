@@ -163,11 +163,13 @@ export default function SelectProducts() {
                 data-testid={`card-product-${product.id}`}
               >
                 <CardContent className="flex items-start gap-4 p-6">
-                  <Checkbox
-                    checked={isSelected}
-                    onClick={(e) => e.stopPropagation()}
-                    data-testid={`checkbox-product-${product.id}`}
-                  />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleProduct(product.id)}
+                      data-testid={`checkbox-product-${product.id}`}
+                    />
+                  </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Icon className="w-5 h-5 text-primary" />
