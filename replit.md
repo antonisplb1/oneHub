@@ -6,6 +6,31 @@ uniHub is a B2B SaaS platform offering digital loyalty card programs and spin-to
 
 ## Recent Changes (October 2025)
 
+### Menu Builder Feature (October 2025)
+Digital menu creation and management system for merchants with QR code generation:
+
+**Features:**
+- Category Management: Add, edit, delete menu categories with custom ordering
+- Item Management: Add, edit, delete menu items with name, description, price, optional image
+- QR Code Generation: Auto-generated QR codes linking to public menu page
+- Public Menu Page: Mobile-first customer view at /menu/:merchantId
+- URL Sharing: Copy menu URL and download QR code from dashboard
+
+**Implementation:**
+- New `menuCategories` table: id, userId, name, displayOrder
+- New `menuItems` table: id, userId, categoryId, name, description, price, imageUrl, displayOrder
+- Backend endpoints: Full CRUD for categories and items, plus QR generation
+- MenuBuilder dashboard page: Category/item management with dialogs
+- PublicMenu page: Accordion-style mobile menu display
+- QR endpoint: GET /api/menu-qr-code returns QR code + URL
+
+**Technical Details:**
+- Categories and items ordered by displayOrder field
+- Public menu endpoint joins categories with items
+- Price formatting with Intl.NumberFormat (EUR)
+- Merchant branding (shopName, logo) displayed on public page
+- Uses existing QRCode library for generation
+
 ### Customer Notification Messaging (October 2025)
 Push notification system for merchants to send messages to loyalty card customers via Google Wallet:
 

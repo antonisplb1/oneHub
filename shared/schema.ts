@@ -197,11 +197,13 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
 
 export const insertMenuCategorySchema = createInsertSchema(menuCategories).omit({
   id: true,
+  userId: true,
   createdAt: true,
 });
 
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
   id: true,
+  userId: true,
   createdAt: true,
 });
 
