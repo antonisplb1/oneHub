@@ -121,10 +121,18 @@ Three-layer security implementation to prevent spam registrations:
 - Backend endpoints: `/api/auth/forgot-password` and `/api/auth/reset-password`
 
 ### Flexible Product Selection & Pricing
-Three subscription tiers with flexible product selection:
-1. **Loyalty Cards Only**: €15/month - Access to loyalty cards and QR scanner features
-2. **Spin Wheel Only**: €10/month - Access to spin-to-win campaign features  
-3. **Both Products (Bundle)**: €20/month - Full access to all features with €5/month savings
+Four subscription products with flexible selection and bundle discounts:
+
+**Individual Products:**
+1. **Loyalty Cards**: €15/month - Access to loyalty cards and QR scanner features
+2. **Spin Wheel**: €10/month - Access to spin-to-win campaign features
+3. **Menu Builder**: €5/month - Create and manage digital menus for customers
+
+**Bundle Pricing:**
+- **Loyalty + Spin**: €20/month (saves €5 from €25)
+- **Loyalty + Menu**: €20/month (no additional discount)
+- **Spin + Menu**: €15/month (no additional discount)
+- **All Three Products**: €23/month (saves €7 from €30)
 
 **Product Selection Flow:**
 - After email verification, users are directed to `/select-products` page
@@ -138,6 +146,7 @@ Three subscription tiers with flexible product selection:
 - Always visible: Dashboard, Customers, Analytics, Settings
 - Loyalty-only items: Loyalty Cards, QR Scanner (requires 'loyalty' in selectedProducts)
 - Spin-only items: Spin Wheel (requires 'spin' in selectedProducts)
+- Menu-only items: Menu Builder (requires 'menu' in selectedProducts)
 - Real-time menu updates when products are changed
 
 ### Updated Registration & Authentication Flow
@@ -155,7 +164,7 @@ Added to users table:
 - `verificationTokenExpiry` (timestamp, nullable)
 - `resetPasswordToken` (varchar, nullable)
 - `resetPasswordExpiry` (timestamp, nullable)
-- `selectedProducts` (text array, stores 'loyalty' and/or 'spin')
+- `selectedProducts` (text array, stores 'loyalty', 'spin', and/or 'menu')
 
 ### Authentication Middleware
 - `requireAuth` middleware checks session authentication
