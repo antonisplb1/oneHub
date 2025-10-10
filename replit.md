@@ -13,7 +13,7 @@ Digital menu creation and management system for merchants with QR code generatio
 - Category Management: Add, edit, delete menu categories with custom ordering
 - Item Management: Add, edit, delete menu items with name, description, price, optional image
 - QR Code Generation: Auto-generated QR codes linking to public menu page
-- Public Menu Page: Mobile-first customer view at /menu/:merchantId
+- Public Menu Page: Customer-friendly view at /menu/:merchantId with warm, appetizing design
 - URL Sharing: Copy menu URL and download QR code from dashboard
 
 **Implementation:**
@@ -21,8 +21,22 @@ Digital menu creation and management system for merchants with QR code generatio
 - New `menuItems` table: id, userId, categoryId, name, description, price, imageUrl, displayOrder
 - Backend endpoints: Full CRUD for categories and items, plus QR generation
 - MenuBuilder dashboard page: Category/item management with dialogs
-- PublicMenu page: Accordion-style mobile menu display
+- PublicMenu page: Modern customer-friendly design with hero section, sticky category tabs, and open layout
 - QR endpoint: GET /api/menu-qr-code returns QR code + URL
+
+**PublicMenu Design (Customer-Friendly Redesign):**
+- Hero section with gradient background and merchant branding (logo, shop name)
+- Sticky category navigation using Tabs with horizontal scroll
+- Open layout: All menu items visible without accordion interaction
+- Scroll spy: Auto-highlights active category based on scroll position
+- Smooth scrolling to categories when tabs are clicked
+- Warm color palette: Creamy neutrals (hsl(38 35% 96%)) with terracotta/saffron accents (hsl(26 85% 55%))
+- Larger typography for mobile readability (text-4xl hero, text-2xl categories, text-xl items)
+- Generous spacing and padding for better visual hierarchy
+- Larger item images (120px x 120px) with rounded corners
+- Price highlighting in accent color for visual appeal
+- Consistent max-w-6xl (1152px) container width across all sections for proper desktop centering
+- Fully responsive: Mobile-first design adapts to all viewport sizes
 
 **Technical Details:**
 - Categories and items ordered by displayOrder field
@@ -31,6 +45,7 @@ Digital menu creation and management system for merchants with QR code generatio
 - Merchant branding (shopName, logo) displayed on public page
 - Uses existing QRCode library for generation
 - Insert schemas omit userId (backend injects from req.user!.id to prevent validation errors)
+- Menu-specific CSS variables in index.css for warm color palette (both light and dark mode support)
 
 ### Customer Notification Messaging (October 2025)
 Push notification system for merchants to send messages to loyalty card customers via Google Wallet:
