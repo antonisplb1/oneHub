@@ -34,7 +34,8 @@ Key tables include `users` (merchants), `customers`, `loyaltyCards`, `loyaltyTra
 
 ### UI/UX Decisions
 
--   **Landing Page & Pricing Redesign**: Features an interactive product showcase with shadcn/ui Tabs, trust indicators (Stripe, cancel anytime), and a dedicated responsive pricing page. The pricing page details individual and bundle options, includes FAQs, and a clear CTA.
+-   **Landing Page & Pricing Redesign**: Features an interactive product showcase with shadcn/ui Tabs displaying all 3 products (Loyalty, Spin, Menu Builder), trust indicators (Stripe, cancel anytime), and a dedicated responsive pricing page. The pricing page details individual and bundle options (€15/€10/€5 individual, €23 for all three with €7 savings), includes FAQs, and a clear CTA.
+-   **Demo Page**: Comprehensive product walkthrough with 4 pricing cards, detailed feature explanations for each product (Loyalty Cards, Spin Wheel, Menu Builder), 3-step workflows, and "Perfect For" use cases. Updated to reflect current pricing (€23 bundle saves €7) and includes Menu Builder feature.
 -   **Public Menu Page**: Designed for customers with a warm, appetizing aesthetic, gradient hero, sticky category navigation, large typography, generous spacing, and responsive layout.
 
 ## External Dependencies

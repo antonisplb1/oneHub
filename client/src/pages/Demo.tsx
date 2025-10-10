@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, Gift, QrCode, Smartphone, TrendingUp, Users, ArrowRight, Check, Sparkles, CreditCard, Wallet, ScanLine, BarChart3, Bell } from "lucide-react";
+import { Award, Gift, QrCode, Smartphone, TrendingUp, Users, ArrowRight, Check, Sparkles, CreditCard, Wallet, ScanLine, BarChart3, Bell, UtensilsCrossed, RefreshCw } from "lucide-react";
 import logoImage from "@assets/blob-b137548_1759662451793.png";
 
 export default function Demo() {
@@ -35,7 +35,7 @@ export default function Demo() {
           {/* Pricing Overview */}
           <div className="mb-24">
             <h2 className="text-3xl font-semibold text-center mb-10">Simple, Flexible Pricing</h2>
-            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -98,19 +98,50 @@ export default function Demo() {
                 </CardContent>
               </Card>
 
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UtensilsCrossed className="w-5 h-5 text-chart-1" />
+                    Menu Builder
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">€5<span className="text-lg text-muted-foreground">/month</span></div>
+                  <p className="text-sm text-muted-foreground mb-4">Ideal for restaurants, cafes, food trucks</p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Create digital menus</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Add categories & items</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>QR code menu access</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Real-time menu updates</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+
               <Card className="border-primary">
                 <CardHeader>
                   <div className="flex items-center justify-between mb-2">
                     <CardTitle className="flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-primary" />
-                      Both Products
+                      All Products Bundle
                     </CardTitle>
-                    <Badge>Best Value</Badge>
+                    <Badge>Best Value - Save €7</Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold mb-2">€20<span className="text-lg text-muted-foreground">/month</span></div>
-                  <p className="text-sm text-muted-foreground mb-4">Complete engagement toolkit, save €5/month</p>
+                  <div className="text-3xl font-bold mb-2">€23<span className="text-lg text-muted-foreground">/month</span></div>
+                  <p className="text-sm text-muted-foreground mb-4">Complete engagement toolkit, save €7/month</p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-chart-2 mt-0.5" />
@@ -122,11 +153,11 @@ export default function Demo() {
                     </li>
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-chart-2 mt-0.5" />
-                      <span>Unified customer data</span>
+                      <span>All Menu Builder features</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-chart-2 mt-0.5" />
-                      <span>Maximum engagement</span>
+                      <span>Maximum customer engagement</span>
                     </li>
                   </ul>
                 </CardContent>
@@ -352,6 +383,126 @@ export default function Demo() {
               </div>
             </div>
 
+            {/* How It Works - Menu Builder */}
+            <div>
+              <div className="text-center mb-12">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <UtensilsCrossed className="w-10 h-10 text-chart-1" />
+                  <h2 className="text-4xl font-semibold">Digital Menu Builder</h2>
+                </div>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  Create beautiful digital menus that customers can view on their phones. Share via QR code - no apps, no printing costs.
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6 mb-8">
+                <Card>
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-lg bg-chart-1/10 flex items-center justify-center mb-3">
+                      <UtensilsCrossed className="w-6 h-6 text-chart-1" />
+                    </div>
+                    <CardTitle className="text-lg">1. Create Your Menu</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Add categories and menu items with photos, descriptions, and prices. Organize everything exactly how you want customers to see it.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                      <QrCode className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg">2. Share QR Code</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Download your menu QR code and display it at your location. Customers scan to view the full menu on their phones.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-lg bg-chart-2/10 flex items-center justify-center mb-3">
+                      <RefreshCw className="w-6 h-6 text-chart-2" />
+                    </div>
+                    <CardTitle className="text-lg">3. Update Anytime</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Change prices, add specials, remove items - updates appear instantly on customer devices. No reprinting menus.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="p-8 bg-gradient-to-br from-chart-1/5 to-chart-2/5">
+                <div className="grid md:grid-cols-2 gap-8 items-center">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-4">Key Features</h3>
+                    <ul className="space-y-3">
+                      <li className="flex items-start gap-2">
+                        <UtensilsCrossed className="w-5 h-5 text-chart-1 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Category Organization</div>
+                          <div className="text-sm text-muted-foreground">Group items by type (appetizers, mains, drinks, etc.)</div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Gift className="w-5 h-5 text-chart-1 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Rich Content</div>
+                          <div className="text-sm text-muted-foreground">Add photos, detailed descriptions, and prices for each item</div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Smartphone className="w-5 h-5 text-chart-1 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Public Menu Page</div>
+                          <div className="text-sm text-muted-foreground">Beautiful, mobile-friendly menu view for customers</div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <RefreshCw className="w-5 h-5 text-chart-1 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Instant Updates</div>
+                          <div className="text-sm text-muted-foreground">Changes sync immediately, no delays</div>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="bg-background rounded-lg p-6">
+                    <div className="text-sm text-muted-foreground mb-2">Example Menu Item</div>
+                    <div className="space-y-4">
+                      <div className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <div className="font-semibold">Margherita Pizza</div>
+                            <div className="text-xs text-muted-foreground">Main Dishes</div>
+                          </div>
+                          <div className="font-bold text-primary">€12.50</div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Fresh mozzarella, tomato sauce, basil, olive oil</p>
+                      </div>
+                      <div className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <div className="font-semibold">Cappuccino</div>
+                            <div className="text-xs text-muted-foreground">Beverages</div>
+                          </div>
+                          <div className="font-bold text-primary">€3.50</div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Espresso with steamed milk and foam</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
             {/* Dashboard Overview */}
             <div>
               <div className="text-center mb-12">
@@ -423,7 +574,7 @@ export default function Demo() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Powered by Stripe. Switch between Loyalty, Spin Wheel, or Both at any time. 
+                      Powered by Stripe. Switch between Loyalty, Spin Wheel, Menu Builder, or get all three at any time. 
                       Cancel anytime—no long-term contracts or hidden fees.
                     </p>
                     <Badge variant="secondary">Secure payments</Badge>
@@ -435,7 +586,7 @@ export default function Demo() {
             {/* Real Use Cases */}
             <div className="bg-muted/50 rounded-2xl p-8 md:p-12">
               <h2 className="text-3xl font-semibold text-center mb-10">Perfect For</h2>
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="text-center space-y-3">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
                     <Award className="w-8 h-8 text-primary" />
@@ -463,6 +614,16 @@ export default function Demo() {
                   <h3 className="font-semibold text-lg">Salons & Spas</h3>
                   <p className="text-sm text-muted-foreground">
                     Reward repeat visits with loyalty stamps. Offer spin wheel prizes for referrals and special occasions.
+                  </p>
+                </div>
+
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 rounded-full bg-chart-1/10 flex items-center justify-center mx-auto">
+                    <UtensilsCrossed className="w-8 h-8 text-chart-1" />
+                  </div>
+                  <h3 className="font-semibold text-lg">Restaurants & Food Trucks</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Digital menus accessible via QR code. Update daily specials instantly without reprinting.
                   </p>
                 </div>
               </div>
