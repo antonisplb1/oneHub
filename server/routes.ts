@@ -1995,6 +1995,19 @@ export function registerRoutes(app: Express) {
   // Public Menu Route
   app.get("/api/menu/:userId", async (req, res) => {
     try {
+      const [merchant] = await db
+        .select({
+          shopName: users.shopName,
+          logo: users.logo,
+        })
+        .from(users)
+        .where(eq(users.id, req.params.userId))
+        .limit(1);
+
+      if (!merchant) {
+        return res.status(404).json({ error: "Merchant not found" });
+      }
+
       const categories = await db
         .select()
         .from(menuCategories)
@@ -2012,7 +2025,10 @@ export function registerRoutes(app: Express) {
         items: items.filter(item => item.categoryId === category.id),
       }));
 
-      res.json(menu);
+      res.json({
+        merchant,
+        categories: menu,
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

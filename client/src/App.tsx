@@ -29,6 +29,7 @@ import SelectProducts from "@/pages/SelectProducts";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import MenuBuilder from "@/pages/MenuBuilder";
+import PublicMenu from "@/pages/PublicMenu";
 
 function Router() {
   return (
@@ -105,6 +106,7 @@ function Router() {
       <Route path="/customer-spin/:userId" component={CustomerSpinOnce} />
       <Route path="/in-store-spin/:userId" component={InStoreSpinWheel} />
       <Route path="/card/:customerId" component={CustomerLoyaltyCard} />
+      <Route path="/menu/:merchantId" component={PublicMenu} />
       <Route component={NotFound} />
     </Switch>
   );
