@@ -28,6 +28,7 @@ import Demo from "@/pages/Demo";
 import SelectProducts from "@/pages/SelectProducts";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
+import MenuBuilder from "@/pages/MenuBuilder";
 
 function Router() {
   return (
@@ -89,6 +90,13 @@ function Router() {
         {() => (
           <DashboardLayout>
             <SettingsPage />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/dashboard/menu">
+        {() => (
+          <DashboardLayout>
+            <MenuBuilder />
           </DashboardLayout>
         )}
       </Route>

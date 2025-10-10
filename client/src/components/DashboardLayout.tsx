@@ -22,6 +22,7 @@ import {
   BarChart3,
   Settings,
   Scan,
+  UtensilsCrossed,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +33,7 @@ const menuItems = [
   { title: "Loyalty Cards", icon: CreditCard, href: "/dashboard/loyalty", products: ['loyalty'] },
   { title: "QR Scanner", icon: Scan, href: "/dashboard/scanner", products: ['loyalty'] },
   { title: "Spin Wheel", icon: Gauge, href: "/dashboard/spin-wheel", products: ['spin'] },
+  { title: "My Menu", icon: UtensilsCrossed, href: "/dashboard/menu", products: [] },
   { title: "Customers", icon: Users, href: "/dashboard/customers", products: [] },
   { title: "Analytics", icon: BarChart3, href: "/dashboard/analytics", products: [] },
 ];
