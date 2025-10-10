@@ -76,6 +76,17 @@
   --chart-4: 340 25% 45%;
   --chart-5: 340 30% 55%;
 
+  /* Menu-specific colors for customer-facing pages */
+  --menu-background: 35 40% 97%;
+  --menu-foreground: 20 15% 20%;
+  --menu-accent: 15 65% 55%;
+  --menu-accent-foreground: 0 0% 100%;
+  --menu-card: 0 0% 100%;
+  --menu-card-border: 35 20% 88%;
+  --menu-muted: 35 25% 92%;
+  --menu-muted-foreground: 20 10% 50%;
+  --menu-price: 15 70% 45%;
+
   --font-sans: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, Monaco, monospace;
@@ -193,6 +204,17 @@
   --chart-3: 340 40% 70%;
   --chart-4: 340 28% 45%;
   --chart-5: 340 32% 55%;
+
+  /* Menu-specific colors for customer-facing pages (dark mode) */
+  --menu-background: 20 15% 12%;
+  --menu-foreground: 35 20% 92%;
+  --menu-accent: 25 70% 60%;
+  --menu-accent-foreground: 20 15% 10%;
+  --menu-card: 20 12% 17%;
+  --menu-card-border: 20 10% 25%;
+  --menu-muted: 20 12% 20%;
+  --menu-muted-foreground: 20 8% 60%;
+  --menu-price: 35 75% 65%;
 
   --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.18);
   --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.22);
