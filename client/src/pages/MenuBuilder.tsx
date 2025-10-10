@@ -3,11 +3,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Plus, Edit, Trash2, UtensilsCrossed } from "lucide-react";
+import { Plus, Edit, Trash2, UtensilsCrossed, Copy, Download } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -53,6 +54,10 @@ export default function MenuBuilder() {
 
   const { data: items = [], isLoading: itemsLoading } = useQuery<MenuItem[]>({
     queryKey: ["/api/menu-items"],
+  });
+
+  const { data: qrCodeData, isLoading: qrCodeLoading } = useQuery<{ qrCode: string; url: string }>({
+    queryKey: ['/api/menu-qr-code'],
   });
 
   const createCategoryMutation = useMutation({
@@ -283,6 +288,70 @@ export default function MenuBuilder() {
           Add Category
         </Button>
       </div>
+
+      {qrCodeLoading ? (
+        <Card className="border-card-border shadow-sm">
+          <CardContent className="flex justify-center py-16">
+            <div className="text-muted-foreground">Loading QR code...</div>
+          </CardContent>
+        </Card>
+      ) : qrCodeData ? (
+        <Card className="border-card-border shadow-sm">
+          <CardHeader className="pb-6">
+            <CardTitle className="text-2xl font-semibold">Menu QR Code</CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              Share this QR code with customers to view your menu
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex justify-center">
+              <img 
+                src={qrCodeData.qrCode} 
+                alt="Menu QR Code"
+                className="w-[300px] h-[300px]"
+                data-testid="menu-qr-code-image"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Menu URL</Label>
+              <div className="flex gap-2">
+                <Input 
+                  value={qrCodeData.url} 
+                  readOnly 
+                  data-testid="menu-url-text"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(qrCodeData.url);
+                    toast({
+                      title: "Copied!",
+                      description: "Menu URL copied to clipboard",
+                    });
+                  }}
+                  data-testid="button-copy-menu-url"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = qrCodeData.qrCode;
+                link.download = 'menu-qr-code.png';
+                link.click();
+              }}
+              className="w-full"
+              size="lg"
+              data-testid="button-download-menu-qr"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download QR Code
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {isLoading ? (
         <div className="text-muted-foreground py-4">Loading...</div>
