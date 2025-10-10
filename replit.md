@@ -30,6 +30,7 @@ Digital menu creation and management system for merchants with QR code generatio
 - Price formatting with Intl.NumberFormat (EUR)
 - Merchant branding (shopName, logo) displayed on public page
 - Uses existing QRCode library for generation
+- Insert schemas omit userId (backend injects from req.user!.id to prevent validation errors)
 
 ### Customer Notification Messaging (October 2025)
 Push notification system for merchants to send messages to loyalty card customers via Google Wallet:
