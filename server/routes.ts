@@ -11,6 +11,8 @@ import {
   adminUsers,
   adminSecurity,
   messages,
+  menuCategories,
+  menuItems,
   signupSchema,
   loginSchema,
   createRewardSchema,
@@ -18,8 +20,10 @@ import {
   adminLoginSchema,
   adminCreateUserSchema,
   insertMessageSchema,
+  insertMenuCategorySchema,
+  insertMenuItemSchema,
 } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, asc } from "drizzle-orm";
 import { hashPassword, generateToken, comparePasswords } from "./auth";
 import passport from "passport";
 import { nanoid } from "nanoid";
@@ -1725,6 +1729,277 @@ export function registerRoutes(app: Express) {
       res.json({ success: true, message });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to send message" });
+    }
+  });
+
+  // Menu Categories Routes
+  app.get("/api/menu-categories", requireSubscription, async (req, res) => {
+    try {
+      const categories = await db
+        .select()
+        .from(menuCategories)
+        .where(eq(menuCategories.userId, req.user!.id))
+        .orderBy(asc(menuCategories.displayOrder));
+      res.json(categories);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/menu-categories", requireSubscription, async (req, res) => {
+    try {
+      const validatedData = insertMenuCategorySchema.parse(req.body);
+      
+      const [newCategory] = await db
+        .insert(menuCategories)
+        .values({
+          userId: req.user!.id,
+          name: validatedData.name,
+          displayOrder: validatedData.displayOrder ?? 0,
+        })
+        .returning();
+
+      res.json(newCategory);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/menu-categories/:id", requireSubscription, async (req, res) => {
+    try {
+      const validatedData = insertMenuCategorySchema.parse(req.body);
+      
+      const updateData: any = {
+        name: validatedData.name,
+      };
+      
+      if (validatedData.displayOrder !== undefined) {
+        updateData.displayOrder = validatedData.displayOrder;
+      }
+      
+      const [updatedCategory] = await db
+        .update(menuCategories)
+        .set(updateData)
+        .where(
+          and(
+            eq(menuCategories.id, req.params.id),
+            eq(menuCategories.userId, req.user!.id)
+          )
+        )
+        .returning();
+
+      if (!updatedCategory) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+
+      res.json(updatedCategory);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/menu-categories/:id", requireSubscription, async (req, res) => {
+    try {
+      const [deletedCategory] = await db
+        .delete(menuCategories)
+        .where(
+          and(
+            eq(menuCategories.id, req.params.id),
+            eq(menuCategories.userId, req.user!.id)
+          )
+        )
+        .returning();
+
+      if (!deletedCategory) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+
+      res.json({ success: true, deletedCategory });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Menu Items Routes
+  app.get("/api/menu-items", requireSubscription, async (req, res) => {
+    try {
+      const items = await db
+        .select()
+        .from(menuItems)
+        .where(eq(menuItems.userId, req.user!.id))
+        .orderBy(asc(menuItems.categoryId), asc(menuItems.displayOrder));
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/menu-items/category/:categoryId", requireSubscription, async (req, res) => {
+    try {
+      const [category] = await db
+        .select()
+        .from(menuCategories)
+        .where(
+          and(
+            eq(menuCategories.id, req.params.categoryId),
+            eq(menuCategories.userId, req.user!.id)
+          )
+        )
+        .limit(1);
+
+      if (!category) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+
+      const items = await db
+        .select()
+        .from(menuItems)
+        .where(eq(menuItems.categoryId, req.params.categoryId))
+        .orderBy(asc(menuItems.displayOrder));
+
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/menu-items", requireSubscription, async (req, res) => {
+    try {
+      const validatedData = insertMenuItemSchema.parse(req.body);
+
+      const [category] = await db
+        .select()
+        .from(menuCategories)
+        .where(
+          and(
+            eq(menuCategories.id, validatedData.categoryId),
+            eq(menuCategories.userId, req.user!.id)
+          )
+        )
+        .limit(1);
+
+      if (!category) {
+        return res.status(403).json({ error: "Category not found or unauthorized" });
+      }
+      
+      const [newItem] = await db
+        .insert(menuItems)
+        .values({
+          userId: req.user!.id,
+          categoryId: validatedData.categoryId,
+          name: validatedData.name,
+          description: validatedData.description || null,
+          price: validatedData.price,
+          imageUrl: validatedData.imageUrl || null,
+          displayOrder: validatedData.displayOrder ?? 0,
+        })
+        .returning();
+
+      res.json(newItem);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/menu-items/:id", requireSubscription, async (req, res) => {
+    try {
+      const validatedData = insertMenuItemSchema.parse(req.body);
+
+      if (validatedData.categoryId) {
+        const [category] = await db
+          .select()
+          .from(menuCategories)
+          .where(
+            and(
+              eq(menuCategories.id, validatedData.categoryId),
+              eq(menuCategories.userId, req.user!.id)
+            )
+          )
+          .limit(1);
+
+        if (!category) {
+          return res.status(403).json({ error: "Category not found or unauthorized" });
+        }
+      }
+      
+      const updateData: any = {
+        categoryId: validatedData.categoryId,
+        name: validatedData.name,
+        description: validatedData.description || null,
+        price: validatedData.price,
+        imageUrl: validatedData.imageUrl || null,
+      };
+      
+      if (validatedData.displayOrder !== undefined) {
+        updateData.displayOrder = validatedData.displayOrder;
+      }
+      
+      const [updatedItem] = await db
+        .update(menuItems)
+        .set(updateData)
+        .where(
+          and(
+            eq(menuItems.id, req.params.id),
+            eq(menuItems.userId, req.user!.id)
+          )
+        )
+        .returning();
+
+      if (!updatedItem) {
+        return res.status(404).json({ error: "Menu item not found" });
+      }
+
+      res.json(updatedItem);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/menu-items/:id", requireSubscription, async (req, res) => {
+    try {
+      const [deletedItem] = await db
+        .delete(menuItems)
+        .where(
+          and(
+            eq(menuItems.id, req.params.id),
+            eq(menuItems.userId, req.user!.id)
+          )
+        )
+        .returning();
+
+      if (!deletedItem) {
+        return res.status(404).json({ error: "Menu item not found" });
+      }
+
+      res.json({ success: true, deletedItem });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Public Menu Route
+  app.get("/api/menu/:userId", async (req, res) => {
+    try {
+      const categories = await db
+        .select()
+        .from(menuCategories)
+        .where(eq(menuCategories.userId, req.params.userId))
+        .orderBy(asc(menuCategories.displayOrder));
+
+      const items = await db
+        .select()
+        .from(menuItems)
+        .where(eq(menuItems.userId, req.params.userId))
+        .orderBy(asc(menuItems.categoryId), asc(menuItems.displayOrder));
+
+      const menu = categories.map(category => ({
+        ...category,
+        items: items.filter(item => item.categoryId === category.id),
+      }));
+
+      res.json(menu);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
