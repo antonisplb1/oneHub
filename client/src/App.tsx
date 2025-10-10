@@ -30,6 +30,7 @@ import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import MenuBuilder from "@/pages/MenuBuilder";
 import PublicMenu from "@/pages/PublicMenu";
+import Pricing from "@/pages/Pricing";
 
 function Router() {
   return (
@@ -107,6 +108,7 @@ function Router() {
       <Route path="/in-store-spin/:userId" component={InStoreSpinWheel} />
       <Route path="/card/:customerId" component={CustomerLoyaltyCard} />
       <Route path="/menu/:merchantId" component={PublicMenu} />
+      <Route path="/pricing" component={Pricing} />
       <Route component={NotFound} />
     </Switch>
   );
