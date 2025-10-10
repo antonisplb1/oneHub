@@ -134,6 +134,27 @@ export const messages = pgTable("messages", {
   recipientCount: integer("recipient_count").default(0),
 });
 
+// Menu Builder feature tables
+export const menuCategories = pgTable("menu_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const menuItems = pgTable("menu_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  categoryId: varchar("category_id").references(() => menuCategories.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  price: real("price").notNull(),
+  imageUrl: text("image_url"),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -174,6 +195,16 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   sentAt: true,
 });
 
+export const insertMenuCategorySchema = createInsertSchema(menuCategories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -196,6 +227,12 @@ export type Spin = typeof spins.$inferSelect;
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+export type MenuCategory = typeof menuCategories.$inferSelect;
+export type InsertMenuCategory = z.infer<typeof insertMenuCategorySchema>;
+
+export type MenuItem = typeof menuItems.$inferSelect;
+export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
 
 // Validation schemas
 export const signupSchema = z.object({
