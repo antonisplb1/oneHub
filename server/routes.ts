@@ -692,6 +692,21 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  app.get("/api/menu-qr-code", requireSubscription, async (req, res) => {
+    try {
+      const protocol = req.protocol;
+      const host = req.get("host");
+      const menuUrl = `${protocol}://${host}/menu/${req.user!.id}`;
+      const qrCodeDataUrl = await QRCode.toDataURL(menuUrl, {
+        width: 300,
+        margin: 2,
+      });
+      res.json({ qrCode: qrCodeDataUrl, url: menuUrl });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/customers/join", async (req, res) => {
     try {
       const { userId, name, email, phone } = req.body;
