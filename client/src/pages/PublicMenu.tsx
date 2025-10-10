@@ -84,7 +84,7 @@ export default function PublicMenu() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[hsl(var(--menu-background))]">
-        <div className="max-w-[1200px] mx-auto p-6 space-y-6">
+        <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
           <div className="space-y-4">
             <Skeleton className="h-32 w-full" data-testid="skeleton-header" />
             <Skeleton className="h-12 w-48" />
@@ -120,7 +120,7 @@ export default function PublicMenu() {
       <div className="min-h-screen bg-[hsl(var(--menu-background))]">
         {/* Hero Section */}
         <div className="bg-gradient-to-br from-[hsl(var(--menu-accent))] to-[hsl(var(--menu-accent))]/80 py-12">
-          <div className="max-w-[1200px] mx-auto px-6">
+          <div className="w-full max-w-6xl mx-auto px-6">
             <div className="flex flex-col items-center gap-4 text-center">
               {data.merchant.logo && (
                 <img
@@ -137,7 +137,7 @@ export default function PublicMenu() {
           </div>
         </div>
 
-        <div className="max-w-[1200px] mx-auto p-6">
+        <div className="w-full max-w-6xl mx-auto p-6">
           <Card className="border-[hsl(var(--menu-card-border))] bg-[hsl(var(--menu-card))] shadow-sm" data-testid="empty-state">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <UtensilsCrossed className="w-16 h-16 text-[hsl(var(--menu-muted-foreground))] mb-4" />
@@ -156,7 +156,7 @@ export default function PublicMenu() {
     <div className="min-h-screen bg-[hsl(var(--menu-background))]" ref={scrollContainerRef}>
       {/* Hero Section with Gradient */}
       <div className="bg-gradient-to-br from-[hsl(var(--menu-accent))] to-[hsl(var(--menu-accent))]/80 py-12">
-        <div className="max-w-[1200px] mx-auto px-6">
+        <div className="w-full max-w-6xl mx-auto px-6">
           <div className="flex flex-col items-center gap-4 text-center">
             {data.merchant.logo && (
               <img
@@ -175,7 +175,7 @@ export default function PublicMenu() {
 
       {/* Sticky Category Navigation Tabs */}
       <div className="sticky top-0 z-10 bg-[hsl(var(--menu-background))] border-b border-[hsl(var(--menu-card-border))] shadow-sm">
-        <div className="max-w-[1200px] mx-auto px-6 py-4">
+        <div className="w-full max-w-6xl mx-auto px-6 py-4">
           <Tabs value={activeCategory} onValueChange={scrollToCategory}>
             <ScrollArea className="w-full whitespace-nowrap">
               <TabsList className="inline-flex h-auto bg-[hsl(var(--menu-muted))] p-1" data-testid="menu-accordion">
@@ -197,7 +197,7 @@ export default function PublicMenu() {
       </div>
 
       {/* Menu Categories and Items - Open Layout */}
-      <div className="max-w-[1200px] mx-auto px-6 py-8">
+      <div className="w-full max-w-6xl mx-auto px-6 py-8">
         <div className="space-y-12">
           {data.categories.map((category) => (
             <section
