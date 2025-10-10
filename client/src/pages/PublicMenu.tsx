@@ -166,7 +166,7 @@ export default function PublicMenu() {
                 data-testid="merchant-logo"
               />
             )}
-            <h1 className="text-4xl font-bold text-[hsl(var(--menu-accent-foreground))]" data-testid="merchant-name">
+            <h1 className="text-4xl font-normal text-[hsl(var(--menu-accent-foreground))]" data-testid="merchant-name">
               {data.merchant.shopName}
             </h1>
           </div>
@@ -206,31 +206,31 @@ export default function PublicMenu() {
               className="scroll-mt-32"
             >
               {/* Category Header */}
-              <div className="mb-6">
-                <h2 className="text-2xl font-semibold text-[hsl(var(--menu-foreground))]">
+              <div className="mb-5">
+                <h2 className="text-2xl font-normal text-[hsl(var(--menu-foreground))]">
                   {category.name}
                 </h2>
-                <p className="text-sm text-[hsl(var(--menu-muted-foreground))] mt-1" data-testid={`category-count-${category.id}`}>
+                <p className="text-sm font-light text-[hsl(var(--menu-muted-foreground))] mt-1" data-testid={`category-count-${category.id}`}>
                   {category.items.length} {category.items.length === 1 ? 'item' : 'items'}
                 </p>
               </div>
 
               {/* Menu Items */}
-              <div className="grid gap-6">
+              <div className="grid gap-4">
                 {category.items.map((item) => (
                   <Card
                     key={item.id}
                     className="border-[hsl(var(--menu-card-border))] bg-[hsl(var(--menu-card))] shadow-sm overflow-hidden hover-elevate"
                     data-testid={`item-${item.id}`}
                   >
-                    <CardContent className="p-6">
-                      <div className="flex gap-6">
+                    <CardContent className="p-4">
+                      <div className="flex gap-4">
                         {/* Item Image */}
                         {item.imageUrl && (
                           <img
                             src={item.imageUrl}
                             alt={item.name}
-                            className="w-[120px] h-[120px] rounded-md object-cover flex-shrink-0"
+                            className="w-20 h-20 rounded-md object-cover flex-shrink-0"
                             data-testid={`item-image-${item.id}`}
                           />
                         )}
@@ -238,12 +238,12 @@ export default function PublicMenu() {
                         {/* Item Details */}
                         <div className="flex-1 min-w-0 flex flex-col justify-between">
                           <div>
-                            <div className="flex items-start justify-between gap-4 mb-2">
-                              <h3 className="text-xl font-semibold text-[hsl(var(--menu-foreground))]" data-testid={`item-name-${item.id}`}>
+                            <div className="flex items-start justify-between gap-3 mb-1">
+                              <h3 className="text-lg font-normal text-[hsl(var(--menu-foreground))]" data-testid={`item-name-${item.id}`}>
                                 {item.name}
                               </h3>
                               <span
-                                className="text-lg font-bold text-[hsl(var(--menu-price))] flex-shrink-0"
+                                className="text-base font-medium text-[hsl(var(--menu-price))] flex-shrink-0"
                                 data-testid={`item-price-${item.id}`}
                               >
                                 {formatPrice(item.price)}
@@ -251,7 +251,7 @@ export default function PublicMenu() {
                             </div>
                             {item.description && (
                               <p
-                                className="text-base text-[hsl(var(--menu-muted-foreground))] leading-relaxed"
+                                className="text-sm font-light text-[hsl(var(--menu-muted-foreground))] leading-relaxed"
                                 data-testid={`item-description-${item.id}`}
                               >
                                 {item.description}
