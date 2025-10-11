@@ -665,6 +665,7 @@ export default function Demo() {
             <div>
               <h3 className="font-semibold mb-3">Product</h3>
               <ul className="space-y-2 text-sm">
+                <li><Link href="/about" className="text-muted-foreground hover:text-foreground" data-testid="link-about">About</Link></li>
                 <li><Link href="/demo" className="text-muted-foreground hover:text-foreground">Demo</Link></li>
                 <li><Link href="/pricing" className="text-muted-foreground hover:text-foreground">Pricing</Link></li>
               </ul>
