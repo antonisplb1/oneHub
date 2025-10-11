@@ -1,0 +1,78 @@
+🟣 About Unihub.live
+Empowering Local Businesses to Build Stronger Customer Relationships
+
+At Unihub.live, we believe that every visit matters. Our mission is to help cafés, bars, salons, and local shops connect with their customers in smarter, more engaging ways — without complicated apps or expensive systems.
+
+Through our simple, QR-powered tools, any business can launch a digital loyalty card, create a custom reward system, or even set up a menu and prize wheel — all from one easy dashboard.
+
+No coding. No installations. Just instant engagement that your customers love.
+
+💡 Our Vision
+
+To make digital customer engagement accessible to every local business, regardless of size or tech experience.
+We envision a world where every café, bakery, or boutique can deliver a seamless digital experience to customers — effortlessly.
+
+⚙️ What We Do
+
+Unihub.live provides a merchant dashboard that allows you to:
+
+🎟️ Create digital loyalty cards to reward repeat customers.
+
+🎰 Set up fun, interactive prize wheels to drive excitement and return visits.
+
+🍽️ Design and share your own menu online — complete with a QR code for instant access.
+
+💳 Accept secure payments via Stripe (no hassle, no extra setup).
+
+📊 Track engagement and performance with built-in analytics.
+
+Everything is web-based and mobile-friendly — so both you and your customers can use it instantly through a simple QR scan.
+
+🧭 Our Mission
+
+To simplify customer engagement for small and medium-sized businesses by offering powerful digital tools that feel effortless to use.
+
+We aim to replace paper loyalty cards and clunky apps with elegant, web-first solutions that boost repeat business, increase brand loyalty, and create genuine connections.
+
+🔒 Trust & Transparency
+
+We take privacy and reliability seriously.
+All transactions are securely handled through Stripe, and user data is protected using modern web standards.
+We also comply with GDPR and cookie transparency practices, so both merchants and customers can trust our platform completely.
+
+👥 Who We Serve
+
+Unihub.live is built for:
+
+☕ Cafés & Coffee Shops
+
+🍕 Restaurants & Takeaways
+
+🍸 Bars & Nightlife Venues
+
+🍞 Bakeries & Sweet Shops
+
+💇 Salons & Barbers
+
+🛍️ Boutiques & Retail Stores
+
+If you have returning customers, Unihub.live helps you reward them, engage them, and keep them coming back.
+
+🌍 Why Businesses Choose Us
+
+✅ 100% browser-based — no apps or downloads required
+
+✅ Fast QR code setup for customers and merchants
+
+✅ Clean, modern, mobile-friendly design
+
+✅ Affordable and scalable for any business
+
+✅ Continuous improvements and new features (like menus and customer analytics)
+
+💬 Join the Movement
+
+Thousands of small businesses are moving toward digital-first loyalty and engagement tools — and Unihub.live is leading the way.
+We’re passionate about giving every business, big or small, the chance to thrive in today’s digital world.
+
+Start engaging your customers smarter — the Unihub way.
