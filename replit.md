@@ -26,7 +26,7 @@ The backend uses **Express.js with TypeScript**, **Passport.js** for session-bas
 -   **Digital Menu Builder**: Allows merchants to create and manage digital menus with categories, items, and images. Generates QR codes for public menu access, with a customer-friendly public menu page featuring a warm color palette, sticky navigation, and responsive design.
 -   **Customer Notification Messaging**: Merchants can send push notifications to Google Wallet loyalty card holders via a dashboard UI, with messages saved for history tracking. Google Wallet API limits to 3 notifications per 24 hours per loyalty class.
 -   **QR Code System**: Generates Merchant Join, Customer Loyalty, and Spin Wheel QR codes. A merchant dashboard scanner is available for loyalty stamp operations.
--   **Digital Wallet Integration**: Includes buttons for Apple Wallet and Google Wallet on customer loyalty cards, with planned full integration.
+-   **Digital Wallet Integration**: Includes buttons for Apple Wallet and Google Wallet on customer loyalty cards, with planned full integration. For iOS users, the customer loyalty card includes automatic device detection and dismissible instructions for adding the card to the home screen as a web app. Web app manifest meta tags are dynamically set using the merchant's logo as the icon, providing a native app-like experience until full Apple Wallet integration is complete.
 
 ### Database Schema
 
