@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowUp, Cookie } from "lucide-react";
 import logoImage from "@assets/blob-b137548_1759662451793.png";
+import CookiePreferences from "@/components/CookiePreferences";
 
 export default function CookiePolicy() {
+  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+  
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -179,7 +183,7 @@ export default function CookiePolicy() {
                 </p>
                 <Button 
                   variant="outline" 
-                  onClick={() => window.dispatchEvent(new CustomEvent('openCookiePreferences'))}
+                  onClick={() => setIsPreferencesOpen(true)}
                   data-testid="button-manage-preferences"
                 >
                   Manage Your Cookie Preferences
@@ -269,6 +273,11 @@ export default function CookiePolicy() {
           </div>
         </div>
       </main>
+
+      <CookiePreferences 
+        open={isPreferencesOpen} 
+        onOpenChange={setIsPreferencesOpen} 
+      />
 
       <footer className="border-t py-8 px-6 bg-muted/30">
         <div className="container mx-auto max-w-4xl">
