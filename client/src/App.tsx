@@ -31,6 +31,9 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import MenuBuilder from "@/pages/MenuBuilder";
 import PublicMenu from "@/pages/PublicMenu";
 import Pricing from "@/pages/Pricing";
+import CookiePolicy from "@/pages/CookiePolicy";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
 import CookieBanner from "@/components/CookieBanner";
 
 function Router() {
@@ -110,6 +113,9 @@ function Router() {
       <Route path="/card/:customerId" component={CustomerLoyaltyCard} />
       <Route path="/menu/:merchantId" component={PublicMenu} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/cookie-policy" component={CookiePolicy} />
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
+      <Route path="/terms-of-service" component={TermsOfService} />
       <Route component={NotFound} />
     </Switch>
   );
