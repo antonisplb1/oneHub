@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Check, Download, Wallet, Smartphone, X } from "lucide-react";
+import { Check, Download, Wallet, Smartphone, X, Share2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { SiApple, SiGoogle } from "react-icons/si";
 
@@ -174,7 +174,7 @@ export default function CustomerLoyaltyCard() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-2 top-2 h-6 w-6"
+                className="absolute right-2 top-2"
                 onClick={() => setShowIOSInstructions(false)}
                 data-testid="button-dismiss-ios-instructions"
               >
@@ -184,7 +184,7 @@ export default function CustomerLoyaltyCard() {
               <AlertDescription data-testid="text-ios-description">
                 <p className="mb-2">Quick access your loyalty card like an app:</p>
                 <ol className="list-decimal list-inside space-y-1 text-sm">
-                  <li>Tap the Share button <span className="inline-flex items-center">📤</span> in Safari</li>
+                  <li>Tap the Share button <span className="inline-flex items-center"><Share2 className="w-4 h-4" /></span> in Safari</li>
                   <li>Scroll down and tap "Add to Home Screen"</li>
                   <li>Tap "Add" to confirm</li>
                 </ol>
