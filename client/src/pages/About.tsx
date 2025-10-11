@@ -30,16 +30,39 @@ export default function About() {
   useEffect(() => {
     document.title = "About uniHub - Digital Customer Engagement for Local Businesses";
     
+    const description = 'Learn how uniHub helps cafés, restaurants, salons, and local businesses build customer loyalty with QR-powered digital loyalty cards, prize wheels, and menus. No apps required.';
+    
     // Add meta description if not already present
     let metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Learn how uniHub helps cafés, restaurants, salons, and local businesses build customer loyalty with QR-powered digital loyalty cards, prize wheels, and menus. No apps required.');
+      metaDescription.setAttribute('content', description);
     } else {
       metaDescription = document.createElement('meta');
       metaDescription.setAttribute('name', 'description');
-      metaDescription.setAttribute('content', 'Learn how uniHub helps cafés, restaurants, salons, and local businesses build customer loyalty with QR-powered digital loyalty cards, prize wheels, and menus. No apps required.');
+      metaDescription.setAttribute('content', description);
       document.head.appendChild(metaDescription);
     }
+
+    // Helper function to set or create Open Graph meta tags
+    const setMetaTag = (property: string, content: string) => {
+      let element = document.querySelector(`meta[property="${property}"]`);
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute('property', property);
+        document.head.appendChild(element);
+      }
+      element.setAttribute('content', content);
+    };
+
+    // Set Open Graph meta tags
+    setMetaTag('og:title', 'About uniHub - Digital Customer Engagement for Local Businesses');
+    setMetaTag('og:description', description);
+    setMetaTag('og:type', 'website');
+    setMetaTag('og:url', window.location.href);
+    
+    // Add og:image with the logo
+    const logoUrl = new URL(logoImage, window.location.origin).href;
+    setMetaTag('og:image', logoUrl);
   }, []);
 
   return (
