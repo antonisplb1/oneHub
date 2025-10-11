@@ -36,7 +36,9 @@ Key tables include `users` (merchants), `customers`, `loyaltyCards`, `loyaltyTra
 
 -   **Landing Page & Pricing Redesign**: Features an interactive product showcase with shadcn/ui Tabs displaying all 3 products (Loyalty, Spin, Menu Builder), trust indicators (Stripe, cancel anytime), and a dedicated responsive pricing page. The pricing page details individual and bundle options (€15/€10/€5 individual, €23 for all three with €7 savings), includes FAQs, and a clear CTA.
 -   **Demo Page**: Comprehensive product walkthrough with 4 pricing cards, detailed feature explanations for each product (Loyalty Cards, Spin Wheel, Menu Builder), 3-step workflows, and "Perfect For" use cases. Updated to reflect current pricing (€23 bundle saves €7) and includes Menu Builder feature.
+-   **About Page**: SEO-optimized marketing page at `/about` with complete Open Graph metadata for social sharing. Features 8 sections: hero with gradient background, mission/vision cards, What We Do (6 feature cards with icons), Who We Serve (6 business types), Why Choose Us (benefits), Trust & Transparency (Stripe/GDPR/security indicators), CTA section, and comprehensive footer. Implements semantic HTML, proper heading hierarchy, and all data-testid attributes for testing. Accessible from all page footers.
 -   **Public Menu Page**: Designed for customers with a warm, appetizing aesthetic, gradient hero, sticky category navigation, large typography, generous spacing, and responsive layout.
+-   **Legal & Compliance Pages**: Cookie consent system with banner and preferences dialog, plus three comprehensive legal pages (Cookie Policy, Privacy Policy, Terms of Service) with professional structure and contact email (antonispleipell@gmail.com). All pages feature consistent navigation and footer links.
 
 ## External Dependencies
 
