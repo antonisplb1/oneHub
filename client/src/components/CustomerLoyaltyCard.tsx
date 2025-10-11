@@ -1,15 +1,18 @@
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, Download, Wallet } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Check, Download, Wallet, Smartphone, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { SiApple, SiGoogle } from "react-icons/si";
 
 export default function CustomerLoyaltyCard() {
   const { customerId } = useParams();
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["/api", "loyalty-card", "customer", customerId],
@@ -22,6 +25,63 @@ export default function CustomerLoyaltyCard() {
     queryFn: () => apiRequest<{ qrCode: string; qrCodeValue: string }>(`/api/customer-qr/${customerId}`),
     enabled: !!customerId,
   });
+
+  // iOS Detection
+  const isIOS = () => {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  };
+
+  // Detect iOS on mount
+  useEffect(() => {
+    if (isIOS()) {
+      setShowIOSInstructions(true);
+    }
+  }, []);
+
+  // Helper function to set or update meta tags
+  const setMetaTag = (name: string, content: string, useProperty = false) => {
+    const attribute = useProperty ? 'property' : 'name';
+    let element = document.querySelector(`meta[${attribute}="${name}"]`) as HTMLMetaElement;
+    if (!element) {
+      element = document.createElement('meta');
+      element.setAttribute(attribute, name);
+      document.head.appendChild(element);
+    }
+    element.setAttribute('content', content);
+  };
+
+  // Helper function to set or update link tags
+  const setLinkTag = (rel: string, href: string) => {
+    let element = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement;
+    if (!element) {
+      element = document.createElement('link');
+      element.setAttribute('rel', rel);
+      document.head.appendChild(element);
+    }
+    element.setAttribute('href', href);
+  };
+
+  // Set iOS web app meta tags when data is available
+  useEffect(() => {
+    if (!data) return;
+
+    const { user } = data;
+    const shopName = user?.shopName || "Shop";
+    const shopLogo = user?.logo;
+
+    // Set Apple-specific meta tags
+    setMetaTag('apple-mobile-web-app-capable', 'yes');
+    setMetaTag('apple-mobile-web-app-status-bar-style', 'default');
+    setMetaTag('apple-mobile-web-app-title', shopName);
+    
+    // Set theme color
+    setMetaTag('theme-color', '#0ea5e9'); // Using a primary blue color
+    
+    // Set apple touch icon if logo exists
+    if (shopLogo) {
+      setLinkTag('apple-touch-icon', shopLogo);
+    }
+  }, [data]);
 
   if (isLoading) {
     return (
@@ -106,6 +166,33 @@ export default function CustomerLoyaltyCard() {
                 {maxStamps - stamps} more {maxStamps - stamps === 1 ? "stamp" : "stamps"} until your {rewardText}
               </p>
             </div>
+          )}
+
+          {showIOSInstructions && (
+            <Alert className="relative" data-testid="alert-ios-instructions">
+              <Smartphone className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-2 h-6 w-6"
+                onClick={() => setShowIOSInstructions(false)}
+                data-testid="button-dismiss-ios-instructions"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <AlertTitle data-testid="text-ios-title">Save to Home Screen</AlertTitle>
+              <AlertDescription data-testid="text-ios-description">
+                <p className="mb-2">Quick access your loyalty card like an app:</p>
+                <ol className="list-decimal list-inside space-y-1 text-sm">
+                  <li>Tap the Share button <span className="inline-flex items-center">📤</span> in Safari</li>
+                  <li>Scroll down and tap "Add to Home Screen"</li>
+                  <li>Tap "Add" to confirm</li>
+                </ol>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Note: Full Apple Wallet integration is coming soon! For now, save this page for quick access.
+                </p>
+              </AlertDescription>
+            </Alert>
           )}
 
           {qrData && (
