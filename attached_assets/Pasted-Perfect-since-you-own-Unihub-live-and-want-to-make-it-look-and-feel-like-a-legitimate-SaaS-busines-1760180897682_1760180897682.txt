@@ -1,0 +1,58 @@
+Perfect — since you own Unihub.live and want to make it look and feel like a legitimate SaaS business, setting up a cookie structure + policy is a smart step.
+
+Let’s build this properly and transparently so it passes user trust and even compliance checks (GDPR / ePrivacy / CCPA).
+
+✅ Step 1: Define Your Cookie Categories
+
+Here’s how to structure the cookies for Unihub.live — short, compliant, and human-friendly.
+
+Category	Purpose	Examples	Consent Needed	Essential
+Session Cookies	Keep users logged in and secure sessions while navigating the dashboard.	session_id, auth_token	❌ No (strictly necessary)	✅ Yes
+Stripe Cookies	Handle checkout, fraud prevention, and secure payments via Stripe.	_stripe_mid, _stripe_sid, __stripe_orig_props	❌ No (strictly necessary for payments)	✅ Yes
+Analytics Cookies	Measure site performance and understand user behavior to improve the platform.	_ga, _gid, _clck (for Google Analytics or Microsoft Clarity)	✅ Yes (user must opt in)	❌ No
+Marketing / Tracking Cookies	Personalize marketing campaigns or retargeting (e.g., Facebook Pixel).	_fbp, _ttq (TikTok), _gcl_au (Google Ads)	✅ Yes (user must opt in)	❌ No
+✅ Step 2: Create the Cookie Banner Text
+
+You can use this short, clear wording for your cookie popup (works with CookieYes, CookieBot, or a custom React/Vue banner):
+
+🍪 We use cookies
+We use essential cookies to keep Unihub.live running, and optional cookies to help us improve your experience and analyze usage.
+By clicking “Accept all”, you agree to the use of all cookies. You can adjust your preferences anytime in the Cookie Settings.
+
+[Accept all] [Reject optional] [Manage preferences]
+
+✅ Step 3: Example “Cookie Policy” Page
+
+You can host this under /cookie-policy or /cookies.
+
+Cookie Policy for Unihub.live
+
+Last updated: October 2025
+
+This Cookie Policy explains how Unihub.live (“we”, “us”, or “our”) uses cookies and similar technologies to operate and improve our website and services.
+
+1. What Are Cookies
+
+Cookies are small text files stored on your device when you visit a website. They help us provide core functionality (like secure login), analyze traffic, and personalize your experience.
+
+2. How We Use Cookies
+Type	Purpose	Examples
+Essential Cookies	These cookies are required for the site to function. They include authentication and payment cookies.	session_id, auth_token, Stripe cookies
+Analytics Cookies	Used to understand how users interact with our site and improve performance.	Google Analytics cookies (_ga, _gid)
+Marketing Cookies	Used for remarketing and personalized advertising.	Facebook Pixel (_fbp), Google Ads (_gcl_au)
+3. Managing Cookies
+
+You can manage your cookie preferences anytime through our Cookie Settings or by adjusting your browser settings to reject or delete cookies.
+
+4. Third-Party Cookies
+
+We use trusted third parties like Stripe for payments and Google Analytics for analytics. These providers may set their own cookies when you use our site.
+
+Stripe Privacy Policy
+
+Google Analytics Data Policy
+
+5. Contact Us
+
+If you have any questions about this policy, contact us at
+📧 support@unihub.live

@@ -31,6 +31,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import MenuBuilder from "@/pages/MenuBuilder";
 import PublicMenu from "@/pages/PublicMenu";
 import Pricing from "@/pages/Pricing";
+import CookieBanner from "@/components/CookieBanner";
 
 function Router() {
   return (
@@ -119,6 +120,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        <CookieBanner />
         <Router />
       </TooltipProvider>
     </QueryClientProvider>
