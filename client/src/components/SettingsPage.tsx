@@ -306,7 +306,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="card-color">Store's Branding Color</Label>
+              <Label htmlFor="card-color">Loyalty Card Background Color</Label>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
                   <Input
@@ -329,12 +329,12 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-md border" style={{ backgroundColor: cardBackgroundColor }}>
                   <span className="text-sm text-white font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
-                    Color Preview
+                    Card Preview
                   </span>
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                This color will be used throughout your customer-facing pages, including loyalty cards in Google Wallet and your digital menu background.
+                This color will be used as the background for loyalty cards added to Google Wallet.
               </p>
             </div>
             <Button
