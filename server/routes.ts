@@ -2132,6 +2132,7 @@ export function registerRoutes(app: Express) {
           shopName: users.shopName,
           logo: users.logo,
           cardBackgroundColor: users.cardBackgroundColor,
+          menuBannerImage: users.menuBannerImage,
         })
         .from(users)
         .where(eq(users.id, req.params.userId))
