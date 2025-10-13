@@ -151,6 +151,7 @@ export const menuItems = pgTable("menu_items", {
   description: text("description"),
   price: real("price").notNull(),
   imageUrl: text("image_url"),
+  imageStorageKey: text("image_storage_key"),
   displayOrder: integer("display_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });

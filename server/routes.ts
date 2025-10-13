@@ -33,6 +33,8 @@ import { GoogleWalletService, type LoyaltyPassData } from "./googleWallet";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-09-30.clover",
@@ -175,6 +177,29 @@ const sendMessageSchema = z.object({
 });
 
 export function registerRoutes(app: Express) {
+  // Object Storage - Serve menu item images (public access for customers viewing menus)
+  // Reference: blueprint:javascript_object_storage
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        requestedPermission: ObjectPermission.READ,
+      });
+      if (!canAccess) {
+        return res.sendStatus(401);
+      }
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error serving menu image:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
   app.post("/api/auth/signup", signupLimiter, async (req, res) => {
     try {
       const validatedData = signupSchema.parse(req.body);
@@ -1931,6 +1956,20 @@ export function registerRoutes(app: Express) {
         })
         .returning();
 
+      // Handle image upload ACL
+      if (validatedData.imageUrl && validatedData.imageUrl.startsWith("https://storage.googleapis.com/")) {
+        const objectStorageService = new ObjectStorageService();
+        const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+          validatedData.imageUrl,
+          {
+            owner: req.user!.id,
+            visibility: "public", // Menu images are public for customers
+          }
+        );
+        // Update the item with the normalized path
+        await db.update(menuItems).set({ imageStorageKey: objectPath }).where(eq(menuItems.id, newItem.id));
+      }
+
       res.json(newItem);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1985,6 +2024,20 @@ export function registerRoutes(app: Express) {
         return res.status(404).json({ error: "Menu item not found" });
       }
 
+      // Handle image upload ACL
+      if (validatedData.imageUrl && validatedData.imageUrl.startsWith("https://storage.googleapis.com/")) {
+        const objectStorageService = new ObjectStorageService();
+        const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+          validatedData.imageUrl,
+          {
+            owner: req.user!.id,
+            visibility: "public", // Menu images are public for customers
+          }
+        );
+        // Update the item with the normalized path
+        await db.update(menuItems).set({ imageStorageKey: objectPath }).where(eq(menuItems.id, updatedItem.id));
+      }
+
       res.json(updatedItem);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -2011,6 +2064,14 @@ export function registerRoutes(app: Express) {
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // Menu Image Upload URL (protected, requires authentication)
+  // Reference: blueprint:javascript_object_storage
+  app.post("/api/menu-images/upload", requireAuth, requireSubscription, async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    res.json({ uploadURL });
   });
 
   // Public Menu Route
