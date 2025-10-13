@@ -1554,8 +1554,26 @@ export function registerRoutes(app: Express) {
       const price = calculateProductPrice(selectedProducts);
       const description = getProductDescription(selectedProducts);
 
+      // Create Stripe customer if one doesn't exist
+      let customerId = req.user!.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: req.user!.email,
+          metadata: {
+            userId: req.user!.id,
+          },
+        });
+        customerId = customer.id;
+        
+        // Update user with new Stripe customer ID
+        await db
+          .update(users)
+          .set({ stripeCustomerId: customerId })
+          .where(eq(users.id, req.user!.id));
+      }
+
       const session = await stripe.checkout.sessions.create({
-        customer: req.user!.stripeCustomerId!,
+        customer: customerId,
         payment_method_types: ["card"],
         line_items: [
           {
