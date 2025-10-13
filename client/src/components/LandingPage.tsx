@@ -76,68 +76,20 @@ export default function LandingPage() {
           <div className="relative max-w-5xl mx-auto">
             {/* Desktop: Circular Flow */}
             <div className="hidden md:grid md:grid-cols-2 md:gap-8 lg:gap-12 mb-12">
-              {/* Top Left: ATTRACT */}
-              <div className="flex items-start gap-6" data-testid="lifecycle-attract">
-                <div className="relative flex-shrink-0">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-chart-3 to-chart-3/70 flex items-center justify-center">
-                    <Target className="w-12 h-12 text-white" />
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-background border-2 border-chart-3 flex items-center justify-center">
-                    <span className="text-sm font-bold text-chart-3">1</span>
-                  </div>
-                </div>
-                <div className="flex-1 pt-2">
-                  <h4 className="text-2xl font-bold mb-2 flex items-center gap-2">
-                    ATTRACT
-                    <ArrowDownRight className="w-5 h-5 text-chart-3" />
-                  </h4>
-                  <p className="text-muted-foreground mb-3">Draw in new customers with exciting promotions</p>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Gift className="w-4 h-4 text-chart-3" />
-                    <span className="font-semibold">Spin Wheel Campaigns</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">Run spin-to-win events and prize giveaways</p>
-                </div>
-              </div>
-
-              {/* Top Right: SHOWCASE */}
-              <div className="flex items-start gap-6" data-testid="lifecycle-showcase">
-                <div className="relative flex-shrink-0">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-chart-4 to-chart-4/70 flex items-center justify-center">
-                    <UtensilsCrossed className="w-12 h-12 text-white" />
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-background border-2 border-chart-4 flex items-center justify-center">
-                    <span className="text-sm font-bold text-chart-4">2</span>
-                  </div>
-                </div>
-                <div className="flex-1 pt-2">
-                  <h4 className="text-2xl font-bold mb-2 flex items-center gap-2">
-                    SHOWCASE
-                    <ArrowDownRight className="w-5 h-5 text-chart-4" />
-                  </h4>
-                  <p className="text-muted-foreground mb-3">Display your offerings beautifully</p>
-                  <div className="flex items-center gap-2 text-sm">
-                    <UtensilsCrossed className="w-4 h-4 text-chart-4" />
-                    <span className="font-semibold">Digital Menu Builder</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">QR code menus with photos and prices</p>
-                </div>
-              </div>
-
-              {/* Bottom Left: ENGAGE */}
+              {/* Top Left: ENGAGE */}
               <div className="flex items-start gap-6" data-testid="lifecycle-engage">
                 <div className="relative flex-shrink-0">
                   <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
                     <Award className="w-12 h-12 text-white" />
                   </div>
                   <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-background border-2 border-primary flex items-center justify-center">
-                    <span className="text-sm font-bold text-primary">3</span>
+                    <span className="text-sm font-bold text-primary">1</span>
                   </div>
                 </div>
                 <div className="flex-1 pt-2">
                   <h4 className="text-2xl font-bold mb-2 flex items-center gap-2">
                     ENGAGE
-                    <ArrowUpRight className="w-5 h-5 text-primary" />
+                    <ArrowDownRight className="w-5 h-5 text-primary" />
                   </h4>
                   <p className="text-muted-foreground mb-3">Build lasting customer relationships</p>
                   <div className="flex items-center gap-2 text-sm">
@@ -148,20 +100,20 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Bottom Right: RETAIN */}
+              {/* Top Right: RETAIN */}
               <div className="flex items-start gap-6" data-testid="lifecycle-retain">
                 <div className="relative flex-shrink-0">
                   <div className="w-24 h-24 rounded-full bg-gradient-to-br from-chart-2 to-chart-2/70 flex items-center justify-center">
                     <Heart className="w-12 h-12 text-white" />
                   </div>
                   <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-background border-2 border-chart-2 flex items-center justify-center">
-                    <span className="text-sm font-bold text-chart-2">4</span>
+                    <span className="text-sm font-bold text-chart-2">2</span>
                   </div>
                 </div>
                 <div className="flex-1 pt-2">
                   <h4 className="text-2xl font-bold mb-2 flex items-center gap-2">
                     RETAIN
-                    <ArrowUpRight className="w-5 h-5 text-chart-2" />
+                    <ArrowDownRight className="w-5 h-5 text-chart-2" />
                   </h4>
                   <p className="text-muted-foreground mb-3">Keep customers coming back</p>
                   <div className="flex items-center gap-2 text-sm">
@@ -171,56 +123,58 @@ export default function LandingPage() {
                   <p className="text-sm text-muted-foreground mt-1">Send updates directly to customer wallets</p>
                 </div>
               </div>
+
+              {/* Bottom Left: ATTRACT */}
+              <div className="flex items-start gap-6" data-testid="lifecycle-attract">
+                <div className="relative flex-shrink-0">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-chart-3 to-chart-3/70 flex items-center justify-center">
+                    <Target className="w-12 h-12 text-white" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-background border-2 border-chart-3 flex items-center justify-center">
+                    <span className="text-sm font-bold text-chart-3">3</span>
+                  </div>
+                </div>
+                <div className="flex-1 pt-2">
+                  <h4 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                    ATTRACT
+                    <ArrowUpRight className="w-5 h-5 text-chart-3" />
+                  </h4>
+                  <p className="text-muted-foreground mb-3">Draw in new customers with exciting promotions</p>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Gift className="w-4 h-4 text-chart-3" />
+                    <span className="font-semibold">Spin Wheel Campaigns</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">Run spin-to-win events and prize giveaways</p>
+                </div>
+              </div>
+
+              {/* Bottom Right: SHOWCASE */}
+              <div className="flex items-start gap-6" data-testid="lifecycle-showcase">
+                <div className="relative flex-shrink-0">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-chart-4 to-chart-4/70 flex items-center justify-center">
+                    <UtensilsCrossed className="w-12 h-12 text-white" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-background border-2 border-chart-4 flex items-center justify-center">
+                    <span className="text-sm font-bold text-chart-4">4</span>
+                  </div>
+                </div>
+                <div className="flex-1 pt-2">
+                  <h4 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                    SHOWCASE
+                    <ArrowUpRight className="w-5 h-5 text-chart-4" />
+                  </h4>
+                  <p className="text-muted-foreground mb-3">Display your offerings beautifully</p>
+                  <div className="flex items-center gap-2 text-sm">
+                    <UtensilsCrossed className="w-4 h-4 text-chart-4" />
+                    <span className="font-semibold">Digital Menu Builder</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">QR code menus with photos and prices</p>
+                </div>
+              </div>
             </div>
 
             {/* Mobile: Stacked Cards */}
             <div className="md:hidden space-y-6">
-              <Card className="hover-elevate" data-testid="lifecycle-attract-mobile">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-4">
-                    <div className="relative flex-shrink-0">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-chart-3 to-chart-3/70 flex items-center justify-center">
-                        <Target className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-background border-2 border-chart-3 flex items-center justify-center">
-                        <span className="text-xs font-bold text-chart-3">1</span>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-xl font-bold mb-1">ATTRACT</h4>
-                      <p className="text-sm text-muted-foreground mb-2">Draw in new customers</p>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Gift className="w-4 h-4 text-chart-3" />
-                        <span className="font-semibold">Spin Wheel Campaigns</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover-elevate" data-testid="lifecycle-showcase-mobile">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-4">
-                    <div className="relative flex-shrink-0">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-chart-4 to-chart-4/70 flex items-center justify-center">
-                        <UtensilsCrossed className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-background border-2 border-chart-4 flex items-center justify-center">
-                        <span className="text-xs font-bold text-chart-4">2</span>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-xl font-bold mb-1">SHOWCASE</h4>
-                      <p className="text-sm text-muted-foreground mb-2">Display offerings beautifully</p>
-                      <div className="flex items-center gap-2 text-sm">
-                        <UtensilsCrossed className="w-4 h-4 text-chart-4" />
-                        <span className="font-semibold">Digital Menu Builder</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               <Card className="hover-elevate" data-testid="lifecycle-engage-mobile">
                 <CardContent className="pt-6">
                   <div className="flex items-start gap-4">
@@ -229,7 +183,7 @@ export default function LandingPage() {
                         <Award className="w-8 h-8 text-white" />
                       </div>
                       <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-background border-2 border-primary flex items-center justify-center">
-                        <span className="text-xs font-bold text-primary">3</span>
+                        <span className="text-xs font-bold text-primary">1</span>
                       </div>
                     </div>
                     <div className="flex-1">
@@ -252,7 +206,7 @@ export default function LandingPage() {
                         <Heart className="w-8 h-8 text-white" />
                       </div>
                       <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-background border-2 border-chart-2 flex items-center justify-center">
-                        <span className="text-xs font-bold text-chart-2">4</span>
+                        <span className="text-xs font-bold text-chart-2">2</span>
                       </div>
                     </div>
                     <div className="flex-1">
@@ -261,6 +215,52 @@ export default function LandingPage() {
                       <div className="flex items-center gap-2 text-sm">
                         <Bell className="w-4 h-4 text-chart-2" />
                         <span className="font-semibold">Push Notifications</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover-elevate" data-testid="lifecycle-attract-mobile">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-4">
+                    <div className="relative flex-shrink-0">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-chart-3 to-chart-3/70 flex items-center justify-center">
+                        <Target className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-background border-2 border-chart-3 flex items-center justify-center">
+                        <span className="text-xs font-bold text-chart-3">3</span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-xl font-bold mb-1">ATTRACT</h4>
+                      <p className="text-sm text-muted-foreground mb-2">Draw in new customers</p>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Gift className="w-4 h-4 text-chart-3" />
+                        <span className="font-semibold">Spin Wheel Campaigns</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover-elevate" data-testid="lifecycle-showcase-mobile">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-4">
+                    <div className="relative flex-shrink-0">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-chart-4 to-chart-4/70 flex items-center justify-center">
+                        <UtensilsCrossed className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-background border-2 border-chart-4 flex items-center justify-center">
+                        <span className="text-xs font-bold text-chart-4">4</span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-xl font-bold mb-1">SHOWCASE</h4>
+                      <p className="text-sm text-muted-foreground mb-2">Display offerings beautifully</p>
+                      <div className="flex items-center gap-2 text-sm">
+                        <UtensilsCrossed className="w-4 h-4 text-chart-4" />
+                        <span className="font-semibold">Digital Menu Builder</span>
                       </div>
                     </div>
                   </div>
