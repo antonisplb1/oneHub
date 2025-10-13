@@ -440,7 +440,7 @@ export default function MenuBuilder() {
                             )}
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span>Order: {item.displayOrder || 0}</span>
-                              {item.imageUrl && <span>• Has image</span>}
+                              {(item.imageStorageKey || item.imageUrl) && <span>• Has image</span>}
                             </div>
                           </div>
                           <div className="flex gap-2">

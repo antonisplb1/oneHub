@@ -226,9 +226,9 @@ export default function PublicMenu() {
                     <CardContent className="p-4">
                       <div className="flex gap-4">
                         {/* Item Image */}
-                        {item.imageUrl && (
+                        {(item.imageStorageKey || item.imageUrl) && (
                           <img
-                            src={item.imageUrl}
+                            src={item.imageStorageKey || item.imageUrl || ""}
                             alt={item.name}
                             className="w-20 h-20 rounded-md object-cover flex-shrink-0"
                             data-testid={`item-image-${item.id}`}
