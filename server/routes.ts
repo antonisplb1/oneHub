@@ -2127,6 +2127,7 @@ export function registerRoutes(app: Express) {
         .select({
           shopName: users.shopName,
           logo: users.logo,
+          cardBackgroundColor: users.cardBackgroundColor,
         })
         .from(users)
         .where(eq(users.id, req.params.userId))
