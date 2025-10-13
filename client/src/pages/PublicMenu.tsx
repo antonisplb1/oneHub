@@ -12,8 +12,21 @@ interface MenuResponse {
   merchant: {
     shopName: string;
     logo: string | null;
+    cardBackgroundColor: string;
   };
   categories: Array<MenuCategory & { items: MenuItem[] }>;
+}
+
+// Helper function to convert hex to RGB
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : null;
 }
 
 export default function PublicMenu() {
@@ -81,9 +94,30 @@ export default function PublicMenu() {
     }
   };
 
+  // Create gradient style based on brand color
+  const getGradientStyle = (brandColor?: string) => {
+    // Default fallback color if brand color not available
+    const defaultColor = "#4285F4";
+    const colorToUse = brandColor || defaultColor;
+    
+    const rgb = hexToRgb(colorToUse);
+    if (!rgb) {
+      return {
+        background: 'linear-gradient(to bottom, rgba(66, 133, 244, 0.12) 0%, rgba(66, 133, 244, 0.05) 40%, rgba(66, 133, 244, 0.02) 70%, rgba(255, 255, 255, 0) 100%)',
+      };
+    }
+
+    return {
+      background: `linear-gradient(to bottom, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.05) 40%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.02) 70%, rgba(255, 255, 255, 0) 100%)`,
+    };
+  };
+
+  // Use default gradient for loading state
+  const defaultGradientStyle = getGradientStyle();
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[hsl(var(--menu-background))]">
+      <div className="min-h-screen bg-[hsl(var(--menu-background))]" style={defaultGradientStyle}>
         <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
           <div className="space-y-4">
             <Skeleton className="h-32 w-full" data-testid="skeleton-header" />
@@ -101,7 +135,7 @@ export default function PublicMenu() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[hsl(var(--menu-background))] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[hsl(var(--menu-background))] flex items-center justify-center p-6" style={defaultGradientStyle}>
         <Card className="w-full max-w-md bg-[hsl(var(--menu-card))] border-[hsl(var(--menu-card-border))]" data-testid="error-state">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <UtensilsCrossed className="w-16 h-16 text-[hsl(var(--menu-muted-foreground))] mb-4" />
@@ -115,9 +149,11 @@ export default function PublicMenu() {
     );
   }
 
+  const gradientStyle = getGradientStyle(data.merchant.cardBackgroundColor);
+
   if (data.categories.length === 0) {
     return (
-      <div className="min-h-screen bg-[hsl(var(--menu-background))]">
+      <div className="min-h-screen bg-[hsl(var(--menu-background))]" style={gradientStyle}>
         {/* Hero Section */}
         <div className="bg-gradient-to-br from-[hsl(var(--menu-accent))] to-[hsl(var(--menu-accent))]/80 py-12">
           <div className="w-full max-w-6xl mx-auto px-6">
@@ -153,7 +189,7 @@ export default function PublicMenu() {
   }
 
   return (
-    <div className="min-h-screen bg-[hsl(var(--menu-background))]" ref={scrollContainerRef}>
+    <div className="min-h-screen bg-[hsl(var(--menu-background))]" ref={scrollContainerRef} style={gradientStyle}>
       {/* Hero Section with Gradient */}
       <div className="bg-gradient-to-br from-[hsl(var(--menu-accent))] to-[hsl(var(--menu-accent))]/80 py-12">
         <div className="w-full max-w-6xl mx-auto px-6">
