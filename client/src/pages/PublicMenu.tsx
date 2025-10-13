@@ -29,6 +29,54 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
     : null;
 }
 
+// Helper function to calculate relative luminance
+function getRelativeLuminance(rgb: { r: number; g: number; b: number }): number {
+  const rsRGB = rgb.r / 255;
+  const gsRGB = rgb.g / 255;
+  const bsRGB = rgb.b / 255;
+
+  const r = rsRGB <= 0.03928 ? rsRGB / 12.92 : Math.pow((rsRGB + 0.055) / 1.055, 2.4);
+  const g = gsRGB <= 0.03928 ? gsRGB / 12.92 : Math.pow((gsRGB + 0.055) / 1.055, 2.4);
+  const b = bsRGB <= 0.03928 ? bsRGB / 12.92 : Math.pow((bsRGB + 0.055) / 1.055, 2.4);
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+// Helper function to calculate contrast ratio between two colors
+function getContrastRatio(luminance1: number, luminance2: number): number {
+  const lighter = Math.max(luminance1, luminance2);
+  const darker = Math.min(luminance1, luminance2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+// Helper function to determine text color based on background for WCAG AA compliance
+function getContrastTextColor(brandColor: string): string {
+  const rgb = hexToRgb(brandColor);
+  
+  // Fallback: use the same contrast calculation for default color
+  if (!rgb) {
+    const defaultRgb = hexToRgb("#4285F4");
+    if (defaultRgb) {
+      const defaultLuminance = getRelativeLuminance(defaultRgb);
+      const whiteContrast = getContrastRatio(defaultLuminance, 1); // 1 is white luminance
+      const blackContrast = getContrastRatio(defaultLuminance, 0); // 0 is black luminance
+      return whiteContrast > blackContrast ? "#ffffff" : "#000000";
+    }
+    return "#ffffff"; // Ultimate fallback
+  }
+
+  const bgLuminance = getRelativeLuminance(rgb);
+  const whiteLuminance = 1; // White has luminance of 1
+  const blackLuminance = 0; // Black has luminance of 0
+  
+  const whiteContrast = getContrastRatio(bgLuminance, whiteLuminance);
+  const blackContrast = getContrastRatio(bgLuminance, blackLuminance);
+  
+  // Choose the color with the highest contrast ratio
+  // This ensures we always get the best possible contrast
+  return whiteContrast > blackContrast ? "#ffffff" : "#000000";
+}
+
 export default function PublicMenu() {
   const { merchantId } = useParams();
   const [activeCategory, setActiveCategory] = useState<string>("");
@@ -94,7 +142,7 @@ export default function PublicMenu() {
     }
   };
 
-  // Create gradient style based on brand color
+  // Create gradient style based on brand color for page background
   const getGradientStyle = (brandColor?: string) => {
     // Default fallback color if brand color not available
     const defaultColor = "#4285F4";
@@ -112,8 +160,27 @@ export default function PublicMenu() {
     };
   };
 
-  // Use default gradient for loading state
+  // Create hero header style based on brand color
+  const getHeroStyle = (brandColor?: string) => {
+    // Default fallback color if brand color not available
+    const defaultColor = "#4285F4";
+    const colorToUse = brandColor || defaultColor;
+    
+    const rgb = hexToRgb(colorToUse);
+    if (!rgb) {
+      return {
+        background: 'linear-gradient(to bottom right, #4285F4, rgba(66, 133, 244, 0.8))',
+      };
+    }
+
+    return {
+      background: `linear-gradient(to bottom right, rgb(${rgb.r}, ${rgb.g}, ${rgb.b}), rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8))`,
+    };
+  };
+
+  // Use default styles for loading state
   const defaultGradientStyle = getGradientStyle();
+  const defaultHeroStyle = getHeroStyle();
 
   if (isLoading) {
     return (
@@ -150,12 +217,14 @@ export default function PublicMenu() {
   }
 
   const gradientStyle = getGradientStyle(data.merchant.cardBackgroundColor);
+  const heroStyle = getHeroStyle(data.merchant.cardBackgroundColor);
+  const heroTextColor = getContrastTextColor(data.merchant.cardBackgroundColor);
 
   if (data.categories.length === 0) {
     return (
       <div className="min-h-screen bg-[hsl(var(--menu-background))]" style={gradientStyle}>
         {/* Hero Section */}
-        <div className="bg-gradient-to-br from-[hsl(var(--menu-accent))] to-[hsl(var(--menu-accent))]/80 py-12">
+        <div className="py-12" style={heroStyle}>
           <div className="w-full max-w-6xl mx-auto px-6">
             <div className="flex flex-col items-center gap-4 text-center">
               {data.merchant.logo && (
@@ -166,7 +235,7 @@ export default function PublicMenu() {
                   data-testid="merchant-logo"
                 />
               )}
-              <h1 className="text-4xl font-bold text-[hsl(var(--menu-accent-foreground))]" data-testid="merchant-name">
+              <h1 className="text-4xl font-bold" style={{ color: heroTextColor }} data-testid="merchant-name">
                 {data.merchant.shopName}
               </h1>
             </div>
@@ -191,7 +260,7 @@ export default function PublicMenu() {
   return (
     <div className="min-h-screen bg-[hsl(var(--menu-background))]" ref={scrollContainerRef} style={gradientStyle}>
       {/* Hero Section with Gradient */}
-      <div className="bg-gradient-to-br from-[hsl(var(--menu-accent))] to-[hsl(var(--menu-accent))]/80 py-12">
+      <div className="py-12" style={heroStyle}>
         <div className="w-full max-w-6xl mx-auto px-6">
           <div className="flex flex-col items-center gap-4 text-center">
             {data.merchant.logo && (
@@ -202,7 +271,7 @@ export default function PublicMenu() {
                 data-testid="merchant-logo"
               />
             )}
-            <h1 className="text-4xl font-normal text-[hsl(var(--menu-accent-foreground))]" data-testid="merchant-name">
+            <h1 className="text-4xl font-normal" style={{ color: heroTextColor }} data-testid="merchant-name">
               {data.merchant.shopName}
             </h1>
           </div>
