@@ -148,6 +148,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     "--sidebar-width": "17rem",
   };
 
+  const brandingColor = user.cardBackgroundColor || "#4285F4";
+
+  const getHeaderStyle = () => {
+    const svgPattern = `data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='${encodeURIComponent(brandingColor)}' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E`;
+    
+    return {
+      backgroundImage: `url("${svgPattern}"), linear-gradient(to right, ${brandingColor}15, ${brandingColor}08)`,
+      backgroundBlendMode: 'normal, normal',
+      backgroundColor: 'hsl(var(--background))',
+    };
+  };
+
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
@@ -181,7 +193,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </Sidebar>
 
         <div className="flex flex-col flex-1">
-          <header className="flex items-center justify-between p-4 border-b bg-background">
+          <header className="flex items-center justify-between p-4 border-b" style={getHeaderStyle()}>
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout">
               Logout
