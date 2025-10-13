@@ -349,13 +349,17 @@ export default function MenuBuilder() {
   const handleAddItem = (categoryId: string) => {
     setEditingItem(null);
     setUploadedImageUrl("");
+    const categoryItems = getItemsForCategory(categoryId);
+    const nextDisplayOrder = categoryItems.length > 0
+      ? Math.max(...categoryItems.map(item => item.displayOrder || 0)) + 1
+      : 0;
     itemForm.reset({
       categoryId,
       name: "",
       description: "",
       price: 0,
       imageUrl: "",
-      displayOrder: 0,
+      displayOrder: nextDisplayOrder,
     });
     setIsItemDialogOpen(true);
   };
@@ -701,49 +705,26 @@ export default function MenuBuilder() {
                 )}
               />
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  control={itemForm.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price (€)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          data-testid="input-item-price"
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={itemForm.control}
-                  name="displayOrder"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Display Order</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          data-testid="input-item-display-order"
-                          {...field}
-                          value={field.value ?? 0}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={itemForm.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Price (€)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        data-testid="input-item-price"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={itemForm.control}
