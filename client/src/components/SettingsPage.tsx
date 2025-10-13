@@ -69,6 +69,13 @@ export default function SettingsPage() {
         description: "Your shop information has been saved.",
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const updateProductsMutation = useMutation({

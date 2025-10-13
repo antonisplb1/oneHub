@@ -13,6 +13,7 @@ interface MenuResponse {
     shopName: string;
     logo: string | null;
     cardBackgroundColor: string;
+    menuBannerImage?: string | null;
   };
   categories: Array<MenuCategory & { items: MenuItem[] }>;
 }
@@ -224,8 +225,18 @@ export default function PublicMenu() {
     return (
       <div className="min-h-screen bg-[hsl(var(--menu-background))]" style={gradientStyle}>
         {/* Hero Section */}
-        <div className="py-12" style={heroStyle}>
-          <div className="w-full max-w-6xl mx-auto px-6">
+        <div className="relative py-12 overflow-hidden" style={data.merchant.menuBannerImage ? undefined : heroStyle}>
+          {data.merchant.menuBannerImage && (
+            <>
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${data.merchant.menuBannerImage})` }}
+                data-testid="hero-banner-bg"
+              />
+              <div className="absolute inset-0 bg-black/40" />
+            </>
+          )}
+          <div className="relative w-full max-w-6xl mx-auto px-6">
             <div className="flex flex-col items-center gap-4 text-center">
               {data.merchant.logo && (
                 <img
@@ -235,7 +246,11 @@ export default function PublicMenu() {
                   data-testid="merchant-logo"
                 />
               )}
-              <h1 className="text-4xl font-bold" style={{ color: heroTextColor }} data-testid="merchant-name">
+              <h1 
+                className="text-4xl font-bold" 
+                style={{ color: data.merchant.menuBannerImage ? "#ffffff" : heroTextColor }} 
+                data-testid="merchant-name"
+              >
                 {data.merchant.shopName}
               </h1>
             </div>
@@ -259,9 +274,19 @@ export default function PublicMenu() {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--menu-background))]" ref={scrollContainerRef} style={gradientStyle}>
-      {/* Hero Section with Gradient */}
-      <div className="py-12" style={heroStyle}>
-        <div className="w-full max-w-6xl mx-auto px-6">
+      {/* Hero Section with Gradient or Banner Image */}
+      <div className="relative py-12 overflow-hidden" style={data.merchant.menuBannerImage ? undefined : heroStyle}>
+        {data.merchant.menuBannerImage && (
+          <>
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${data.merchant.menuBannerImage})` }}
+              data-testid="hero-banner-bg"
+            />
+            <div className="absolute inset-0 bg-black/40" />
+          </>
+        )}
+        <div className="relative w-full max-w-6xl mx-auto px-6">
           <div className="flex flex-col items-center gap-4 text-center">
             {data.merchant.logo && (
               <img
@@ -271,7 +296,11 @@ export default function PublicMenu() {
                 data-testid="merchant-logo"
               />
             )}
-            <h1 className="text-4xl font-normal" style={{ color: heroTextColor }} data-testid="merchant-name">
+            <h1 
+              className="text-4xl font-normal" 
+              style={{ color: data.merchant.menuBannerImage ? "#ffffff" : heroTextColor }} 
+              data-testid="merchant-name"
+            >
               {data.merchant.shopName}
             </h1>
           </div>

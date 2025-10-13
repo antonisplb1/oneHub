@@ -689,6 +689,39 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "Invalid color format. Please use hex format (e.g., #4285F4)" });
       }
       
+      // Validate menuBannerImage if provided
+      if (menuBannerImage !== undefined && menuBannerImage !== null && menuBannerImage !== "") {
+        // Check if it's a valid data URL format
+        const dataUrlRegex = /^data:image\/(png|jpeg|jpg|gif|webp);base64,/;
+        if (!dataUrlRegex.test(menuBannerImage)) {
+          return res.status(400).json({ error: "Invalid banner image format. Must be a valid image data URL (PNG, JPG, GIF, or WebP)" });
+        }
+        
+        // Extract base64 data
+        const base64Data = menuBannerImage.split(',')[1];
+        if (!base64Data) {
+          return res.status(400).json({ error: "Invalid banner image data" });
+        }
+        
+        // Decode base64 to get actual byte size
+        try {
+          const buffer = Buffer.from(base64Data, 'base64');
+          const sizeInBytes = buffer.length;
+          const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+          
+          if (sizeInBytes > maxSizeBytes) {
+            return res.status(400).json({ error: "Banner image too large. Maximum size is 5MB" });
+          }
+          
+          // Verify the buffer contains valid data
+          if (buffer.length === 0) {
+            return res.status(400).json({ error: "Invalid banner image: empty data" });
+          }
+        } catch (error) {
+          return res.status(400).json({ error: "Invalid banner image: failed to decode base64 data" });
+        }
+      }
+      
       const updateData: any = {
         shopName: shopName || req.user!.shopName,
         logo: logo || req.user!.logo,
