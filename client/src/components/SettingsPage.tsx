@@ -39,21 +39,24 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [shopName, setShopName] = useState(user?.shopName || "");
   const [logoUrl, setLogoUrl] = useState(user?.logo || "");
+  const [menuBannerImage, setMenuBannerImage] = useState(user?.menuBannerImage || "");
   const [cardBackgroundColor, setCardBackgroundColor] = useState(user?.cardBackgroundColor || "#4285F4");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>(user?.selectedProducts || []);
 
   useEffect(() => {
     if (user) {
       setShopName(user.shopName || "");
       setLogoUrl(user.logo || "");
+      setMenuBannerImage(user.menuBannerImage || "");
       setCardBackgroundColor(user.cardBackgroundColor || "#4285F4");
       setSelectedProducts(user.selectedProducts || []);
     }
   }, [user]);
 
   const updateMutation = useMutation({
-    mutationFn: (data: { shopName: string; logo?: string; cardBackgroundColor?: string }) => {
+    mutationFn: (data: { shopName: string; logo?: string; menuBannerImage?: string; cardBackgroundColor?: string }) => {
       return apiRequest("/api/user/profile", {
         method: "PATCH",
         body: JSON.stringify(data),
@@ -114,6 +117,7 @@ export default function SettingsPage() {
     updateMutation.mutate({
       shopName,
       logo: logoUrl || undefined,
+      menuBannerImage: menuBannerImage || undefined,
       cardBackgroundColor,
     });
   };
@@ -169,6 +173,59 @@ export default function SettingsPage() {
 
   const handleRemoveLogo = () => {
     setLogoUrl("");
+  };
+
+  const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file (PNG, JPG, etc.)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingBanner(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setMenuBannerImage(dataUrl);
+        setIsUploadingBanner(false);
+      };
+      reader.onerror = () => {
+        toast({
+          title: "Error reading file",
+          description: "Please try again",
+          variant: "destructive",
+        });
+        setIsUploadingBanner(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      toast({
+        title: "Error uploading image",
+        description: "Please try again",
+        variant: "destructive",
+      });
+      setIsUploadingBanner(false);
+    }
+  };
+
+  const handleRemoveBanner = () => {
+    setMenuBannerImage("");
   };
 
   const toggleProduct = (productId: string) => {
@@ -302,6 +359,61 @@ export default function SettingsPage() {
                 )}
                 <p className="text-sm text-muted-foreground mt-2">
                   Upload your shop logo (PNG, JPG, max 2MB). It will be displayed on customer loyalty cards and Google Wallet passes.
+                </p>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="banner-upload">Menu Banner Image (optional)</Label>
+              <div className="mt-2">
+                {menuBannerImage ? (
+                  <div className="space-y-4">
+                    <div className="p-4 border rounded-md bg-muted/20">
+                      <img
+                        src={menuBannerImage}
+                        alt="Menu banner"
+                        className="w-full h-32 object-cover rounded-md"
+                        data-testid="img-banner-preview"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRemoveBanner}
+                        className="mt-4"
+                        data-testid="button-remove-banner"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Remove Banner
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById("banner-upload")?.click()}
+                      disabled={isUploadingBanner}
+                      data-testid="button-upload-banner"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {isUploadingBanner ? "Uploading..." : "Upload Banner"}
+                    </Button>
+                    <Input
+                      id="banner-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBannerFileChange}
+                      className="hidden"
+                      data-testid="input-banner-file"
+                    />
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground mt-2">
+                  Upload a banner image for your public menu header (PNG, JPG, max 5MB). Recommended size: 1200x400px for best results.
                 </p>
               </div>
             </div>

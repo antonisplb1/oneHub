@@ -683,7 +683,7 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/user/profile", requireSubscription, async (req, res) => {
     try {
-      const { shopName, logo, cardBackgroundColor } = req.body;
+      const { shopName, logo, menuBannerImage, cardBackgroundColor } = req.body;
       
       if (cardBackgroundColor && !/^#[0-9A-Fa-f]{6}$/.test(cardBackgroundColor)) {
         return res.status(400).json({ error: "Invalid color format. Please use hex format (e.g., #4285F4)" });
@@ -693,6 +693,10 @@ export function registerRoutes(app: Express) {
         shopName: shopName || req.user!.shopName,
         logo: logo || req.user!.logo,
       };
+      
+      if (menuBannerImage !== undefined) {
+        updateData.menuBannerImage = menuBannerImage || null;
+      }
       
       if (cardBackgroundColor) {
         updateData.cardBackgroundColor = cardBackgroundColor;
