@@ -112,15 +112,42 @@ export default function PublicMenu() {
     };
   };
 
+  // Create header gradient style based on brand color
+  const getHeaderGradientStyle = (brandColor?: string) => {
+    const defaultColor = "#4285F4";
+    const colorToUse = brandColor || defaultColor;
+    
+    const rgb = hexToRgb(colorToUse);
+    if (!rgb) {
+      return {
+        background: 'linear-gradient(to bottom right, rgba(66, 133, 244, 1) 0%, rgba(66, 133, 244, 0.8) 100%)',
+      };
+    }
+
+    return {
+      background: `linear-gradient(to bottom right, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8) 100%)`,
+    };
+  };
+
   // Use default gradient for loading state
   const defaultGradientStyle = getGradientStyle();
+  const defaultHeaderGradientStyle = getHeaderGradientStyle();
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[hsl(var(--menu-background))]" style={defaultGradientStyle}>
+        {/* Hero Section with Default Brand Color */}
+        <div className="py-12" style={defaultHeaderGradientStyle}>
+          <div className="w-full max-w-6xl mx-auto px-6">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <Skeleton className="h-24 w-24 rounded-lg" />
+              <Skeleton className="h-10 w-48" />
+            </div>
+          </div>
+        </div>
+        
         <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
           <div className="space-y-4">
-            <Skeleton className="h-32 w-full" data-testid="skeleton-header" />
             <Skeleton className="h-12 w-48" />
           </div>
           <div className="space-y-6">
@@ -150,12 +177,13 @@ export default function PublicMenu() {
   }
 
   const gradientStyle = getGradientStyle(data.merchant.cardBackgroundColor);
+  const headerGradientStyle = getHeaderGradientStyle(data.merchant.cardBackgroundColor);
 
   if (data.categories.length === 0) {
     return (
       <div className="min-h-screen bg-[hsl(var(--menu-background))]" style={gradientStyle}>
         {/* Hero Section */}
-        <div className="bg-gradient-to-br from-[hsl(var(--menu-accent))] to-[hsl(var(--menu-accent))]/80 py-12">
+        <div className="py-12" style={headerGradientStyle}>
           <div className="w-full max-w-6xl mx-auto px-6">
             <div className="flex flex-col items-center gap-4 text-center">
               {data.merchant.logo && (
@@ -166,7 +194,7 @@ export default function PublicMenu() {
                   data-testid="merchant-logo"
                 />
               )}
-              <h1 className="text-4xl font-bold text-[hsl(var(--menu-accent-foreground))]" data-testid="merchant-name">
+              <h1 className="text-4xl font-bold text-white" data-testid="merchant-name">
                 {data.merchant.shopName}
               </h1>
             </div>
@@ -191,7 +219,7 @@ export default function PublicMenu() {
   return (
     <div className="min-h-screen bg-[hsl(var(--menu-background))]" ref={scrollContainerRef} style={gradientStyle}>
       {/* Hero Section with Gradient */}
-      <div className="bg-gradient-to-br from-[hsl(var(--menu-accent))] to-[hsl(var(--menu-accent))]/80 py-12">
+      <div className="py-12" style={headerGradientStyle}>
         <div className="w-full max-w-6xl mx-auto px-6">
           <div className="flex flex-col items-center gap-4 text-center">
             {data.merchant.logo && (
@@ -202,7 +230,7 @@ export default function PublicMenu() {
                 data-testid="merchant-logo"
               />
             )}
-            <h1 className="text-4xl font-normal text-[hsl(var(--menu-accent-foreground))]" data-testid="merchant-name">
+            <h1 className="text-4xl font-normal text-white" data-testid="merchant-name">
               {data.merchant.shopName}
             </h1>
           </div>
