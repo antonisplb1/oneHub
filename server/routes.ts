@@ -2066,6 +2066,34 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Reorder menu items
+  app.post("/api/menu-items/reorder", requireSubscription, async (req, res) => {
+    try {
+      const updates = req.body.updates as { id: string; displayOrder: number }[];
+      
+      if (!Array.isArray(updates)) {
+        return res.status(400).json({ error: "Invalid updates format" });
+      }
+
+      // Update each item's display order
+      for (const update of updates) {
+        await db
+          .update(menuItems)
+          .set({ displayOrder: update.displayOrder })
+          .where(
+            and(
+              eq(menuItems.id, update.id),
+              eq(menuItems.userId, req.user!.id)
+            )
+          );
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Menu Image Upload URL (protected, requires authentication)
   // Reference: blueprint:javascript_object_storage
   app.post("/api/menu-images/upload", requireAuth, requireSubscription, async (req, res) => {
