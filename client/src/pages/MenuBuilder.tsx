@@ -8,13 +8,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Plus, Edit, Trash2, UtensilsCrossed, Copy, Download } from "lucide-react";
+import { Plus, Edit, Trash2, UtensilsCrossed, Copy, Download, Upload, X } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertMenuCategorySchema, insertMenuItemSchema, type MenuCategory, type MenuItem } from "@shared/schema";
 import { z } from "zod";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 type CategoryFormValues = z.infer<typeof insertMenuCategorySchema>;
 type ItemFormValues = z.infer<typeof insertMenuItemSchema>;
@@ -26,6 +28,7 @@ export default function MenuBuilder() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<MenuCategory | null>(null);
   const [deletingItem, setDeletingItem] = useState<MenuItem | null>(null);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
   const { toast } = useToast();
 
   const categoryForm = useForm<CategoryFormValues>({
@@ -226,6 +229,7 @@ export default function MenuBuilder() {
 
   const handleAddItem = (categoryId: string) => {
     setEditingItem(null);
+    setUploadedImageUrl("");
     itemForm.reset({
       categoryId,
       name: "",
@@ -239,6 +243,7 @@ export default function MenuBuilder() {
 
   const handleEditItem = (item: MenuItem) => {
     setEditingItem(item);
+    setUploadedImageUrl("");
     itemForm.reset({
       categoryId: item.categoryId,
       name: item.name,
@@ -628,14 +633,73 @@ export default function MenuBuilder() {
                 name="imageUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Image URL (Optional)</FormLabel>
+                    <FormLabel>Item Image</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="https://example.com/image.jpg"
-                        data-testid="input-item-image-url"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
+                      <div className="space-y-3">
+                        {/* Upload button */}
+                        <ObjectUploader
+                          maxNumberOfFiles={1}
+                          maxFileSize={5242880}
+                          onGetUploadParameters={async () => {
+                            const response = await fetch("/api/menu-images/upload", {
+                              method: "POST",
+                              credentials: "include",
+                            });
+                            const data = await response.json();
+                            return {
+                              method: "PUT" as const,
+                              url: data.uploadURL,
+                            };
+                          }}
+                          onComplete={(result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+                            if (result.successful && result.successful.length > 0) {
+                              const uploadUrl = result.successful[0].uploadURL || "";
+                              field.onChange(uploadUrl);
+                              setUploadedImageUrl(uploadUrl);
+                            }
+                          }}
+                          buttonClassName="w-full"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Image
+                        </ObjectUploader>
+                        
+                        {/* Show preview if image uploaded or URL provided */}
+                        {(field.value || uploadedImageUrl) && (
+                          <div className="relative">
+                            <img 
+                              src={field.value || uploadedImageUrl} 
+                              alt="Menu item preview" 
+                              className="w-full h-32 object-cover rounded-md"
+                              data-testid="img-item-preview"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-2 right-2"
+                              onClick={() => {
+                                field.onChange("");
+                                setUploadedImageUrl("");
+                              }}
+                              data-testid="button-remove-image"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {/* Optional URL input for backward compatibility */}
+                        <div className="text-sm text-muted-foreground">
+                          Or enter image URL manually:
+                        </div>
+                        <Input
+                          placeholder="https://example.com/image.jpg"
+                          data-testid="input-item-image-url"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
