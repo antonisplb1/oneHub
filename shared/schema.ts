@@ -10,6 +10,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   shopName: text("shop_name").notNull(),
   logo: text("logo"),
+  menuBannerImage: text("menu_banner_image"),
   cardBackgroundColor: text("card_background_color").default("#4285F4"),
   emailVerified: boolean("email_verified").default(false),
   verificationToken: text("verification_token"),
