@@ -129,6 +129,23 @@ export default function PublicMenu() {
     };
   };
 
+  // Create item/card gradient style based on brand color
+  const getCardGradientStyle = (brandColor?: string) => {
+    const defaultColor = "#4285F4";
+    const colorToUse = brandColor || defaultColor;
+    
+    const rgb = hexToRgb(colorToUse);
+    if (!rgb) {
+      return {
+        background: 'linear-gradient(135deg, rgba(66, 133, 244, 0.08) 0%, rgba(66, 133, 244, 0.02) 100%)',
+      };
+    }
+
+    return {
+      background: `linear-gradient(135deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.02) 100%)`,
+    };
+  };
+
   // Use default gradient for loading state
   const defaultGradientStyle = getGradientStyle();
   const defaultHeaderGradientStyle = getHeaderGradientStyle();
@@ -178,6 +195,7 @@ export default function PublicMenu() {
 
   const gradientStyle = getGradientStyle(data.merchant.cardBackgroundColor);
   const headerGradientStyle = getHeaderGradientStyle(data.merchant.cardBackgroundColor);
+  const cardGradientStyle = getCardGradientStyle(data.merchant.cardBackgroundColor);
 
   if (data.categories.length === 0) {
     return (
@@ -270,7 +288,7 @@ export default function PublicMenu() {
               className="scroll-mt-32"
             >
               {/* Category Header */}
-              <div className="mb-5">
+              <div className="mb-5 p-4 rounded-lg" style={cardGradientStyle}>
                 <h2 className="text-2xl font-normal text-[hsl(var(--menu-foreground))]">
                   {category.name}
                 </h2>
@@ -284,7 +302,8 @@ export default function PublicMenu() {
                 {category.items.map((item) => (
                   <Card
                     key={item.id}
-                    className="border-[hsl(var(--menu-card-border))] bg-[hsl(var(--menu-card))] shadow-sm overflow-hidden hover-elevate"
+                    className="border-[hsl(var(--menu-card-border))] shadow-sm overflow-hidden hover-elevate"
+                    style={cardGradientStyle}
                     data-testid={`item-${item.id}`}
                   >
                     <CardContent className="p-4">
