@@ -229,8 +229,12 @@ export default function PublicMenu() {
           {data.merchant.menuBannerImage && (
             <>
               <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{ backgroundImage: `url(${data.merchant.menuBannerImage})` }}
+                className="absolute inset-0"
+                style={{ 
+                  backgroundImage: `url(${data.merchant.menuBannerImage})`,
+                  backgroundSize: '100% 100%',
+                  backgroundPosition: 'center'
+                }}
                 data-testid="hero-banner-bg"
               />
               <div className="absolute inset-0 bg-black/40" />
@@ -279,8 +283,12 @@ export default function PublicMenu() {
         {data.merchant.menuBannerImage && (
           <>
             <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${data.merchant.menuBannerImage})` }}
+              className="absolute inset-0"
+              style={{ 
+                backgroundImage: `url(${data.merchant.menuBannerImage})`,
+                backgroundSize: '100% 100%',
+                backgroundPosition: 'center'
+              }}
               data-testid="hero-banner-bg"
             />
             <div className="absolute inset-0 bg-black/40" />

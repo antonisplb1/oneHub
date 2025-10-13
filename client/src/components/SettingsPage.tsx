@@ -420,7 +420,7 @@ export default function SettingsPage() {
                   </div>
                 )}
                 <p className="text-sm text-muted-foreground mt-2">
-                  Upload a banner image for your public menu header (PNG, JPG, max 5MB). Recommended size: 1200x400px for best results.
+                  Upload a banner image for your public menu header (PNG, JPG, max 5MB). Recommended size: 1920x600px for best results.
                 </p>
               </div>
             </div>
