@@ -103,12 +103,12 @@ export default function PublicMenu() {
     const rgb = hexToRgb(colorToUse);
     if (!rgb) {
       return {
-        background: 'linear-gradient(to bottom, rgba(66, 133, 244, 0.70) 0%, rgba(66, 133, 244, 0.50) 30%, rgba(66, 133, 244, 0.36) 50%, rgba(66, 133, 244, 0.20) 70%, rgba(255, 255, 255, 0) 100%)',
+        background: 'linear-gradient(to bottom, rgba(66, 133, 244, 0.95) 0%, rgba(66, 133, 244, 0.75) 30%, rgba(66, 133, 244, 0.50) 50%, rgba(66, 133, 244, 0.30) 70%, rgba(255, 255, 255, 0) 100%)',
       };
     }
 
     return {
-      background: `linear-gradient(to bottom, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.70) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.50) 30%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.36) 50%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.20) 70%, rgba(255, 255, 255, 0) 100%)`,
+      background: `linear-gradient(to bottom, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.95) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.75) 30%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.50) 50%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.30) 70%, rgba(255, 255, 255, 0) 100%)`,
     };
   };
 
