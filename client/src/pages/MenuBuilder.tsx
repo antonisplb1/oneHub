@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Plus, Edit, Trash2, UtensilsCrossed, Copy, Download, Upload, X } from "lucide-react";
+import { Plus, Edit, Trash2, UtensilsCrossed, Copy, Download, Upload, X, GripVertical } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -17,9 +17,102 @@ import { insertMenuCategorySchema, insertMenuItemSchema, type MenuCategory, type
 import { z } from "zod";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { UploadResult } from "@uppy/core";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type CategoryFormValues = z.infer<typeof insertMenuCategorySchema>;
 type ItemFormValues = z.infer<typeof insertMenuItemSchema>;
+
+interface SortableItemProps {
+  item: MenuItem;
+  onEdit: (item: MenuItem) => void;
+  onDelete: (item: MenuItem) => void;
+}
+
+function SortableItem({ item, onEdit, onDelete }: SortableItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-4 p-4 border rounded-lg hover-elevate bg-card"
+      data-testid={`item-card-${item.id}`}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing"
+      >
+        <GripVertical className="w-5 h-5 text-muted-foreground" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-3 mb-1">
+          <h4 className="font-semibold text-lg" data-testid={`item-name-${item.id}`}>
+            {item.name}
+          </h4>
+          <span className="text-sm font-semibold text-primary" data-testid={`item-price-${item.id}`}>
+            €{item.price.toFixed(2)}
+          </span>
+        </div>
+        {item.description && (
+          <p className="text-sm text-muted-foreground mb-1" data-testid={`item-description-${item.id}`}>
+            {item.description}
+          </p>
+        )}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {(item.imageStorageKey || item.imageUrl) && <span>Has image</span>}
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onEdit(item)}
+          data-testid={`button-edit-item-${item.id}`}
+        >
+          <Edit className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onDelete(item)}
+          data-testid={`button-delete-item-${item.id}`}
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function MenuBuilder() {
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
@@ -212,6 +305,32 @@ export default function MenuBuilder() {
     },
   });
 
+  const updateItemOrdersMutation = useMutation({
+    mutationFn: async (updates: { id: string; displayOrder: number }[]) => {
+      return apiRequest("/api/menu-items/reorder", {
+        method: "POST",
+        body: JSON.stringify({ updates }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reorder items",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const handleAddCategory = () => {
     setEditingCategory(null);
     categoryForm.reset({ name: "", displayOrder: 0 });
@@ -273,6 +392,28 @@ export default function MenuBuilder() {
 
   const getItemsForCategory = (categoryId: string) => {
     return items.filter(item => item.categoryId === categoryId).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+  };
+
+  const handleDragEnd = (event: DragEndEvent, categoryId: string) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const categoryItems = getItemsForCategory(categoryId);
+    const oldIndex = categoryItems.findIndex((item) => item.id === active.id);
+    const newIndex = categoryItems.findIndex((item) => item.id === over.id);
+
+    const reorderedItems = arrayMove(categoryItems, oldIndex, newIndex);
+
+    // Update display orders
+    const updates = reorderedItems.map((item, index) => ({
+      id: item.id,
+      displayOrder: index,
+    }));
+
+    updateItemOrdersMutation.mutate(updates);
   };
 
   const isLoading = categoriesLoading || itemsLoading;
@@ -419,51 +560,27 @@ export default function MenuBuilder() {
                       No items in this category yet. Click "Add Item" to get started.
                     </p>
                   ) : (
-                    <div className="space-y-3">
-                      {categoryItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between gap-6 p-4 border rounded-lg hover-elevate"
-                          data-testid={`item-card-${item.id}`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-1">
-                              <h4 className="font-semibold text-lg" data-testid={`item-name-${item.id}`}>{item.name}</h4>
-                              <span className="text-sm font-semibold text-primary" data-testid={`item-price-${item.id}`}>
-                                €{item.price.toFixed(2)}
-                              </span>
-                            </div>
-                            {item.description && (
-                              <p className="text-sm text-muted-foreground mb-1" data-testid={`item-description-${item.id}`}>
-                                {item.description}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span>Order: {item.displayOrder || 0}</span>
-                              {(item.imageStorageKey || item.imageUrl) && <span>• Has image</span>}
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditItem(item)}
-                              data-testid={`button-edit-item-${item.id}`}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setDeletingItem(item)}
-                              data-testid={`button-delete-item-${item.id}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event) => handleDragEnd(event, category.id)}
+                    >
+                      <SortableContext
+                        items={categoryItems.map((item) => item.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-3">
+                          {categoryItems.map((item) => (
+                            <SortableItem
+                              key={item.id}
+                              item={item}
+                              onEdit={handleEditItem}
+                              onDelete={setDeletingItem}
+                            />
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </CardContent>
               </Card>
