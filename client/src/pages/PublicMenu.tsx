@@ -232,7 +232,7 @@ export default function PublicMenu() {
                 className="absolute inset-0"
                 style={{ 
                   backgroundImage: `url(${data.merchant.menuBannerImage})`,
-                  backgroundSize: '100% 100%',
+                  backgroundSize: 'cover',
                   backgroundPosition: 'center'
                 }}
                 data-testid="hero-banner-bg"
@@ -286,7 +286,7 @@ export default function PublicMenu() {
               className="absolute inset-0"
               style={{ 
                 backgroundImage: `url(${data.merchant.menuBannerImage})`,
-                backgroundSize: '100% 100%',
+                backgroundSize: 'cover',
                 backgroundPosition: 'center'
               }}
               data-testid="hero-banner-bg"
