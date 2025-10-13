@@ -664,7 +664,7 @@ export default function MenuBuilder() {
                           Upload Image
                         </ObjectUploader>
                         
-                        {/* Show preview if image uploaded or URL provided */}
+                        {/* Show preview if image uploaded */}
                         {(field.value || uploadedImageUrl) && (
                           <div className="relative">
                             <img 
@@ -688,17 +688,6 @@ export default function MenuBuilder() {
                             </Button>
                           </div>
                         )}
-                        
-                        {/* Optional URL input for backward compatibility */}
-                        <div className="text-sm text-muted-foreground">
-                          Or enter image URL manually:
-                        </div>
-                        <Input
-                          placeholder="https://example.com/image.jpg"
-                          data-testid="input-item-image-url"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
                       </div>
                     </FormControl>
                     <FormMessage />
