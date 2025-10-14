@@ -30,6 +30,8 @@ import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import MenuBuilder from "@/pages/MenuBuilder";
 import PublicMenu from "@/pages/PublicMenu";
+import PublicShifts from "@/pages/PublicShifts";
+import ShiftsManager from "@/pages/ShiftsManager";
 import Pricing from "@/pages/Pricing";
 import About from "@/pages/About";
 import CookiePolicy from "@/pages/CookiePolicy";
@@ -107,12 +109,20 @@ function Router() {
           </DashboardLayout>
         )}
       </Route>
+      <Route path="/dashboard/shifts">
+        {() => (
+          <DashboardLayout>
+            <ShiftsManager />
+          </DashboardLayout>
+        )}
+      </Route>
       <Route path="/join/:userId" component={JoinLoyalty} />
       <Route path="/spin/:token" component={CustomerSpinWheel} />
       <Route path="/customer-spin/:userId" component={CustomerSpinOnce} />
       <Route path="/in-store-spin/:userId" component={InStoreSpinWheel} />
       <Route path="/card/:customerId" component={CustomerLoyaltyCard} />
       <Route path="/menu/:merchantId" component={PublicMenu} />
+      <Route path="/:username/shifts" component={PublicShifts} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/about" component={About} />
       <Route path="/cookie-policy" component={CookiePolicy} />

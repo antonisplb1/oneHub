@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Award, Gift, UtensilsCrossed, Check, ArrowRight, Shield, CheckCircle, Sparkles } from "lucide-react";
+import { Award, Gift, UtensilsCrossed, Check, ArrowRight, Shield, CheckCircle, Sparkles, Calendar } from "lucide-react";
 import { SiStripe } from "react-icons/si";
 import logoImage from "@assets/blob-b137548_1759662451793.png";
 
@@ -51,8 +51,8 @@ export default function Pricing() {
 
       {/* Pricing Cards Section */}
       <section className="py-16 px-6">
-        <div className="container mx-auto max-w-6xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="container mx-auto max-w-7xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             {/* Loyalty Cards */}
             <Card className="hover-elevate flex flex-col" data-testid="card-pricing-loyalty">
               <CardHeader>
@@ -182,21 +182,64 @@ export default function Pricing() {
               </CardContent>
             </Card>
 
+            {/* Shift Manager */}
+            <Card className="hover-elevate flex flex-col" data-testid="card-pricing-shift">
+              <CardHeader>
+                <div className="w-12 h-12 rounded-lg bg-chart-5/10 flex items-center justify-center mb-3">
+                  <Calendar className="w-6 h-6 text-chart-5" />
+                </div>
+                <CardTitle className="text-2xl">Shift Manager</CardTitle>
+                <div className="mt-4">
+                  <span className="text-4xl font-bold">€8</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col">
+                <ul className="space-y-3 flex-1">
+                  <li className="flex items-start gap-2">
+                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Weekly calendar view</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Crew management</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">PIN-protected access</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Branded crew view</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Public shift URL</span>
+                  </li>
+                </ul>
+                <Link href="/auth" className="mt-6">
+                  <Button variant="outline" className="w-full" data-testid="button-select-shift">
+                    Get Started
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
             {/* All Products Bundle - FEATURED */}
             <Card className="hover-elevate flex flex-col border-primary relative" data-testid="card-pricing-bundle">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <Badge className="bg-primary text-primary-foreground" data-testid="badge-best-value">
                   <Sparkles className="w-3 h-3 mr-1" />
-                  Best Value - Save €7
+                  Best Value - Save €10
                 </Badge>
               </div>
               <CardHeader>
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
                   <Award className="w-6 h-6 text-primary" />
                 </div>
-                <CardTitle className="text-2xl">All Products</CardTitle>
+                <CardTitle className="text-2xl">Complete Bundle</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">€23</span>
+                  <span className="text-4xl font-bold">€28</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
@@ -216,11 +259,11 @@ export default function Pricing() {
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Unified dashboard</span>
+                    <span className="text-sm font-medium">Everything in Shift Manager</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Complete toolkit</span>
+                    <span className="text-sm">Unified dashboard</span>
                   </li>
                 </ul>
                 <Link href="/auth" className="mt-6">
@@ -364,7 +407,7 @@ export default function Pricing() {
             <div>
               <h3 className="font-semibold mb-3">uniHub</h3>
               <p className="text-sm text-muted-foreground">
-                Digital loyalty cards, spin campaigns, and menu builder for modern businesses.
+                Digital loyalty cards, spin campaigns, menu builder, and shift management for modern businesses.
               </p>
             </div>
             <div>

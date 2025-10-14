@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Ticket, Gift, Loader2, UtensilsCrossed } from "lucide-react";
+import { Ticket, Gift, Loader2, UtensilsCrossed, Calendar } from "lucide-react";
 
 interface Product {
   id: string;
@@ -38,6 +38,13 @@ const products: Product[] = [
     description: 'Create and manage your digital menu for customers',
     price: 5,
     icon: UtensilsCrossed,
+  },
+  {
+    id: 'shift',
+    name: 'Shift Manager',
+    description: 'Employee shift scheduling with weekly calendar and crew management',
+    price: 8,
+    icon: Calendar,
   },
 ];
 
@@ -90,8 +97,12 @@ export default function SelectProducts() {
   const calculateTotal = () => {
     const sorted = [...selectedProducts].sort();
     
-    // All three products
-    if (sorted.length === 3 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu')) {
+    // All four products - Bundle discount (€28 instead of €38)
+    if (sorted.length === 4 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu') && sorted.includes('shift')) {
+      return 28;
+    }
+    // Old bundle: All three products (loyalty + spin + menu)
+    else if (sorted.length === 3 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu')) {
       return 23;
     }
     // Loyalty + Spin
@@ -106,7 +117,7 @@ export default function SelectProducts() {
     else if (sorted.length === 2 && sorted.includes('spin') && sorted.includes('menu')) {
       return 15;
     }
-    // Individual prices
+    // Individual prices (including new combinations with shift)
     else {
       return selectedProducts.reduce((total, id) => {
         const product = products.find(p => p.id === id);
@@ -191,6 +202,27 @@ export default function SelectProducts() {
               </Card>
             );
           })}
+
+          {selectedProducts.length === 4 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && selectedProducts.includes('shift') && (
+            <Card className="bg-primary/5 border-primary">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-primary" data-testid="text-bundle-discount">
+                      Complete Bundle Discount! 🎉
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Save €10/month when you get all four products
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground line-through">€38</div>
+                    <div className="text-2xl font-bold text-primary">€28</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {selectedProducts.length === 3 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && (
             <Card className="bg-primary/5 border-primary">

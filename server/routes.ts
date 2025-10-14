@@ -13,6 +13,8 @@ import {
   messages,
   menuCategories,
   menuItems,
+  crewMembers,
+  shifts,
   signupSchema,
   loginSchema,
   createRewardSchema,
@@ -22,6 +24,8 @@ import {
   insertMessageSchema,
   insertMenuCategorySchema,
   insertMenuItemSchema,
+  insertCrewMemberSchema,
+  insertShiftSchema,
 } from "@shared/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { hashPassword, generateToken, comparePasswords } from "./auth";
@@ -45,14 +49,19 @@ const PRODUCT_PRICES = {
   'loyalty': 1500, // €15 in cents
   'spin': 1000,    // €10 in cents
   'menu': 500,     // €5 in cents
+  'shift': 800,    // €8 in cents
 };
 
 // Calculate price based on selected products
 function calculateProductPrice(products: string[]): number {
   const sortedProducts = [...products].sort();
   
-  // All three products
-  if (sortedProducts.length === 3 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
+  // All four products - Bundle discount (€28 instead of €38)
+  if (sortedProducts.length === 4 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu') && sortedProducts.includes('shift')) {
+    return 2800;
+  }
+  // Old bundle: All three products (loyalty + spin + menu)
+  else if (sortedProducts.length === 3 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
     return 2300;
   }
   // Loyalty + Spin
@@ -67,7 +76,7 @@ function calculateProductPrice(products: string[]): number {
   else if (sortedProducts.length === 2 && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
     return 1500;
   }
-  // Individual prices
+  // Individual prices (including new combinations with shift)
   else {
     return sortedProducts.reduce((sum, product) => {
       return sum + (PRODUCT_PRICES[product as keyof typeof PRODUCT_PRICES] || 0);
@@ -79,7 +88,9 @@ function calculateProductPrice(products: string[]): number {
 function getProductDescription(products: string[]): string {
   const sortedProducts = [...products].sort();
   
-  if (sortedProducts.length === 3 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
+  if (sortedProducts.length === 4 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu') && sortedProducts.includes('shift')) {
+    return "Complete Bundle: Loyalty Cards, Spin Wheel, Menu Builder & Shift Manager";
+  } else if (sortedProducts.length === 3 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
     return "Full access: Loyalty Cards, Spin Wheel & Menu Builder";
   } else if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin')) {
     return "Full access: Loyalty Cards & Spin Wheel campaigns";
@@ -93,6 +104,8 @@ function getProductDescription(products: string[]): string {
     return "Access to Spin Wheel feature";
   } else if (sortedProducts.includes('menu')) {
     return "Access to Menu Builder feature";
+  } else if (sortedProducts.includes('shift')) {
+    return "Access to Shift Manager feature";
   }
   
   return "No products selected";
@@ -135,6 +148,16 @@ const signupLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   // Skip rate limiting for successful signups (only count failed attempts)
   skipSuccessfulRequests: true,
+});
+
+// Rate limiter for PIN validation endpoint - prevents brute-force attacks
+const pinValidationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 PIN attempts per window
+  message: { error: "Too many PIN attempts. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count all attempts
 });
 
 // Admin authentication middleware
@@ -2198,6 +2221,230 @@ export function registerRoutes(app: Express) {
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Crew Members Routes
+  app.get("/api/crew-members", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const members = await db
+        .select()
+        .from(crewMembers)
+        .where(eq(crewMembers.userId, req.user!.id))
+        .orderBy(asc(crewMembers.name));
+
+      res.json(members);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/crew-members", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const validatedData = insertCrewMemberSchema.parse(req.body);
+      
+      const [member] = await db
+        .insert(crewMembers)
+        .values({
+          ...validatedData,
+          userId: req.user!.id,
+        })
+        .returning();
+
+      res.json(member);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/crew-members/:id", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      await db
+        .delete(crewMembers)
+        .where(
+          and(
+            eq(crewMembers.id, req.params.id),
+            eq(crewMembers.userId, req.user!.id)
+          )
+        );
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Shifts Routes
+  app.get("/api/shifts", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const allShifts = await db
+        .select()
+        .from(shifts)
+        .where(eq(shifts.userId, req.user!.id))
+        .orderBy(asc(shifts.shiftDate), asc(shifts.startTime));
+
+      res.json(allShifts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/shifts", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const validatedData = insertShiftSchema.parse(req.body);
+      
+      const [shift] = await db
+        .insert(shifts)
+        .values({
+          ...validatedData,
+          userId: req.user!.id,
+        })
+        .returning();
+
+      res.json(shift);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/shifts/:id", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const validatedData = insertShiftSchema.parse(req.body);
+      
+      const [shift] = await db
+        .update(shifts)
+        .set(validatedData)
+        .where(
+          and(
+            eq(shifts.id, req.params.id),
+            eq(shifts.userId, req.user!.id)
+          )
+        )
+        .returning();
+
+      if (!shift) {
+        return res.status(404).json({ error: "Shift not found" });
+      }
+
+      res.json(shift);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/shifts/:id", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      await db
+        .delete(shifts)
+        .where(
+          and(
+            eq(shifts.id, req.params.id),
+            eq(shifts.userId, req.user!.id)
+          )
+        );
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Shift PIN Management
+  app.post("/api/shift-pin", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const { pin } = z.object({ pin: z.string().min(4).max(6) }).parse(req.body);
+      
+      // Hash the PIN using the same secure hashing as passwords
+      const hashedPin = await hashPassword(pin);
+      
+      await db
+        .update(users)
+        .set({ shiftAccessPin: hashedPin })
+        .where(eq(users.id, req.user!.id));
+
+      // Return the plaintext PIN once so the user can save it
+      res.json({ success: true, pin });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/shift-pin", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const [user] = await db
+        .select({ shiftAccessPin: users.shiftAccessPin })
+        .from(users)
+        .where(eq(users.id, req.user!.id))
+        .limit(1);
+
+      // Only return metadata indicating if a PIN exists, never the actual PIN
+      res.json({ hasPIN: !!user?.shiftAccessPin });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Public Crew Shifts View
+  app.post("/api/shifts/public/:username", pinValidationLimiter, async (req, res) => {
+    try {
+      const { pin } = z.object({ pin: z.string() }).parse(req.body);
+      
+      // Find user by shop name (username)
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.shopName, req.params.username))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      if (!user.shiftAccessPin) {
+        return res.status(401).json({ error: "No PIN configured" });
+      }
+
+      // Verify PIN using secure comparison
+      // Check if PIN is hashed (contains ".") or plaintext (backward compatibility)
+      let isPinValid = false;
+      if (user.shiftAccessPin.includes('.')) {
+        // Hashed PIN - use secure comparison with constant-time algorithm
+        isPinValid = await comparePasswords(pin, user.shiftAccessPin);
+      } else {
+        // Legacy plaintext PIN - still compare but this shouldn't exist after migration
+        isPinValid = user.shiftAccessPin === pin;
+        
+        // Automatically upgrade to hashed PIN if valid
+        if (isPinValid) {
+          const hashedPin = await hashPassword(pin);
+          await db
+            .update(users)
+            .set({ shiftAccessPin: hashedPin })
+            .where(eq(users.id, user.id));
+        }
+      }
+
+      if (!isPinValid) {
+        return res.status(401).json({ error: "Invalid PIN" });
+      }
+
+      // Get shifts
+      const allShifts = await db
+        .select()
+        .from(shifts)
+        .where(eq(shifts.userId, user.id))
+        .orderBy(asc(shifts.shiftDate), asc(shifts.startTime));
+
+      // Get merchant branding
+      const merchant = {
+        shopName: user.shopName,
+        logo: user.logo,
+        cardBackgroundColor: user.cardBackgroundColor,
+      };
+
+      res.json({ shifts: allShifts, merchant });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   });
 

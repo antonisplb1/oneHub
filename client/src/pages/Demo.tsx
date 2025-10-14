@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, Gift, QrCode, Smartphone, TrendingUp, Users, ArrowRight, Check, Sparkles, CreditCard, Wallet, ScanLine, BarChart3, Bell, UtensilsCrossed, RefreshCw } from "lucide-react";
+import { Award, Gift, QrCode, Smartphone, TrendingUp, Users, ArrowRight, Check, Sparkles, CreditCard, Wallet, ScanLine, BarChart3, Bell, UtensilsCrossed, RefreshCw, Calendar } from "lucide-react";
 import logoImage from "@assets/blob-b137548_1759662451793.png";
 
 export default function Demo() {
@@ -35,7 +35,7 @@ export default function Demo() {
           {/* Pricing Overview */}
           <div className="mb-24">
             <h2 className="text-3xl font-semibold text-center mb-10">Simple, Flexible Pricing</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -129,19 +129,50 @@ export default function Demo() {
                 </CardContent>
               </Card>
 
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-chart-4" />
+                    Shift Manager
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">€8<span className="text-lg text-muted-foreground">/month</span></div>
+                  <p className="text-sm text-muted-foreground mb-4">Perfect for teams, staff scheduling</p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Weekly calendar view</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Crew management</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>PIN-protected access</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-chart-2 mt-0.5" />
+                      <span>Public shift URL</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+
               <Card className="border-primary">
                 <CardHeader>
                   <div className="flex items-center justify-between mb-2">
                     <CardTitle className="flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-primary" />
-                      All Products Bundle
+                      Complete Bundle
                     </CardTitle>
-                    <Badge>Best Value - Save €7</Badge>
+                    <Badge>Best Value - Save €10</Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold mb-2">€23<span className="text-lg text-muted-foreground">/month</span></div>
-                  <p className="text-sm text-muted-foreground mb-4">Complete engagement toolkit, save €7/month</p>
+                  <div className="text-3xl font-bold mb-2">€28<span className="text-lg text-muted-foreground">/month</span></div>
+                  <p className="text-sm text-muted-foreground mb-4">Complete engagement toolkit, save €10/month</p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-chart-2 mt-0.5" />
@@ -157,7 +188,7 @@ export default function Demo() {
                     </li>
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-chart-2 mt-0.5" />
-                      <span>Maximum customer engagement</span>
+                      <span>All Shift Manager features</span>
                     </li>
                   </ul>
                 </CardContent>

@@ -1,0 +1,731 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Users, Calendar } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertCrewMemberSchema, insertShiftSchema, type CrewMember, type Shift } from "@shared/schema";
+import { z } from "zod";
+import { format } from "date-fns";
+import { getWeekRange, addWeeks as dateAddWeeks } from "@/lib/shiftDates";
+import { ShiftSchedule } from "@/components/ShiftSchedule";
+
+type CrewMemberFormValues = z.infer<typeof insertCrewMemberSchema>;
+type ShiftFormValues = z.infer<typeof insertShiftSchema>;
+
+const shiftFormSchema = insertShiftSchema.extend({
+  startTime: z.string().min(1, "Start time is required"),
+  endTime: z.string().min(1, "End time is required"),
+}).refine(
+  (data) => {
+    if (!data.startTime || !data.endTime) return true;
+    return data.endTime > data.startTime;
+  },
+  {
+    message: "End time must be after start time",
+    path: ["endTime"],
+  }
+);
+
+export default function ShiftsManager() {
+  const [isCrewDialogOpen, setIsCrewDialogOpen] = useState(false);
+  const [isShiftDialogOpen, setIsShiftDialogOpen] = useState(false);
+  const [editingShift, setEditingShift] = useState<Shift | null>(null);
+  const [deletingCrew, setDeletingCrew] = useState<CrewMember | null>(null);
+  const [deletingShift, setDeletingShift] = useState<Shift | null>(null);
+  const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  const { toast } = useToast();
+
+  const crewForm = useForm<CrewMemberFormValues>({
+    resolver: zodResolver(insertCrewMemberSchema),
+    defaultValues: {
+      name: "",
+    },
+  });
+
+  const shiftForm = useForm<ShiftFormValues>({
+    resolver: zodResolver(shiftFormSchema),
+    defaultValues: {
+      employeeName: "",
+      employeeRole: "",
+      shiftDate: "",
+      startTime: "",
+      endTime: "",
+      notes: "",
+    },
+  });
+
+  const { data: crewMembers = [], isLoading: crewLoading } = useQuery<CrewMember[]>({
+    queryKey: ["/api/crew-members"],
+  });
+
+  const { data: shifts = [], isLoading: shiftsLoading } = useQuery<Shift[]>({
+    queryKey: ["/api/shifts"],
+  });
+
+  const { data: pinData, isLoading: pinLoading } = useQuery<{ hasPIN: boolean }>({
+    queryKey: ["/api/shift-pin"],
+  });
+
+  const createCrewMutation = useMutation({
+    mutationFn: async (data: CrewMemberFormValues) => {
+      return apiRequest("/api/crew-members", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/crew-members"] });
+      toast({
+        title: "Success",
+        description: "Crew member added successfully",
+      });
+      crewForm.reset();
+      setIsCrewDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add crew member",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCrewMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/crew-members/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/crew-members"] });
+      toast({
+        title: "Success",
+        description: "Crew member deleted successfully",
+      });
+      setDeletingCrew(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete crew member",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createShiftMutation = useMutation({
+    mutationFn: async (data: ShiftFormValues) => {
+      return apiRequest("/api/shifts", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      toast({
+        title: "Success",
+        description: "Shift created successfully",
+      });
+      shiftForm.reset();
+      setIsShiftDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create shift",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateShiftMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: ShiftFormValues }) => {
+      return apiRequest(`/api/shifts/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      toast({
+        title: "Success",
+        description: "Shift updated successfully",
+      });
+      shiftForm.reset();
+      setEditingShift(null);
+      setIsShiftDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update shift",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteShiftMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/shifts/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      toast({
+        title: "Success",
+        description: "Shift deleted successfully",
+      });
+      setDeletingShift(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete shift",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updatePinMutation = useMutation({
+    mutationFn: async (pin: string) => {
+      return apiRequest("/api/shift-pin", {
+        method: "POST",
+        body: JSON.stringify({ pin }),
+      });
+    },
+    onSuccess: (data: { success: boolean; pin: string }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shift-pin"] });
+      toast({
+        title: "PIN Set Successfully",
+        description: `Your new PIN is: ${data.pin} - Save this PIN now! You won't be able to see it again.`,
+        duration: 10000,
+      });
+      setNewPin("");
+      setIsPinDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update PIN",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCrewSubmit = (values: CrewMemberFormValues) => {
+    createCrewMutation.mutate(values);
+  };
+
+  const handleShiftSubmit = (values: ShiftFormValues) => {
+    if (editingShift) {
+      updateShiftMutation.mutate({ id: editingShift.id, data: values });
+    } else {
+      createShiftMutation.mutate(values);
+    }
+  };
+
+  const handleAddShift = (date: Date) => {
+    setEditingShift(null);
+    shiftForm.reset({
+      employeeName: "",
+      employeeRole: "",
+      shiftDate: format(date, "yyyy-MM-dd"),
+      startTime: "09:00",
+      endTime: "17:00",
+      notes: "",
+    });
+    setIsShiftDialogOpen(true);
+  };
+
+  const handleEditShift = (shift: Shift) => {
+    setEditingShift(shift);
+    shiftForm.reset({
+      employeeName: shift.employeeName,
+      employeeRole: shift.employeeRole || "",
+      shiftDate: shift.shiftDate,
+      startTime: shift.startTime,
+      endTime: shift.endTime,
+      notes: shift.notes || "",
+    });
+    setIsShiftDialogOpen(true);
+  };
+
+  const handleDeleteShift = (shift: Shift) => {
+    setDeletingShift(shift);
+  };
+
+  const handlePreviousWeek = () => {
+    setCurrentWeek(dateAddWeeks(currentWeek, -1));
+  };
+
+  const handleNextWeek = () => {
+    setCurrentWeek(dateAddWeeks(currentWeek, 1));
+  };
+
+  const handleThisWeek = () => {
+    setCurrentWeek(new Date());
+  };
+
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPin.length >= 4 && newPin.length <= 6) {
+      updatePinMutation.mutate(newPin);
+    } else {
+      toast({
+        title: "Error",
+        description: "PIN must be 4-6 digits",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const weekRange = getWeekRange(currentWeek);
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold" data-testid="heading-shifts-manager">Shift Manager</h1>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card data-testid="card-crew-roster">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Crew Roster
+            </CardTitle>
+            <Button
+              onClick={() => setIsCrewDialogOpen(true)}
+              size="sm"
+              data-testid="button-add-crew"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add Crew
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {crewLoading ? (
+              <div className="text-sm text-muted-foreground">Loading crew members...</div>
+            ) : crewMembers.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-8">
+                No crew members added yet. Click "Add Crew" to get started.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {crewMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover-elevate"
+                    data-testid={`crew-card-${member.id}`}
+                  >
+                    <span className="font-medium" data-testid={`crew-name-${member.id}`}>
+                      {member.name}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeletingCrew(member)}
+                      data-testid={`button-delete-crew-${member.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-pin-management">
+          <CardHeader>
+            <CardTitle>PIN Management</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-sm text-muted-foreground">PIN Status</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="font-medium text-lg" data-testid="text-current-pin">
+                  {pinLoading ? "Loading..." : pinData?.hasPIN ? "PIN is set" : "No PIN set"}
+                </div>
+              </div>
+            </div>
+            <Button
+              onClick={() => setIsPinDialogOpen(true)}
+              variant="outline"
+              data-testid="button-change-pin"
+            >
+              {pinData?.hasPIN ? "Regenerate PIN" : "Set PIN"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              This PIN is required for crew members to view their shifts on the public shifts page. 
+              The PIN cannot be retrieved after it's set - you can only regenerate a new one.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card data-testid="card-weekly-calendar">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Weekly Schedule
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleThisWeek}
+                variant="outline"
+                size="sm"
+                data-testid="button-this-week"
+              >
+                This Week
+              </Button>
+              <Button
+                onClick={handlePreviousWeek}
+                variant="outline"
+                size="icon"
+                data-testid="button-prev-week"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="text-sm font-medium min-w-[200px] text-center" data-testid="text-week-range">
+                {format(weekRange.start, "MMM d")} - {format(weekRange.end, "MMM d, yyyy")}
+              </div>
+              <Button
+                onClick={handleNextWeek}
+                variant="outline"
+                size="icon"
+                data-testid="button-next-week"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {shiftsLoading ? (
+            <div className="text-sm text-muted-foreground">Loading shifts...</div>
+          ) : (
+            <ShiftSchedule
+              shifts={shifts}
+              weekStart={currentWeek}
+              onAddShift={handleAddShift}
+              onEditShift={handleEditShift}
+              onDeleteShift={handleDeleteShift}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={isCrewDialogOpen} onOpenChange={setIsCrewDialogOpen}>
+        <DialogContent data-testid="dialog-add-crew">
+          <DialogHeader>
+            <DialogTitle>Add Crew Member</DialogTitle>
+          </DialogHeader>
+          <Form {...crewForm}>
+            <form onSubmit={crewForm.handleSubmit(handleCrewSubmit)} className="space-y-4">
+              <FormField
+                control={crewForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter crew member name"
+                        {...field}
+                        data-testid="input-crew-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsCrewDialogOpen(false)}
+                  data-testid="button-cancel-crew"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createCrewMutation.isPending}
+                  data-testid="button-submit-crew"
+                >
+                  {createCrewMutation.isPending ? "Adding..." : "Add Crew Member"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isShiftDialogOpen} onOpenChange={setIsShiftDialogOpen}>
+        <DialogContent className="max-w-2xl" data-testid="dialog-shift-form">
+          <DialogHeader>
+            <DialogTitle>{editingShift ? "Edit Shift" : "Add Shift"}</DialogTitle>
+          </DialogHeader>
+          <Form {...shiftForm}>
+            <form onSubmit={shiftForm.handleSubmit(handleShiftSubmit)} className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <FormField
+                  control={shiftForm.control}
+                  name="employeeName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Employee Name</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-employee-name">
+                            <SelectValue placeholder="Select crew member" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {crewMembers.map((member) => (
+                            <SelectItem
+                              key={member.id}
+                              value={member.name}
+                              data-testid={`option-employee-${member.id}`}
+                            >
+                              {member.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={shiftForm.control}
+                  name="employeeRole"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., Manager, Cashier"
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-employee-role"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={shiftForm.control}
+                  name="shiftDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          data-testid="input-shift-date"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="space-y-2">
+                  <Label>Time</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <FormField
+                      control={shiftForm.control}
+                      name="startTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input
+                              type="time"
+                              {...field}
+                              data-testid="input-start-time"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={shiftForm.control}
+                      name="endTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input
+                              type="time"
+                              {...field}
+                              data-testid="input-end-time"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <FormField
+                control={shiftForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Add any additional notes or instructions"
+                        {...field}
+                        value={field.value || ""}
+                        data-testid="input-shift-notes"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsShiftDialogOpen(false);
+                    setEditingShift(null);
+                  }}
+                  data-testid="button-cancel-shift"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createShiftMutation.isPending || updateShiftMutation.isPending}
+                  data-testid="button-submit-shift"
+                >
+                  {createShiftMutation.isPending || updateShiftMutation.isPending
+                    ? "Saving..."
+                    : editingShift
+                    ? "Update Shift"
+                    : "Add Shift"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
+        <DialogContent data-testid="dialog-pin-form">
+          <DialogHeader>
+            <DialogTitle>{pinData?.pin ? "Change PIN" : "Set PIN"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handlePinSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="pin">New PIN (4-6 digits)</Label>
+              <Input
+                id="pin"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={newPin}
+                onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="Enter 4-6 digit PIN"
+                data-testid="input-new-pin"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsPinDialogOpen(false);
+                  setNewPin("");
+                }}
+                data-testid="button-cancel-pin"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={updatePinMutation.isPending || newPin.length < 4}
+                data-testid="button-submit-pin"
+              >
+                {updatePinMutation.isPending ? "Saving..." : "Save PIN"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletingCrew} onOpenChange={() => setDeletingCrew(null)}>
+        <AlertDialogContent data-testid="dialog-delete-crew-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Crew Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingCrew?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-crew">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingCrew && deleteCrewMutation.mutate(deletingCrew.id)}
+              data-testid="button-confirm-delete-crew"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletingShift} onOpenChange={() => setDeletingShift(null)}>
+        <AlertDialogContent data-testid="dialog-delete-shift-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Shift</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this shift for {deletingShift?.employeeName} on{" "}
+              {deletingShift && format(new Date(deletingShift.shiftDate), "MMM d, yyyy")}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-shift">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingShift && deleteShiftMutation.mutate(deletingShift.id)}
+              data-testid="button-confirm-delete-shift"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

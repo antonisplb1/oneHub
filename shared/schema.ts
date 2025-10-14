@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   subscriptionStatus: text("subscription_status").default("inactive"),
   subscriptionEndsAt: timestamp("subscription_ends_at"),
   selectedProducts: text("selected_products").array().default(sql`ARRAY[]::text[]`),
+  shiftAccessPin: text("shift_access_pin"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -157,6 +158,26 @@ export const menuItems = pgTable("menu_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Shift Manager feature tables
+export const crewMembers = pgTable("crew_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const shifts = pgTable("shifts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  employeeName: text("employee_name").notNull(),
+  employeeRole: text("employee_role"),
+  shiftDate: text("shift_date").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -209,6 +230,18 @@ export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
   createdAt: true,
 });
 
+export const insertCrewMemberSchema = createInsertSchema(crewMembers).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+});
+
+export const insertShiftSchema = createInsertSchema(shifts).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -237,6 +270,12 @@ export type InsertMenuCategory = z.infer<typeof insertMenuCategorySchema>;
 
 export type MenuItem = typeof menuItems.$inferSelect;
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
+
+export type CrewMember = typeof crewMembers.$inferSelect;
+export type InsertCrewMember = z.infer<typeof insertCrewMemberSchema>;
+
+export type Shift = typeof shifts.$inferSelect;
+export type InsertShift = z.infer<typeof insertShiftSchema>;
 
 // Validation schemas
 export const signupSchema = z.object({

@@ -23,6 +23,7 @@ import {
   Settings,
   Scan,
   UtensilsCrossed,
+  CalendarClock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +35,7 @@ const menuItems = [
   { title: "QR Scanner", icon: Scan, href: "/dashboard/scanner", products: ['loyalty'] },
   { title: "Spin Wheel", icon: Gauge, href: "/dashboard/spin-wheel", products: ['spin'] },
   { title: "Menu Builder", icon: UtensilsCrossed, href: "/dashboard/menu", products: ['menu'] },
+  { title: "Shift Manager", icon: CalendarClock, href: "/dashboard/shifts", products: ['shift'] },
   { title: "Customers", icon: Users, href: "/dashboard/customers", products: [] },
   { title: "Analytics", icon: BarChart3, href: "/dashboard/analytics", products: [] },
 ];
