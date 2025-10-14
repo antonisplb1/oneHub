@@ -9,13 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Users, Calendar, Copy } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Users, Calendar, Copy, Clock, Pencil } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertCrewMemberSchema, insertShiftSchema, type CrewMember, type Shift } from "@shared/schema";
+import { insertCrewMemberSchema, insertShiftSchema, insertTimeframePresetSchema, type CrewMember, type Shift, type TimeframePreset } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
 import { getWeekRange, addWeeks as dateAddWeeks } from "@/lib/shiftDates";
@@ -23,6 +23,7 @@ import { ShiftSchedule } from "@/components/ShiftSchedule";
 
 type CrewMemberFormValues = z.infer<typeof insertCrewMemberSchema>;
 type ShiftFormValues = z.infer<typeof insertShiftSchema>;
+type TimeframePresetFormValues = z.infer<typeof insertTimeframePresetSchema>;
 
 const shiftFormSchema = insertShiftSchema.extend({
   startTime: z.string().min(1, "Start time is required"),
@@ -47,6 +48,10 @@ export default function ShiftsManager() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
   const [newPin, setNewPin] = useState("");
+  const [isPresetDialogOpen, setIsPresetDialogOpen] = useState(false);
+  const [editingPreset, setEditingPreset] = useState<TimeframePreset | null>(null);
+  const [deletingPreset, setDeletingPreset] = useState<TimeframePreset | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<string>("");
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -69,8 +74,21 @@ export default function ShiftsManager() {
     },
   });
 
+  const presetForm = useForm<TimeframePresetFormValues>({
+    resolver: zodResolver(insertTimeframePresetSchema),
+    defaultValues: {
+      name: "",
+      startTime: "",
+      endTime: "",
+    },
+  });
+
   const { data: crewMembers = [], isLoading: crewLoading } = useQuery<CrewMember[]>({
     queryKey: ["/api/crew-members"],
+  });
+
+  const { data: timeframePresets = [], isLoading: presetsLoading } = useQuery<TimeframePreset[]>({
+    queryKey: ["/api/timeframe-presets"],
   });
 
   const { data: shifts = [], isLoading: shiftsLoading } = useQuery<Shift[]>({
@@ -229,6 +247,80 @@ export default function ShiftsManager() {
     },
   });
 
+  const createPresetMutation = useMutation({
+    mutationFn: async (data: TimeframePresetFormValues) => {
+      return apiRequest("/api/timeframe-presets", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timeframe-presets"] });
+      toast({
+        title: "Success",
+        description: "Timeframe preset created successfully",
+      });
+      presetForm.reset();
+      setIsPresetDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create preset",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updatePresetMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: TimeframePresetFormValues }) => {
+      return apiRequest(`/api/timeframe-presets/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timeframe-presets"] });
+      toast({
+        title: "Success",
+        description: "Timeframe preset updated successfully",
+      });
+      presetForm.reset();
+      setEditingPreset(null);
+      setIsPresetDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update preset",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePresetMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/timeframe-presets/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timeframe-presets"] });
+      toast({
+        title: "Success",
+        description: "Timeframe preset deleted successfully",
+      });
+      setDeletingPreset(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete preset",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCrewSubmit = (values: CrewMemberFormValues) => {
     createCrewMutation.mutate(values);
   };
@@ -243,6 +335,7 @@ export default function ShiftsManager() {
 
   const handleAddShift = (date: Date) => {
     setEditingShift(null);
+    setSelectedPreset("");
     shiftForm.reset({
       employeeName: "",
       employeeRole: "",
@@ -256,6 +349,7 @@ export default function ShiftsManager() {
 
   const handleEditShift = (shift: Shift) => {
     setEditingShift(shift);
+    setSelectedPreset("");
     shiftForm.reset({
       employeeName: shift.employeeName,
       employeeRole: shift.employeeRole || "",
@@ -293,6 +387,43 @@ export default function ShiftsManager() {
         description: "PIN must be 4-6 digits",
         variant: "destructive",
       });
+    }
+  };
+
+  const handlePresetSubmit = (values: TimeframePresetFormValues) => {
+    if (editingPreset) {
+      updatePresetMutation.mutate({ id: editingPreset.id, data: values });
+    } else {
+      createPresetMutation.mutate(values);
+    }
+  };
+
+  const handleAddPreset = () => {
+    setEditingPreset(null);
+    presetForm.reset({
+      name: "",
+      startTime: "",
+      endTime: "",
+    });
+    setIsPresetDialogOpen(true);
+  };
+
+  const handleEditPreset = (preset: TimeframePreset) => {
+    setEditingPreset(preset);
+    presetForm.reset({
+      name: preset.name,
+      startTime: preset.startTime,
+      endTime: preset.endTime,
+    });
+    setIsPresetDialogOpen(true);
+  };
+
+  const handlePresetSelect = (presetId: string) => {
+    const preset = timeframePresets.find(p => p.id === presetId);
+    if (preset) {
+      shiftForm.setValue("startTime", preset.startTime);
+      shiftForm.setValue("endTime", preset.endTime);
+      setSelectedPreset(presetId);
     }
   };
 
@@ -440,6 +571,73 @@ export default function ShiftsManager() {
         </Card>
       </div>
 
+      <Card data-testid="card-timeframe-presets">
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+          <div>
+            <CardTitle>Timeframe Presets</CardTitle>
+            <CardDescription className="mt-1">
+              Create preset timeframes to quickly add shifts with common time slots
+            </CardDescription>
+          </div>
+          <Button
+            onClick={handleAddPreset}
+            size="sm"
+            data-testid="button-add-preset"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add Preset
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {presetsLoading ? (
+            <div className="text-sm text-muted-foreground">Loading presets...</div>
+          ) : timeframePresets.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-8">
+              No timeframe presets yet. Create presets for faster shift scheduling.
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {timeframePresets.map((preset) => (
+                <div
+                  key={preset.id}
+                  className="flex flex-col p-4 border rounded-lg hover-elevate"
+                  data-testid={`preset-card-${preset.id}`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-medium" data-testid={`preset-name-${preset.id}`}>
+                      {preset.name}
+                    </h4>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleEditPreset(preset)}
+                        data-testid={`button-edit-preset-${preset.id}`}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setDeletingPreset(preset)}
+                        data-testid={`button-delete-preset-${preset.id}`}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground" data-testid={`preset-time-${preset.id}`}>
+                    {preset.startTime} - {preset.endTime}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card data-testid="card-weekly-calendar">
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
@@ -546,6 +744,33 @@ export default function ShiftsManager() {
           </DialogHeader>
           <Form {...shiftForm}>
             <form onSubmit={shiftForm.handleSubmit(handleShiftSubmit)} className="space-y-4">
+              {timeframePresets.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Quick Select Timeframe (Optional)
+                  </Label>
+                  <Select
+                    value={selectedPreset}
+                    onValueChange={handlePresetSelect}
+                  >
+                    <SelectTrigger data-testid="select-timeframe-preset">
+                      <SelectValue placeholder="Choose a preset or enter times manually" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeframePresets.map((preset) => (
+                        <SelectItem
+                          key={preset.id}
+                          value={preset.id}
+                          data-testid={`option-preset-${preset.id}`}
+                        >
+                          {preset.name} ({preset.startTime} - {preset.endTime})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="grid md:grid-cols-2 gap-4">
                 <FormField
                   control={shiftForm.control}
@@ -706,7 +931,7 @@ export default function ShiftsManager() {
       <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
         <DialogContent data-testid="dialog-pin-form">
           <DialogHeader>
-            <DialogTitle>{pinData?.pin ? "Change PIN" : "Set PIN"}</DialogTitle>
+            <DialogTitle>{pinData?.hasPIN ? "Change PIN" : "Set PIN"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handlePinSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -781,6 +1006,115 @@ export default function ShiftsManager() {
             <AlertDialogAction
               onClick={() => deletingShift && deleteShiftMutation.mutate(deletingShift.id)}
               data-testid="button-confirm-delete-shift"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={isPresetDialogOpen} onOpenChange={setIsPresetDialogOpen}>
+        <DialogContent data-testid="dialog-preset-form">
+          <DialogHeader>
+            <DialogTitle>{editingPreset ? "Edit Timeframe Preset" : "Add Timeframe Preset"}</DialogTitle>
+          </DialogHeader>
+          <Form {...presetForm}>
+            <form onSubmit={presetForm.handleSubmit(handlePresetSubmit)} className="space-y-4">
+              <FormField
+                control={presetForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preset Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., Morning Shift, Evening Shift"
+                        {...field}
+                        data-testid="input-preset-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={presetForm.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Time</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="time"
+                          {...field}
+                          data-testid="input-preset-start-time"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={presetForm.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Time</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="time"
+                          {...field}
+                          data-testid="input-preset-end-time"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsPresetDialogOpen(false);
+                    setEditingPreset(null);
+                  }}
+                  data-testid="button-cancel-preset"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createPresetMutation.isPending || updatePresetMutation.isPending}
+                  data-testid="button-submit-preset"
+                >
+                  {createPresetMutation.isPending || updatePresetMutation.isPending
+                    ? "Saving..."
+                    : editingPreset
+                    ? "Update Preset"
+                    : "Add Preset"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletingPreset} onOpenChange={() => setDeletingPreset(null)}>
+        <AlertDialogContent data-testid="dialog-delete-preset-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Timeframe Preset</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingPreset?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-preset">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingPreset && deletePresetMutation.mutate(deletingPreset.id)}
+              data-testid="button-confirm-delete-preset"
             >
               Delete
             </AlertDialogAction>
