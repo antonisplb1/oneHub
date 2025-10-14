@@ -178,6 +178,15 @@ export const shifts = pgTable("shifts", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const timeframePresets = pgTable("timeframe_presets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -242,6 +251,12 @@ export const insertShiftSchema = createInsertSchema(shifts).omit({
   createdAt: true,
 });
 
+export const insertTimeframePresetSchema = createInsertSchema(timeframePresets).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -276,6 +291,9 @@ export type InsertCrewMember = z.infer<typeof insertCrewMemberSchema>;
 
 export type Shift = typeof shifts.$inferSelect;
 export type InsertShift = z.infer<typeof insertShiftSchema>;
+
+export type TimeframePreset = typeof timeframePresets.$inferSelect;
+export type InsertTimeframePreset = z.infer<typeof insertTimeframePresetSchema>;
 
 // Validation schemas
 export const signupSchema = z.object({
