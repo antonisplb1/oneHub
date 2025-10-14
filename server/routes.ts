@@ -15,6 +15,7 @@ import {
   menuItems,
   crewMembers,
   shifts,
+  timeframePresets,
   signupSchema,
   loginSchema,
   createRewardSchema,
@@ -26,6 +27,7 @@ import {
   insertMenuItemSchema,
   insertCrewMemberSchema,
   insertShiftSchema,
+  insertTimeframePresetSchema,
 } from "@shared/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { hashPassword, generateToken, comparePasswords } from "./auth";
@@ -2379,6 +2381,81 @@ export function registerRoutes(app: Express) {
 
       // Only return metadata indicating if a PIN exists, never the actual PIN
       res.json({ hasPIN: !!user?.shiftAccessPin });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Timeframe Presets Routes
+  app.get("/api/timeframe-presets", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const presets = await db
+        .select()
+        .from(timeframePresets)
+        .where(eq(timeframePresets.userId, req.user!.id))
+        .orderBy(asc(timeframePresets.name));
+
+      res.json(presets);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/timeframe-presets", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const validatedData = insertTimeframePresetSchema.parse(req.body);
+      
+      const [preset] = await db
+        .insert(timeframePresets)
+        .values({
+          ...validatedData,
+          userId: req.user!.id,
+        })
+        .returning();
+
+      res.json(preset);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/timeframe-presets/:id", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const validatedData = insertTimeframePresetSchema.parse(req.body);
+      
+      const [preset] = await db
+        .update(timeframePresets)
+        .set(validatedData)
+        .where(
+          and(
+            eq(timeframePresets.id, req.params.id),
+            eq(timeframePresets.userId, req.user!.id)
+          )
+        )
+        .returning();
+
+      if (!preset) {
+        return res.status(404).json({ error: "Preset not found" });
+      }
+
+      res.json(preset);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/timeframe-presets/:id", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      await db
+        .delete(timeframePresets)
+        .where(
+          and(
+            eq(timeframePresets.id, req.params.id),
+            eq(timeframePresets.userId, req.user!.id)
+          )
+        );
+
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
