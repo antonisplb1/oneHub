@@ -679,7 +679,7 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "Please select at least one product" });
       }
 
-      const validProducts = ['loyalty', 'spin', 'menu'];
+      const validProducts = ['loyalty', 'spin', 'menu', 'shift'];
       const invalidProducts = products.filter(p => !validProducts.includes(p));
       
       if (invalidProducts.length > 0) {

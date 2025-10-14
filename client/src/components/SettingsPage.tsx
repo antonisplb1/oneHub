@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Upload, X, Ticket, Gift, UtensilsCrossed } from "lucide-react";
+import { Upload, X, Ticket, Gift, UtensilsCrossed, Calendar } from "lucide-react";
 
 const PRODUCT_INFO = [
   {
@@ -31,6 +31,13 @@ const PRODUCT_INFO = [
     description: 'Create and manage your digital menu',
     price: 5,
     icon: UtensilsCrossed,
+  },
+  {
+    id: 'shift',
+    name: 'Shift Manager',
+    description: 'Employee shift scheduling',
+    price: 8,
+    icon: Calendar,
   },
 ];
 
@@ -246,8 +253,12 @@ export default function SettingsPage() {
   const calculatePrice = (products: string[]) => {
     const sorted = [...products].sort();
     
-    // All three products
-    if (sorted.length === 3 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu')) {
+    // All four products - Bundle discount (€28 instead of €38)
+    if (sorted.length === 4 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu') && sorted.includes('shift')) {
+      return 28;
+    }
+    // Old bundle: All three products (loyalty + spin + menu)
+    else if (sorted.length === 3 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu')) {
       return 23;
     }
     // Loyalty + Spin
@@ -263,14 +274,14 @@ export default function SettingsPage() {
       return 15;
     }
     // Individual prices
-    else if (products.includes('loyalty')) {
-      return 15;
-    } else if (products.includes('spin')) {
-      return 10;
-    } else if (products.includes('menu')) {
-      return 5;
+    else {
+      let total = 0;
+      if (products.includes('loyalty')) total += 15;
+      if (products.includes('spin')) total += 10;
+      if (products.includes('menu')) total += 5;
+      if (products.includes('shift')) total += 8;
+      return total;
     }
-    return 0;
   };
 
   const handleUpdateProducts = () => {
@@ -493,7 +504,7 @@ export default function SettingsPage() {
                 <Checkbox
                   checked={isSelected}
                   onCheckedChange={() => toggleProduct(product.id)}
-                  data-testid={`checkbox-product-${product.id}`}
+                  data-testid={product.id === 'shift' ? 'checkbox-shift' : `checkbox-product-${product.id}`}
                 />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -516,12 +527,31 @@ export default function SettingsPage() {
             );
           })}
 
+          {selectedProducts.length === 4 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && selectedProducts.includes('shift') && (
+            <div className="p-4 bg-primary/5 border border-primary rounded-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-primary" data-testid="text-bundle-discount">
+                    Complete Bundle Discount!
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Save €10/month with all four products
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground line-through">€38</div>
+                  <div className="text-xl font-bold text-primary">€28</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {selectedProducts.length === 3 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && (
             <div className="p-4 bg-primary/5 border border-primary rounded-md">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold text-primary" data-testid="text-bundle-discount">
-                    Bundle Discount Applied! 🎉
+                    Bundle Discount Applied!
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Save €7/month with all three products
@@ -540,7 +570,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold text-primary" data-testid="text-bundle-discount">
-                    Bundle Discount Applied! 🎉
+                    Bundle Discount Applied!
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Save €5/month with both products

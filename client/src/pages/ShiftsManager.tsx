@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,9 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Users, Calendar } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Users, Calendar, Copy } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertCrewMemberSchema, insertShiftSchema, type CrewMember, type Shift } from "@shared/schema";
@@ -47,6 +48,7 @@ export default function ShiftsManager() {
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
   const [newPin, setNewPin] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const crewForm = useForm<CrewMemberFormValues>({
     resolver: zodResolver(insertCrewMemberSchema),
@@ -294,6 +296,33 @@ export default function ShiftsManager() {
     }
   };
 
+  const copyLinkToClipboard = async () => {
+    if (!user?.shopName) {
+      toast({
+        title: "Error",
+        description: "Shop name not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const shareableLink = `${window.location.origin}/${user.shopName}/shifts`;
+    
+    try {
+      await navigator.clipboard.writeText(shareableLink);
+      toast({
+        title: "Link copied to clipboard!",
+        description: "Share this link with your crew members",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy link. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const weekRange = getWeekRange(currentWeek);
 
   return (
@@ -301,6 +330,38 @@ export default function ShiftsManager() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold" data-testid="heading-shifts-manager">Shift Manager</h1>
       </div>
+
+      <Card data-testid="card-share-with-crew">
+        <CardHeader>
+          <CardTitle>Share with Crew</CardTitle>
+          <CardDescription>
+            Share this link with your employees so they can view their shifts. 
+            They will need the PIN to access the schedule.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <Input 
+              value={user?.shopName ? `${window.location.origin}/${user.shopName}/shifts` : ""}
+              readOnly
+              data-testid="input-shareable-link"
+              className="flex-1"
+            />
+            <Button 
+              onClick={copyLinkToClipboard}
+              variant="outline"
+              data-testid="button-copy-link"
+              className="sm:w-auto"
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copy Link
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground mt-3">
+            Note: Your crew will need the PIN to view the schedule. Make sure to share it with them securely.
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card data-testid="card-crew-roster">
