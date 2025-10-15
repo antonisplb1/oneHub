@@ -811,7 +811,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/customers", requireSubscription, requirePermission('loyalty'), async (req, res) => {
+  app.get("/api/customers", requireSubscription, requirePermission('customers'), async (req, res) => {
     try {
       const customerList = await db
         .select()
