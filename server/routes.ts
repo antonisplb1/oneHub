@@ -303,7 +303,14 @@ export function registerRoutes(app: Express) {
         if (err) {
           return res.status(500).json({ error: "Login failed" });
         }
-        res.json({ user });
+        // Explicitly save session to persist isSubuser and permissions
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return res.status(500).json({ error: "Session save failed" });
+          }
+          res.json({ user });
+        });
       });
     })(req, res, next);
   });
