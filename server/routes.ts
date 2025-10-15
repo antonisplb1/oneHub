@@ -42,7 +42,12 @@ import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+// Use test keys in development, production keys in production
+const stripeSecretKey = process.env.NODE_ENV === 'development' 
+  ? process.env.TESTING_STRIPE_SECRET_KEY!
+  : process.env.STRIPE_SECRET_KEY!;
+
+const stripe = new Stripe(stripeSecretKey, {
   apiVersion: "2025-09-30.clover",
 });
 
