@@ -37,13 +37,13 @@ import { useToast } from "@/hooks/use-toast";
 import logoImage from "@assets/blob-b137548_1759662451793.png";
 
 const menuItems = [
-  { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", products: [], permission: null as string | null, ownerOnly: false },
+  { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", products: [], permission: 'dashboard' as string | null, ownerOnly: false },
   { title: "Loyalty Cards", icon: CreditCard, href: "/dashboard/loyalty", products: ['loyalty'], permission: 'loyalty' as string | null, ownerOnly: false },
   { title: "QR Scanner", icon: Scan, href: "/dashboard/scanner", products: ['loyalty'], permission: 'loyalty' as string | null, ownerOnly: false },
   { title: "Spin Wheel", icon: Gauge, href: "/dashboard/spin-wheel", products: ['spin'], permission: 'spin' as string | null, ownerOnly: false },
   { title: "Menu Builder", icon: UtensilsCrossed, href: "/dashboard/menu", products: ['menu'], permission: 'menu' as string | null, ownerOnly: false },
   { title: "Shift Manager", icon: CalendarClock, href: "/dashboard/shifts", products: ['shift'], permission: 'shift' as string | null, ownerOnly: false },
-  { title: "Customers", icon: Users, href: "/dashboard/customers", products: [], permission: null as string | null, ownerOnly: false },
+  { title: "Customers", icon: Users, href: "/dashboard/customers", products: [], permission: 'customers' as string | null, ownerOnly: false },
   { title: "Analytics", icon: BarChart3, href: "/dashboard/analytics", products: [], permission: 'analytics' as string | null, ownerOnly: false },
   { title: "Team Management", icon: Users, href: "/dashboard/team", products: [], permission: null as string | null, ownerOnly: true },
 ];
@@ -93,21 +93,13 @@ function SidebarMenuItems() {
         // Hide owner-only items for subusers
         if (item.ownerOnly) return false;
         
-        // Always show Dashboard (home page)
-        if (item.href === '/dashboard') return true;
-        
-        // Show Customers only if user has at least one permission
-        if (item.href === '/dashboard/customers') {
-          return permissions.length > 0;
-        }
-        
         // For items with permission requirements, check if user has that permission
         if (item.permission) {
           return permissions.includes(item.permission);
         }
         
-        // Hide other items without specific permission requirements
-        return false;
+        // Show items without permission requirements (shouldn't happen anymore but keeping for safety)
+        return true;
       });
     }
   };
