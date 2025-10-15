@@ -47,6 +47,15 @@ const stripeSecretKey = process.env.NODE_ENV === 'development'
   ? process.env.TESTING_STRIPE_SECRET_KEY!
   : process.env.STRIPE_SECRET_KEY!;
 
+// Debug: Log which Stripe mode we're using
+const stripeMode = stripeSecretKey?.startsWith('sk_test_') ? 'TEST' : 
+                   stripeSecretKey?.startsWith('sk_live_') ? 'LIVE' : 'UNKNOWN';
+console.log(`[Stripe] Using ${stripeMode} mode (NODE_ENV: ${process.env.NODE_ENV})`);
+
+if (process.env.NODE_ENV === 'development' && stripeMode === 'LIVE') {
+  console.error('[Stripe] WARNING: Using LIVE key in development! Check TESTING_STRIPE_SECRET_KEY environment variable.');
+}
+
 const stripe = new Stripe(stripeSecretKey, {
   apiVersion: "2025-09-30.clover",
 });
