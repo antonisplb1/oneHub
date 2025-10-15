@@ -61,7 +61,7 @@ export default function Pricing() {
                 </div>
                 <CardTitle className="text-2xl">Loyalty Cards</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">€15</span>
+                  <span className="text-4xl font-bold">€10</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
@@ -104,7 +104,7 @@ export default function Pricing() {
                 </div>
                 <CardTitle className="text-2xl">Spin Wheel</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">€10</span>
+                  <span className="text-4xl font-bold">€8</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
@@ -190,7 +190,7 @@ export default function Pricing() {
                 </div>
                 <CardTitle className="text-2xl">Shift Manager</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">€8</span>
+                  <span className="text-4xl font-bold">€10</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
@@ -230,7 +230,7 @@ export default function Pricing() {
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <Badge className="bg-primary text-primary-foreground" data-testid="badge-best-value">
                   <Sparkles className="w-3 h-3 mr-1" />
-                  Best Value - Save €10
+                  Best Value - Save €8
                 </Badge>
               </div>
               <CardHeader>
@@ -239,7 +239,7 @@ export default function Pricing() {
                 </div>
                 <CardTitle className="text-2xl">Complete Bundle</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">€28</span>
+                  <span className="text-4xl font-bold">€24.99</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
