@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
   SidebarProvider,
@@ -37,14 +37,15 @@ import { useToast } from "@/hooks/use-toast";
 import logoImage from "@assets/blob-b137548_1759662451793.png";
 
 const menuItems = [
-  { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", products: [] },
-  { title: "Loyalty Cards", icon: CreditCard, href: "/dashboard/loyalty", products: ['loyalty'] },
-  { title: "QR Scanner", icon: Scan, href: "/dashboard/scanner", products: ['loyalty'] },
-  { title: "Spin Wheel", icon: Gauge, href: "/dashboard/spin-wheel", products: ['spin'] },
-  { title: "Menu Builder", icon: UtensilsCrossed, href: "/dashboard/menu", products: ['menu'] },
-  { title: "Shift Manager", icon: CalendarClock, href: "/dashboard/shifts", products: ['shift'] },
-  { title: "Customers", icon: Users, href: "/dashboard/customers", products: [] },
-  { title: "Analytics", icon: BarChart3, href: "/dashboard/analytics", products: [] },
+  { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", products: [], permission: null as string | null, ownerOnly: false },
+  { title: "Loyalty Cards", icon: CreditCard, href: "/dashboard/loyalty", products: ['loyalty'], permission: 'loyalty' as string | null, ownerOnly: false },
+  { title: "QR Scanner", icon: Scan, href: "/dashboard/scanner", products: ['loyalty'], permission: 'loyalty' as string | null, ownerOnly: false },
+  { title: "Spin Wheel", icon: Gauge, href: "/dashboard/spin-wheel", products: ['spin'], permission: 'spin' as string | null, ownerOnly: false },
+  { title: "Menu Builder", icon: UtensilsCrossed, href: "/dashboard/menu", products: ['menu'], permission: 'menu' as string | null, ownerOnly: false },
+  { title: "Shift Manager", icon: CalendarClock, href: "/dashboard/shifts", products: ['shift'], permission: 'shift' as string | null, ownerOnly: false },
+  { title: "Customers", icon: Users, href: "/dashboard/customers", products: [], permission: null as string | null, ownerOnly: false },
+  { title: "Analytics", icon: BarChart3, href: "/dashboard/analytics", products: [], permission: 'analytics' as string | null, ownerOnly: false },
+  { title: "Team Management", icon: Users, href: "/dashboard/team", products: [], permission: null as string | null, ownerOnly: true },
 ];
 
 const secondaryItems = [
@@ -60,6 +61,14 @@ function SidebarMenuItems() {
   const { user } = useAuth();
   const { setOpenMobile, isMobile } = useSidebar();
 
+  // Fetch user info with permissions
+  const { data: userInfo } = useQuery({
+    queryKey: ['/api/auth/me'],
+  });
+
+  const isOwner = !userInfo?.isSubuser;
+  const permissions = userInfo?.permissions || [];
+
   const handleLinkClick = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -67,11 +76,28 @@ function SidebarMenuItems() {
   };
 
   const filterMenuItems = (items: typeof menuItems) => {
-    const selectedProducts = user?.selectedProducts || [];
-    return items.filter(item => {
-      if (item.products.length === 0) return true;
-      return item.products.some(product => selectedProducts.includes(product));
-    });
+    if (isOwner) {
+      // Owner: filter by selectedProducts and show owner-only items
+      const selectedProducts = user?.selectedProducts || [];
+      return items.filter(item => {
+        // Always show owner-only items for owners
+        if (item.ownerOnly) return true;
+        // Show items without product requirements
+        if (item.products.length === 0) return true;
+        // Show items that match selected products
+        return item.products.some(product => selectedProducts.includes(product));
+      });
+    } else {
+      // Subuser: filter by permissions
+      return items.filter(item => {
+        // Hide owner-only items for subusers
+        if (item.ownerOnly) return false;
+        // Show items without permission requirements
+        if (!item.permission) return true;
+        // Show items that match user permissions
+        return permissions.includes(item.permission);
+      });
+    }
   };
 
   const filteredMenuItems = filterMenuItems(menuItems);
@@ -101,26 +127,29 @@ function SidebarMenuItems() {
         </SidebarGroupContent>
       </SidebarGroup>
 
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {filteredSecondaryItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={location === item.href}
-                  data-testid={`link-${item.title.toLowerCase()}`}
-                >
-                  <Link href={item.href} onClick={handleLinkClick}>
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
+      {/* Account section - only visible to owners */}
+      {isOwner && (
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {filteredSecondaryItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.href}
+                    data-testid={`link-${item.title.toLowerCase()}`}
+                  >
+                    <Link href={item.href} onClick={handleLinkClick}>
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      )}
     </>
   );
 }

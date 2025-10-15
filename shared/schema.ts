@@ -27,6 +27,19 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Subusers table - team members with limited permissions
+export const subusers = pgTable("subusers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash"),
+  permissions: text("permissions").array().default(sql`ARRAY[]::text[]`),
+  emailVerified: boolean("email_verified").default(false),
+  verificationToken: text("verification_token"),
+  verificationTokenExpiry: timestamp("verification_token_expiry"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Loyalty Cards feature tables
 export const customers = pgTable("customers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -198,6 +211,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
 });
 
+export const insertSubuserSchema = createInsertSchema(subusers).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertCustomerSchema = createInsertSchema(customers).omit({
   id: true,
   createdAt: true,
@@ -261,6 +279,9 @@ export const insertTimeframePresetSchema = createInsertSchema(timeframePresets).
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Subuser = typeof subusers.$inferSelect;
+export type InsertSubuser = z.infer<typeof insertSubuserSchema>;
 
 export type Customer = typeof customers.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;

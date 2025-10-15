@@ -37,6 +37,8 @@ import CookiePolicy from "@/pages/CookiePolicy";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import CookieBanner from "@/components/CookieBanner";
+import SubuserSetup from "@/pages/SubuserSetup";
+import TeamManagement from "@/pages/TeamManagement";
 
 function Router() {
   return (
@@ -49,6 +51,7 @@ function Router() {
       <Route path="/verify-email/:token" component={VerifyEmail} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password/:token" component={ResetPassword} />
+      <Route path="/subuser-setup/:token" component={SubuserSetup} />
       <Route path="/select-products" component={SelectProducts} />
       <Route path="/subscription-required" component={SubscriptionRequired} />
       <Route path="/payment-processing" component={PaymentProcessing} />
@@ -112,6 +115,13 @@ function Router() {
         {() => (
           <DashboardLayout>
             <ShiftsManager />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/dashboard/team">
+        {() => (
+          <DashboardLayout>
+            <TeamManagement />
           </DashboardLayout>
         )}
       </Route>

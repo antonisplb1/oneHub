@@ -16,6 +16,7 @@ import {
   crewMembers,
   shifts,
   timeframePresets,
+  subusers,
   signupSchema,
   loginSchema,
   createRewardSchema,
@@ -28,6 +29,7 @@ import {
   insertCrewMemberSchema,
   insertShiftSchema,
   insertTimeframePresetSchema,
+  insertSubuserSchema,
 } from "@shared/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { hashPassword, generateToken, comparePasswords } from "./auth";
@@ -36,11 +38,12 @@ import { nanoid } from "nanoid";
 import Stripe from "stripe";
 import QRCode from "qrcode";
 import { GoogleWalletService, type LoyaltyPassData } from "./googleWallet";
-import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
+import { sendVerificationEmail, sendPasswordResetEmail, sendSubuserInvitationEmail } from "./email";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
+import { requirePermission, ownerOnly } from "./permissions";
 
 // Use test keys in development, production keys in production
 const stripeSecretKey = process.env.NODE_ENV === 'development' 
@@ -313,7 +316,12 @@ export function registerRoutes(app: Express) {
 
   app.get("/api/auth/me", (req, res) => {
     if (req.isAuthenticated()) {
-      res.json({ user: req.user });
+      res.json({ 
+        user: req.user,
+        isSubuser: req.session.isSubuser || false,
+        subuserId: req.session.subuserId,
+        permissions: req.session.permissions || [],
+      });
     } else {
       res.status(401).json({ error: "Not authenticated" });
     }
@@ -775,7 +783,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/customers", requireSubscription, async (req, res) => {
+  app.get("/api/customers", requireSubscription, requirePermission('loyalty'), async (req, res) => {
     try {
       const customerList = await db
         .select()
@@ -803,7 +811,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/menu-qr-code", requireSubscription, async (req, res) => {
+  app.get("/api/menu-qr-code", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const protocol = req.protocol;
       const host = req.get("host");
@@ -856,7 +864,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/customers", requireSubscription, async (req, res) => {
+  app.post("/api/customers", requireSubscription, requirePermission('loyalty'), async (req, res) => {
     try {
       const customerQrCode = nanoid(12);
       
@@ -888,7 +896,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/loyalty-cards", requireSubscription, async (req, res) => {
+  app.get("/api/loyalty-cards", requireSubscription, requirePermission('loyalty'), async (req, res) => {
     try {
       const cards = await db
         .select({
@@ -1006,7 +1014,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loyalty-cards/scan-stamp", requireSubscription, async (req, res) => {
+  app.post("/api/loyalty-cards/scan-stamp", requireSubscription, requirePermission('loyalty'), async (req, res) => {
     try {
       const { qrCode } = req.body;
 
@@ -1112,7 +1120,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loyalty-cards/:cardId/stamp", requireSubscription, async (req, res) => {
+  app.post("/api/loyalty-cards/:cardId/stamp", requireSubscription, requirePermission('loyalty'), async (req, res) => {
     try {
       const [card] = await db
         .select()
@@ -1167,7 +1175,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loyalty-cards/:cardId/redeem", requireSubscription, async (req, res) => {
+  app.post("/api/loyalty-cards/:cardId/redeem", requireSubscription, requirePermission('loyalty'), async (req, res) => {
     try {
       const [card] = await db
         .select()
@@ -1222,7 +1230,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/rewards", requireSubscription, async (req, res) => {
+  app.get("/api/rewards", requireSubscription, requirePermission('spin'), async (req, res) => {
     try {
       const rewardList = await db
         .select()
@@ -1252,7 +1260,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/rewards", requireSubscription, async (req, res) => {
+  app.post("/api/rewards", requireSubscription, requirePermission('spin'), async (req, res) => {
     try {
       const validatedData = createRewardSchema.parse(req.body);
       
@@ -1273,7 +1281,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/rewards/:rewardId", requireSubscription, async (req, res) => {
+  app.patch("/api/rewards/:rewardId", requireSubscription, requirePermission('spin'), async (req, res) => {
     try {
       const [updatedReward] = await db
         .update(rewards)
@@ -1301,7 +1309,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/rewards/:rewardId", requireSubscription, async (req, res) => {
+  app.delete("/api/rewards/:rewardId", requireSubscription, requirePermission('spin'), async (req, res) => {
     try {
       const [deletedReward] = await db
         .delete(rewards)
@@ -1323,7 +1331,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/spins", requireSubscription, async (req, res) => {
+  app.get("/api/spins", requireSubscription, requirePermission('spin'), async (req, res) => {
     try {
       const allSpins = await db
         .select({
@@ -1345,7 +1353,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/spin-tokens", requireSubscription, async (req, res) => {
+  app.get("/api/spin-tokens", requireSubscription, requirePermission('spin'), async (req, res) => {
     try {
       const tokens = await db
         .select()
@@ -1358,7 +1366,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/spin-tokens", requireSubscription, async (req, res) => {
+  app.post("/api/spin-tokens", requireSubscription, requirePermission('spin'), async (req, res) => {
     try {
       const validatedData = createTokenSchema.parse(req.body);
       const token = nanoid(8).toUpperCase();
@@ -1556,7 +1564,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/spin-token/:tokenId/qr", requireSubscription, async (req, res) => {
+  app.get("/api/spin-token/:tokenId/qr", requireSubscription, requirePermission('spin'), async (req, res) => {
     try {
       const [token] = await db
         .select()
@@ -1587,7 +1595,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/spin-in-store-qr/:userId", requireSubscription, async (req, res) => {
+  app.get("/api/spin-in-store-qr/:userId", requireSubscription, requirePermission('spin'), async (req, res) => {
     try {
       if (req.params.userId !== req.user!.id) {
         return res.status(403).json({ error: "Forbidden" });
@@ -1607,7 +1615,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/stripe/create-checkout-session", requireAuth, async (req, res) => {
+  app.post("/api/stripe/create-checkout-session", requireAuth, ownerOnly, async (req, res) => {
     try {
       // Get user's selected products
       const selectedProducts = req.user!.selectedProducts || [];
@@ -1671,7 +1679,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/stripe/verify-session/:sessionId", requireAuth, async (req, res) => {
+  app.get("/api/stripe/verify-session/:sessionId", requireAuth, ownerOnly, async (req, res) => {
     try {
       const session = await stripe.checkout.sessions.retrieve(req.params.sessionId);
       
@@ -1707,7 +1715,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/stripe/create-portal-session", requireAuth, async (req, res) => {
+  app.post("/api/stripe/create-portal-session", requireAuth, ownerOnly, async (req, res) => {
     try {
       const session = await stripe.billingPortal.sessions.create({
         customer: req.user!.stripeCustomerId!,
@@ -1835,7 +1843,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/messages", requireAuth, requireSubscription, async (req, res) => {
+  app.post("/api/messages", requireAuth, requireSubscription, requirePermission('loyalty'), async (req, res) => {
     try {
       const validatedData = sendMessageSchema.parse(req.body);
       const user = req.user!;
@@ -1877,7 +1885,7 @@ export function registerRoutes(app: Express) {
   });
 
   // Menu Categories Routes
-  app.get("/api/menu-categories", requireSubscription, async (req, res) => {
+  app.get("/api/menu-categories", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const categories = await db
         .select()
@@ -1890,7 +1898,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/menu-categories", requireSubscription, async (req, res) => {
+  app.post("/api/menu-categories", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const validatedData = insertMenuCategorySchema.parse(req.body);
       
@@ -1909,7 +1917,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.put("/api/menu-categories/:id", requireSubscription, async (req, res) => {
+  app.put("/api/menu-categories/:id", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const validatedData = insertMenuCategorySchema.parse(req.body);
       
@@ -1942,7 +1950,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/menu-categories/:id", requireSubscription, async (req, res) => {
+  app.delete("/api/menu-categories/:id", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const [deletedCategory] = await db
         .delete(menuCategories)
@@ -1965,7 +1973,7 @@ export function registerRoutes(app: Express) {
   });
 
   // Menu Items Routes
-  app.get("/api/menu-items", requireSubscription, async (req, res) => {
+  app.get("/api/menu-items", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const items = await db
         .select()
@@ -1978,7 +1986,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/menu-items/category/:categoryId", requireSubscription, async (req, res) => {
+  app.get("/api/menu-items/category/:categoryId", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const [category] = await db
         .select()
@@ -2007,7 +2015,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/menu-items", requireSubscription, async (req, res) => {
+  app.post("/api/menu-items", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const validatedData = insertMenuItemSchema.parse(req.body);
 
@@ -2059,7 +2067,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.put("/api/menu-items/:id", requireSubscription, async (req, res) => {
+  app.put("/api/menu-items/:id", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const validatedData = insertMenuItemSchema.parse(req.body);
 
@@ -2127,7 +2135,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/menu-items/:id", requireSubscription, async (req, res) => {
+  app.delete("/api/menu-items/:id", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const [deletedItem] = await db
         .delete(menuItems)
@@ -2150,7 +2158,7 @@ export function registerRoutes(app: Express) {
   });
 
   // Reorder menu items
-  app.post("/api/menu-items/reorder", requireSubscription, async (req, res) => {
+  app.post("/api/menu-items/reorder", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const updates = req.body.updates as { id: string; displayOrder: number }[];
       
@@ -2179,7 +2187,7 @@ export function registerRoutes(app: Express) {
 
   // Menu Image Upload URL (protected, requires authentication)
   // Reference: blueprint:javascript_object_storage
-  app.post("/api/menu-images/upload", requireAuth, requireSubscription, async (req, res) => {
+  app.post("/api/menu-images/upload", requireAuth, requireSubscription, requirePermission('menu'), async (req, res) => {
     const objectStorageService = new ObjectStorageService();
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     res.json({ uploadURL });
@@ -2230,7 +2238,7 @@ export function registerRoutes(app: Express) {
   });
 
   // Crew Members Routes
-  app.get("/api/crew-members", requireAuth, requireSubscription, async (req, res) => {
+  app.get("/api/crew-members", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       const members = await db
         .select()
@@ -2244,7 +2252,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/crew-members", requireAuth, requireSubscription, async (req, res) => {
+  app.post("/api/crew-members", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       const validatedData = insertCrewMemberSchema.parse(req.body);
       
@@ -2262,7 +2270,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/crew-members/:id", requireAuth, requireSubscription, async (req, res) => {
+  app.delete("/api/crew-members/:id", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       await db
         .delete(crewMembers)
@@ -2280,7 +2288,7 @@ export function registerRoutes(app: Express) {
   });
 
   // Shifts Routes
-  app.get("/api/shifts", requireAuth, requireSubscription, async (req, res) => {
+  app.get("/api/shifts", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       const allShifts = await db
         .select()
@@ -2294,7 +2302,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/shifts", requireAuth, requireSubscription, async (req, res) => {
+  app.post("/api/shifts", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       const validatedData = insertShiftSchema.parse(req.body);
       
@@ -2312,7 +2320,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/shifts/:id", requireAuth, requireSubscription, async (req, res) => {
+  app.patch("/api/shifts/:id", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       const validatedData = insertShiftSchema.parse(req.body);
       
@@ -2337,7 +2345,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/shifts/:id", requireAuth, requireSubscription, async (req, res) => {
+  app.delete("/api/shifts/:id", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       await db
         .delete(shifts)
@@ -2355,7 +2363,7 @@ export function registerRoutes(app: Express) {
   });
 
   // Shift PIN Management
-  app.post("/api/shift-pin", requireAuth, requireSubscription, async (req, res) => {
+  app.post("/api/shift-pin", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       const { pin } = z.object({ pin: z.string().min(4).max(6) }).parse(req.body);
       
@@ -2374,7 +2382,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/shift-pin", requireAuth, requireSubscription, async (req, res) => {
+  app.get("/api/shift-pin", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       const [user] = await db
         .select({ shiftAccessPin: users.shiftAccessPin })
@@ -2390,7 +2398,7 @@ export function registerRoutes(app: Express) {
   });
 
   // Timeframe Presets Routes
-  app.get("/api/timeframe-presets", requireAuth, requireSubscription, async (req, res) => {
+  app.get("/api/timeframe-presets", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       const presets = await db
         .select()
@@ -2404,7 +2412,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/timeframe-presets", requireAuth, requireSubscription, async (req, res) => {
+  app.post("/api/timeframe-presets", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       const validatedData = insertTimeframePresetSchema.parse(req.body);
       
@@ -2422,7 +2430,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/timeframe-presets/:id", requireAuth, requireSubscription, async (req, res) => {
+  app.patch("/api/timeframe-presets/:id", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       const validatedData = insertTimeframePresetSchema.parse(req.body);
       
@@ -2447,7 +2455,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/timeframe-presets/:id", requireAuth, requireSubscription, async (req, res) => {
+  app.delete("/api/timeframe-presets/:id", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       await db
         .delete(timeframePresets)
@@ -2580,5 +2588,186 @@ export function registerRoutes(app: Express) {
     }
 
     res.json({ received: true });
+  });
+
+  // Subuser Management Routes
+  
+  // Create subuser (owner only)
+  app.post("/api/subusers", ownerOnly, async (req: Request, res: Response) => {
+
+    try {
+      const { email, permissions } = insertSubuserSchema
+        .pick({ email: true, permissions: true })
+        .parse(req.body);
+
+      // Check if email already exists as user or subuser
+      const existingUser = await db.query.users.findFirst({
+        where: eq(users.email, email),
+      });
+
+      const existingSubuser = await db.query.subusers.findFirst({
+        where: eq(subusers.email, email),
+      });
+
+      if (existingUser || existingSubuser) {
+        return res.status(400).json({ error: "Email already in use" });
+      }
+
+      // Generate verification token
+      const token = generateToken();
+      const tokenExpiry = new Date();
+      tokenExpiry.setHours(tokenExpiry.getHours() + 24); // 24 hour expiry
+
+      // Create subuser
+      const [newSubuser] = await db
+        .insert(subusers)
+        .values({
+          ownerId: req.user.id,
+          email,
+          permissions: permissions || [],
+          verificationToken: token,
+          verificationTokenExpiry: tokenExpiry,
+          emailVerified: false,
+        })
+        .returning();
+
+      // Get shop name for email
+      const owner = await db.query.users.findFirst({
+        where: eq(users.id, req.user.id),
+      });
+
+      // Send invitation email
+      await sendSubuserInvitationEmail(
+        email,
+        owner?.shopName || 'the team',
+        token,
+        permissions || []
+      );
+
+      res.json({ 
+        success: true, 
+        subuser: { ...newSubuser, passwordHash: undefined } 
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // List subusers (owner only)
+  app.get("/api/subusers", ownerOnly, async (req: Request, res: Response) => {
+
+    try {
+      const subusersList = await db.query.subusers.findMany({
+        where: eq(subusers.ownerId, req.user.id),
+        orderBy: [desc(subusers.createdAt)],
+      });
+
+      // Remove password hashes
+      const sanitized = subusersList.map(({ passwordHash, ...rest }) => rest);
+
+      res.json({ subusers: sanitized });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Update subuser permissions (owner only)
+  app.patch("/api/subusers/:id", ownerOnly, async (req: Request, res: Response) => {
+
+    try {
+      const { id } = req.params;
+      const { permissions } = req.body;
+
+      // Verify subuser belongs to this owner
+      const subuser = await db.query.subusers.findFirst({
+        where: and(
+          eq(subusers.id, id),
+          eq(subusers.ownerId, req.user.id)
+        ),
+      });
+
+      if (!subuser) {
+        return res.status(404).json({ error: "Subuser not found" });
+      }
+
+      // Update permissions
+      const [updated] = await db
+        .update(subusers)
+        .set({ permissions })
+        .where(eq(subusers.id, id))
+        .returning();
+
+      res.json({ success: true, subuser: { ...updated, passwordHash: undefined } });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Delete subuser (owner only)
+  app.delete("/api/subusers/:id", ownerOnly, async (req: Request, res: Response) => {
+
+    try {
+      const { id } = req.params;
+
+      // Verify subuser belongs to this owner
+      const subuser = await db.query.subusers.findFirst({
+        where: and(
+          eq(subusers.id, id),
+          eq(subusers.ownerId, req.user.id)
+        ),
+      });
+
+      if (!subuser) {
+        return res.status(404).json({ error: "Subuser not found" });
+      }
+
+      await db.delete(subusers).where(eq(subusers.id, id));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Subuser password setup (public route with token)
+  app.post("/api/subuser-setup/:token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+      const { password } = req.body;
+
+      if (!password || password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+
+      // Find subuser by token
+      const subuser = await db.query.subusers.findFirst({
+        where: eq(subusers.verificationToken, token),
+      });
+
+      if (!subuser) {
+        return res.status(400).json({ error: "Invalid or expired token" });
+      }
+
+      // Check token expiry
+      if (subuser.verificationTokenExpiry && new Date() > subuser.verificationTokenExpiry) {
+        return res.status(400).json({ error: "Token has expired" });
+      }
+
+      // Hash password and update subuser
+      const passwordHash = await hashPassword(password);
+      await db
+        .update(subusers)
+        .set({
+          passwordHash,
+          emailVerified: true,
+          verificationToken: null,
+          verificationTokenExpiry: null,
+        })
+        .where(eq(subusers.id, subuser.id));
+
+      res.json({ success: true, message: "Password set successfully" });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
   });
 }

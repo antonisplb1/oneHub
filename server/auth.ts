@@ -5,7 +5,7 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, insertUserSchema, type User as SelectUser } from "@shared/schema";
+import { users, subusers, insertUserSchema, type User as SelectUser, type Subuser } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
@@ -27,6 +27,9 @@ declare global {
 declare module 'express-session' {
   interface SessionData {
     adminId?: string;
+    isSubuser?: boolean;
+    subuserId?: string;
+    permissions?: string[];
   }
 }
 
@@ -68,25 +71,72 @@ export function setupAuth(app: Express) {
 
   passport.use(
     new LocalStrategy(
-      { usernameField: "email" },
-      async (email, password, done) => {
+      { usernameField: "email", passReqToCallback: true },
+      async (req, email, password, done) => {
         try {
+          // First check if it's a regular user
           const [user] = await db
             .select()
             .from(users)
             .where(eq(users.email, email))
             .limit(1);
 
-          if (!user) {
+          if (user) {
+            const isValid = await comparePasswords(password, user.passwordHash);
+            if (!isValid) {
+              return done(null, false, { message: "Invalid email or password" });
+            }
+            // Regular user login - clear subuser session data
+            req.session.isSubuser = false;
+            req.session.subuserId = undefined;
+            req.session.permissions = undefined;
+            return done(null, user);
+          }
+
+          // Check if it's a subuser
+          const [subuser] = await db
+            .select()
+            .from(subusers)
+            .where(eq(subusers.email, email))
+            .limit(1);
+
+          if (!subuser) {
             return done(null, false, { message: "Invalid email or password" });
           }
 
-          const isValid = await comparePasswords(password, user.passwordHash);
+          // Verify subuser email is verified
+          if (!subuser.emailVerified) {
+            return done(null, false, { message: "Please verify your email first" });
+          }
+
+          // Verify subuser password
+          if (!subuser.passwordHash) {
+            return done(null, false, { message: "Please set up your password first" });
+          }
+
+          const isValid = await comparePasswords(password, subuser.passwordHash);
           if (!isValid) {
             return done(null, false, { message: "Invalid email or password" });
           }
 
-          return done(null, user);
+          // Get the owner's data
+          const [owner] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, subuser.ownerId))
+            .limit(1);
+
+          if (!owner) {
+            return done(null, false, { message: "Owner account not found" });
+          }
+
+          // Store subuser info in session
+          req.session.isSubuser = true;
+          req.session.subuserId = subuser.id;
+          req.session.permissions = subuser.permissions || [];
+
+          // Return owner's data but mark as subuser in session
+          return done(null, owner);
         } catch (err) {
           return done(err);
         }
