@@ -108,6 +108,29 @@ export default function SettingsPage() {
     },
   });
 
+  const subscribeMutation = useMutation({
+    mutationFn: async () => {
+      const checkoutRes = await apiRequest<{ url: string }>('/api/stripe/create-checkout-session', {
+        method: 'POST',
+      });
+      return checkoutRes;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Redirecting to checkout",
+        description: "Opening payment page in new tab...",
+      });
+      window.open(data.url, '_blank');
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Subscription failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const manageSubscriptionMutation = useMutation({
     mutationFn: () => {
       return apiRequest("/api/stripe/create-portal-session", {
@@ -572,8 +595,16 @@ export default function SettingsPage() {
                 )}
               </div>
               {user?.subscriptionStatus !== "active" && user?.selectedProducts && user.selectedProducts.length > 0 && (
-                <Button size="lg" data-testid="button-subscribe">
-                  Subscribe Now - €{calculatePrice(user.selectedProducts)}/month
+                <Button 
+                  size="lg" 
+                  onClick={() => subscribeMutation.mutate()}
+                  disabled={subscribeMutation.isPending}
+                  data-testid="button-subscribe"
+                >
+                  {subscribeMutation.isPending 
+                    ? "Loading..." 
+                    : `Subscribe Now - €${calculatePrice(user.selectedProducts)}/month`
+                  }
                 </Button>
               )}
               {user?.subscriptionStatus === "active" && (
