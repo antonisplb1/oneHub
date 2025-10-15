@@ -193,7 +193,7 @@ export default function SelectProducts() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-semibold text-primary" data-testid="text-bundle-discount">
-                      Complete Bundle Discount! 🎉
+                      Complete Bundle Discount!
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Save €8/month when you get all four products
@@ -202,48 +202,6 @@ export default function SelectProducts() {
                   <div className="text-right">
                     <div className="text-sm text-muted-foreground line-through">€33</div>
                     <div className="text-2xl font-bold text-primary">€24.99</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {selectedProducts.length === 3 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && (
-            <Card className="bg-primary/5 border-primary">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-primary" data-testid="text-bundle-discount">
-                      Bundle Discount Applied! 🎉
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Save €7/month when you get all three products
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground line-through">€30</div>
-                    <div className="text-2xl font-bold text-primary">€23</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {selectedProducts.length === 2 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && (
-            <Card className="bg-primary/5 border-primary">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-primary" data-testid="text-bundle-discount">
-                      Bundle Discount Applied! 🎉
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Save €5/month when you get both products
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground line-through">€25</div>
-                    <div className="text-2xl font-bold text-primary">€20</div>
                   </div>
                 </div>
               </CardContent>

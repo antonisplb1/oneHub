@@ -534,6 +534,140 @@ export default function Demo() {
               </Card>
             </div>
 
+            {/* How It Works - Shift Manager */}
+            <div>
+              <div className="text-center mb-12">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <Calendar className="w-10 h-10 text-chart-4" />
+                  <h2 className="text-4xl font-semibold">Shift Manager</h2>
+                </div>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  Keep your team organized with employee shift scheduling. Weekly calendar views, crew management, 
+                  and PIN-protected public access for staff to check their schedules.
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6 mb-8">
+                <Card>
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-lg bg-chart-4/10 flex items-center justify-center mb-3">
+                      <Users className="w-6 h-6 text-chart-4" />
+                    </div>
+                    <CardTitle className="text-lg">1. Build Your Crew</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Add crew members to your roster and create reusable time presets for common shifts. 
+                      Organize your team and standardize scheduling.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                      <Calendar className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg">2. Schedule Shifts</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Use the weekly calendar to assign shifts. Select crew members, pick preset times or enter custom hours, 
+                      and add notes. Navigate weeks with ease.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-lg bg-chart-2/10 flex items-center justify-center mb-3">
+                      <ScanLine className="w-6 h-6 text-chart-2" />
+                    </div>
+                    <CardTitle className="text-lg">3. Share with Team</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Set a PIN and share your unique shift URL. Staff access schedules via any device with PIN protection. 
+                      No accounts needed.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="p-8 bg-gradient-to-br from-chart-4/5 to-chart-2/5">
+                <div className="grid md:grid-cols-2 gap-8 items-center">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-4">Key Features</h3>
+                    <ul className="space-y-3">
+                      <li className="flex items-start gap-2">
+                        <Calendar className="w-5 h-5 text-chart-4 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Weekly Calendar View</div>
+                          <div className="text-sm text-muted-foreground">Monday-Sunday layout with easy week navigation</div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Users className="w-5 h-5 text-chart-4 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Crew Roster Management</div>
+                          <div className="text-sm text-muted-foreground">Add, remove, and manage employee names in one place</div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Bell className="w-5 h-5 text-chart-4 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Timeframe Presets</div>
+                          <div className="text-sm text-muted-foreground">Save common shift times for faster scheduling</div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <ScanLine className="w-5 h-5 text-chart-4 mt-0.5" />
+                        <div>
+                          <div className="font-medium">PIN-Protected Public Access</div>
+                          <div className="text-sm text-muted-foreground">Secure URL for crew to view schedules on any device</div>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="bg-background rounded-lg p-6">
+                    <div className="text-sm text-muted-foreground mb-2">Example Weekly Schedule</div>
+                    <div className="space-y-3">
+                      <div className="border rounded-lg p-3">
+                        <div className="flex justify-between items-start mb-1">
+                          <div>
+                            <div className="font-semibold text-sm">Monday, Oct 15</div>
+                            <div className="text-xs text-muted-foreground">Morning Shift</div>
+                          </div>
+                        </div>
+                        <div className="text-sm mt-2">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-3 h-3 text-chart-4" />
+                            <span className="font-medium">Sarah Johnson</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">8:00 AM - 2:00 PM • Server</div>
+                        </div>
+                      </div>
+                      <div className="border rounded-lg p-3">
+                        <div className="flex justify-between items-start mb-1">
+                          <div>
+                            <div className="font-semibold text-sm">Tuesday, Oct 16</div>
+                            <div className="text-xs text-muted-foreground">Evening Shift</div>
+                          </div>
+                        </div>
+                        <div className="text-sm mt-2">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-3 h-3 text-chart-4" />
+                            <span className="font-medium">Mike Chen</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">5:00 PM - 11:00 PM • Chef</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
             {/* Dashboard Overview */}
             <div>
               <div className="text-center mb-12">
@@ -605,7 +739,7 @@ export default function Demo() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Powered by Stripe. Switch between Loyalty, Spin Wheel, Menu Builder, or get all three at any time. 
+                      Powered by Stripe. Switch between Loyalty, Spin Wheel, Menu Builder, Shift Manager, or get all four at any time. 
                       Cancel anytime—no long-term contracts or hidden fees.
                     </p>
                     <Badge variant="secondary">Secure payments</Badge>

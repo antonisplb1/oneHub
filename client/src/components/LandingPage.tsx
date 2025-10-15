@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Award, Gift, UtensilsCrossed, Check, ArrowRight, Sparkles, Shield, CheckCircle, Users, Target, Heart, Bell, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Award, Gift, UtensilsCrossed, Check, ArrowRight, Sparkles, Shield, CheckCircle, Users, Target, Heart, Bell, ArrowDownRight, ArrowUpRight, Calendar } from "lucide-react";
 import { SiStripe } from "react-icons/si";
 import logoImage from "@assets/blob-b137548_1759662451793.png";
 
@@ -41,7 +41,7 @@ export default function LandingPage() {
             Turn Customers Into<br />Loyal Regulars
           </h2>
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            Digital loyalty cards and prize wheels in one platform. 
+            Digital loyalty cards, prize wheels, menus, and shift scheduling in one platform. 
             No paper cards, no apps to download. Just QR codes.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
@@ -283,6 +283,153 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* All Products Section */}
+      <section className="py-20 px-6">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-16">
+            <h3 className="text-3xl md:text-4xl font-bold mb-4">Four Powerful Products, One Platform</h3>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Choose the features you need or get the complete bundle. Each product works independently or together seamlessly.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="hover-elevate" data-testid="product-card-loyalty">
+              <CardHeader>
+                <div className="w-14 h-14 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                  <Award className="w-7 h-7 text-primary" />
+                </div>
+                <CardTitle className="text-xl">Loyalty Cards</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold mb-3">€10<span className="text-sm text-muted-foreground">/month</span></div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Digital stamp collection, QR code scanning, and Google Wallet integration for repeat customers.
+                </p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>Digital stamp cards</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>Customer management</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>Wallet integration</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate" data-testid="product-card-spin">
+              <CardHeader>
+                <div className="w-14 h-14 rounded-lg bg-chart-3/10 flex items-center justify-center mb-3">
+                  <Gift className="w-7 h-7 text-chart-3" />
+                </div>
+                <CardTitle className="text-xl">Spin Wheel</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold mb-3">€8<span className="text-sm text-muted-foreground">/month</span></div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Create exciting spin-to-win campaigns with customizable prizes for events and promotions.
+                </p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>Prize wheel builder</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>Campaign tracking</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>QR code access</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate" data-testid="product-card-menu">
+              <CardHeader>
+                <div className="w-14 h-14 rounded-lg bg-chart-1/10 flex items-center justify-center mb-3">
+                  <UtensilsCrossed className="w-7 h-7 text-chart-1" />
+                </div>
+                <CardTitle className="text-xl">Menu Builder</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold mb-3">€5<span className="text-sm text-muted-foreground">/month</span></div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Beautiful digital menus with photos and prices, accessible via QR code. No printing needed.
+                </p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>Category management</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>Photo uploads</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>Instant updates</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate" data-testid="product-card-shifts">
+              <CardHeader>
+                <div className="w-14 h-14 rounded-lg bg-chart-4/10 flex items-center justify-center mb-3">
+                  <Calendar className="w-7 h-7 text-chart-4" />
+                </div>
+                <CardTitle className="text-xl">Shift Manager</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold mb-3">€10<span className="text-sm text-muted-foreground">/month</span></div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Employee shift scheduling with weekly calendar views and PIN-protected crew access.
+                </p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>Weekly scheduling</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>Crew roster</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-chart-2" />
+                    <span>Public shift URL</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="text-center mt-12">
+            <Card className="inline-block p-6 bg-gradient-to-br from-primary/10 to-chart-2/10 border-primary/50">
+              <div className="flex items-center gap-4">
+                <Sparkles className="w-8 h-8 text-primary" />
+                <div className="text-left">
+                  <div className="font-bold text-lg mb-1">Complete Bundle - Save €8/month</div>
+                  <div className="text-sm text-muted-foreground">Get all four products for just <span className="font-bold text-foreground">€24.99/month</span> instead of €33</div>
+                </div>
+                <Link href="/pricing">
+                  <Button size="lg" data-testid="button-view-pricing">
+                    View Pricing <ArrowRight className="ml-2 w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       {/* Trust Indicators Section */}
       <section className="py-16 px-6">
         <div className="container mx-auto max-w-6xl">
@@ -360,7 +507,7 @@ export default function LandingPage() {
             <div>
               <h3 className="font-semibold mb-3">uniHub</h3>
               <p className="text-sm text-muted-foreground">
-                Digital loyalty cards, spin campaigns, and menu builder for modern businesses.
+                Digital loyalty cards, spin campaigns, menu builder, and shift scheduling for modern businesses.
               </p>
             </div>
             <div>
