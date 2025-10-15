@@ -86,11 +86,8 @@ export function setupAuth(app: Express) {
             if (!isValid) {
               return done(null, false, { message: "Invalid email or password" });
             }
-            // Regular user login - clear subuser session data
-            req.session.isSubuser = false;
-            req.session.subuserId = undefined;
-            req.session.permissions = undefined;
-            return done(null, user);
+            // Regular user login - return with flag
+            return done(null, { ...user, __isOwner: true });
           }
 
           // Check if it's a subuser
@@ -130,21 +127,13 @@ export function setupAuth(app: Express) {
             return done(null, false, { message: "Owner account not found" });
           }
 
-          // Store subuser info in session
-          req.session.isSubuser = true;
-          req.session.subuserId = subuser.id;
-          req.session.permissions = subuser.permissions || [];
-
-          console.log("[DEBUG] Subuser login - Setting session data:", {
-            isSubuser: true,
-            subuserId: subuser.id,
-            permissions: subuser.permissions || [],
-            subuserEmail: subuser.email,
-            ownerEmail: owner.email,
+          // Return owner's data with subuser info attached
+          return done(null, {
+            ...owner,
+            __isSubuser: true,
+            __subuserId: subuser.id,
+            __permissions: subuser.permissions || [],
           });
-
-          // Return owner's data but mark as subuser in session
-          return done(null, owner);
         } catch (err) {
           return done(err);
         }

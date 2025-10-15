@@ -292,24 +292,52 @@ export function registerRoutes(app: Express) {
       return res.status(400).json({ error: error.message });
     }
 
-    passport.authenticate("local", (err: any, user: Express.User, info: any) => {
+    passport.authenticate("local", (err: any, authUser: any, info: any) => {
       if (err) {
         return res.status(500).json({ error: "Authentication error" });
       }
-      if (!user) {
+      if (!authUser) {
         return res.status(401).json({ error: info?.message || "Invalid credentials" });
       }
-      req.login(user, (err) => {
+
+      // Extract subuser info before login
+      const isSubuser = authUser.__isSubuser || false;
+      const subuserId = authUser.__subuserId;
+      const permissions = authUser.__permissions || [];
+
+      // Clean the user object (remove temporary flags)
+      const { __isOwner, __isSubuser, __subuserId, __permissions, ...cleanUser } = authUser;
+
+      req.login(cleanUser, (err) => {
         if (err) {
           return res.status(500).json({ error: "Login failed" });
         }
-        // Explicitly save session to persist isSubuser and permissions
+
+        // Set session data AFTER login completes
+        if (isSubuser) {
+          req.session.isSubuser = true;
+          req.session.subuserId = subuserId;
+          req.session.permissions = permissions;
+          console.log("[DEBUG] Login callback - Setting subuser session data:", {
+            isSubuser: true,
+            subuserId,
+            permissions,
+          });
+        } else {
+          req.session.isSubuser = false;
+          req.session.subuserId = undefined;
+          req.session.permissions = undefined;
+          console.log("[DEBUG] Login callback - Setting owner session data");
+        }
+
+        // Explicitly save session to persist data
         req.session.save((saveErr) => {
           if (saveErr) {
             console.error("Session save error:", saveErr);
             return res.status(500).json({ error: "Session save failed" });
           }
-          res.json({ user });
+          console.log("[DEBUG] Session saved successfully");
+          res.json({ user: cleanUser });
         });
       });
     })(req, res, next);
