@@ -20,11 +20,11 @@ export async function sendVerificationEmail(
 ) {
   try {
     const { client, fromEmail } = getResendClient();
-    // Use REPLIT_DOMAINS if available (production), otherwise use localhost
+    // Always use REPLIT_DOMAINS when available (works in both dev and production on Replit)
     const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim();
     const baseUrl = replitDomain 
       ? `https://${replitDomain}` 
-      : 'http://localhost:5000';
+      : (process.env.NODE_ENV === 'production' ? 'https://unihub.live' : 'http://localhost:5000');
     const verifyUrl = `${baseUrl}/verify-email/${token}`;
 
     await client.emails.send({
@@ -56,11 +56,11 @@ export async function sendPasswordResetEmail(
 ) {
   try {
     const { client, fromEmail } = getResendClient();
-    // Use REPLIT_DOMAINS if available (production), otherwise use localhost
+    // Always use REPLIT_DOMAINS when available (works in both dev and production on Replit)
     const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim();
     const baseUrl = replitDomain 
       ? `https://${replitDomain}` 
-      : 'http://localhost:5000';
+      : (process.env.NODE_ENV === 'production' ? 'https://unihub.live' : 'http://localhost:5000');
     const resetUrl = `${baseUrl}/reset-password/${token}`;
 
     await client.emails.send({
@@ -95,11 +95,11 @@ export async function sendSubuserInvitationEmail(
 ) {
   try {
     const { client, fromEmail } = getResendClient();
-    // Use REPLIT_DOMAINS if available (production), otherwise use localhost
+    // Always use REPLIT_DOMAINS when available (works in both dev and production on Replit)
     const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim();
     const baseUrl = replitDomain 
       ? `https://${replitDomain}` 
-      : 'http://localhost:5000';
+      : (process.env.NODE_ENV === 'production' ? 'https://unihub.live' : 'http://localhost:5000');
     const setupUrl = `${baseUrl}/subuser-setup/${token}`;
 
     const permissionLabels: Record<string, string> = {
