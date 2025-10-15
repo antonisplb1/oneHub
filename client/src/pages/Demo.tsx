@@ -8,17 +8,25 @@ import logoImage from "@assets/blob-b137548_1759662451793.png";
 export default function Demo() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-6 py-5 flex items-center justify-between">
+      <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" data-testid="link-home">
             <div className="flex items-center gap-3 cursor-pointer">
               <img src={logoImage} alt="uniHub logo" className="h-8 w-8" />
               <h1 className="text-2xl font-semibold text-primary">uniHub</h1>
             </div>
           </Link>
-          <Link href="/auth">
-            <Button variant="outline" size="lg" data-testid="button-get-started">Get Started</Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/demo">
+              <Button variant="ghost" data-testid="button-demo">Demo</Button>
+            </Link>
+            <Link href="/pricing">
+              <Button variant="ghost" data-testid="button-pricing">Pricing</Button>
+            </Link>
+            <Link href="/auth?mode=login">
+              <Button variant="outline" data-testid="button-login">Login</Button>
+            </Link>
+          </div>
         </div>
       </header>
 

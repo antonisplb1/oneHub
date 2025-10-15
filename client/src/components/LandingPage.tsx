@@ -545,9 +545,9 @@ export default function LandingPage() {
             <div>
               <h5 className="font-semibold mb-3">Legal</h5>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/privacy" data-testid="link-footer-privacy">Privacy Policy</Link></li>
-                <li><Link href="/terms" data-testid="link-footer-terms">Terms of Service</Link></li>
-                <li><Link href="/cookies" data-testid="link-footer-cookies">Cookie Policy</Link></li>
+                <li><Link href="/privacy-policy" data-testid="link-footer-privacy">Privacy Policy</Link></li>
+                <li><Link href="/terms-of-service" data-testid="link-footer-terms">Terms of Service</Link></li>
+                <li><Link href="/cookie-policy" data-testid="link-footer-cookies">Cookie Policy</Link></li>
               </ul>
             </div>
           </div>

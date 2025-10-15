@@ -23,6 +23,9 @@ export default function Pricing() {
             <Link href="/demo">
               <Button variant="ghost" data-testid="button-demo">Demo</Button>
             </Link>
+            <Link href="/pricing">
+              <Button variant="ghost" data-testid="button-pricing">Pricing</Button>
+            </Link>
             <Link href="/auth?mode=login">
               <Button variant="outline" data-testid="button-login">Login</Button>
             </Link>
