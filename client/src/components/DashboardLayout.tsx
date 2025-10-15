@@ -1,5 +1,7 @@
 import { ReactNode, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import {
   SidebarProvider,
   Sidebar,
@@ -26,10 +28,12 @@ import {
   CalendarClock,
   Clock,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import logoImage from "@assets/blob-b137548_1759662451793.png";
 
 const menuItems = [
@@ -124,11 +128,46 @@ function SidebarMenuItems() {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [location, setLocation] = useLocation();
   const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { toast } = useToast();
 
   // Check if user has active subscription OR active trial
   const hasActiveTrial = user && user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
   const hasActiveSubscription = user && user.subscriptionStatus === "active";
   const hasAccess = hasActiveSubscription || hasActiveTrial;
+
+  // Upgrade mutation - creates checkout session with existing products
+  const upgradeMutation = useMutation({
+    mutationFn: async () => {
+      const checkoutRes = await apiRequest<{ url: string }>('/api/stripe/create-checkout-session', {
+        method: 'POST',
+      });
+      return checkoutRes;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Redirecting to checkout",
+        description: "Opening payment page in new tab...",
+      });
+      window.open(data.url, '_blank');
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upgrade failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUpgrade = () => {
+    if (!user?.selectedProducts || user.selectedProducts.length === 0) {
+      // If no products selected, go to product selection
+      setLocation("/select-products");
+    } else {
+      // If products already selected, go directly to payment
+      upgradeMutation.mutate();
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -211,11 +250,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     Subscribe now to continue using uniHub after your trial ends
                   </span>
                 </div>
-                <Link href="/select-products">
-                  <Button size="sm" data-testid="button-upgrade-now">
-                    Upgrade Now <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
+                <Button 
+                  size="sm" 
+                  onClick={handleUpgrade}
+                  disabled={upgradeMutation.isPending}
+                  data-testid="button-upgrade-now"
+                >
+                  {upgradeMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      Upgrade Now <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
               </AlertDescription>
             </Alert>
           )}
