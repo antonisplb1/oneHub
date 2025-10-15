@@ -44,7 +44,7 @@ export default function Demo() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold mb-2">€15<span className="text-lg text-muted-foreground">/month</span></div>
+                  <div className="text-3xl font-bold mb-2">€10<span className="text-lg text-muted-foreground">/month</span></div>
                   <p className="text-sm text-muted-foreground mb-4">Perfect for coffee shops, restaurants, salons</p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
@@ -75,7 +75,7 @@ export default function Demo() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold mb-2">€10<span className="text-lg text-muted-foreground">/month</span></div>
+                  <div className="text-3xl font-bold mb-2">€8<span className="text-lg text-muted-foreground">/month</span></div>
                   <p className="text-sm text-muted-foreground mb-4">Great for events, promotions, giveaways</p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
@@ -137,7 +137,7 @@ export default function Demo() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold mb-2">€8<span className="text-lg text-muted-foreground">/month</span></div>
+                  <div className="text-3xl font-bold mb-2">€10<span className="text-lg text-muted-foreground">/month</span></div>
                   <p className="text-sm text-muted-foreground mb-4">Perfect for teams, staff scheduling</p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
@@ -167,12 +167,12 @@ export default function Demo() {
                       <Sparkles className="w-5 h-5 text-primary" />
                       Complete Bundle
                     </CardTitle>
-                    <Badge>Best Value - Save €10</Badge>
+                    <Badge>Best Value - Save €8</Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold mb-2">€28<span className="text-lg text-muted-foreground">/month</span></div>
-                  <p className="text-sm text-muted-foreground mb-4">Complete engagement toolkit, save €10/month</p>
+                  <div className="text-3xl font-bold mb-2">€24.99<span className="text-lg text-muted-foreground">/month</span></div>
+                  <p className="text-sm text-muted-foreground mb-4">Complete engagement toolkit, save €8/month</p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-chart-2 mt-0.5" />
