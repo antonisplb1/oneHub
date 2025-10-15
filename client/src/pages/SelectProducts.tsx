@@ -22,14 +22,14 @@ const products: Product[] = [
     id: 'loyalty',
     name: 'Loyalty Cards',
     description: 'Digital loyalty card program with stamp collection and rewards',
-    price: 15,
+    price: 10,
     icon: Ticket,
   },
   {
     id: 'spin',
     name: 'Spin Wheel',
     description: 'Interactive prize wheel campaigns for customer engagement',
-    price: 10,
+    price: 8,
     icon: Gift,
   },
   {
@@ -43,7 +43,7 @@ const products: Product[] = [
     id: 'shift',
     name: 'Shift Manager',
     description: 'Employee shift scheduling with weekly calendar and crew management',
-    price: 8,
+    price: 10,
     icon: Calendar,
   },
 ];
@@ -97,27 +97,11 @@ export default function SelectProducts() {
   const calculateTotal = () => {
     const sorted = [...selectedProducts].sort();
     
-    // All four products - Bundle discount (€28 instead of €38)
+    // All four products - Bundle discount (€24.99 instead of €33)
     if (sorted.length === 4 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu') && sorted.includes('shift')) {
-      return 28;
+      return 24.99;
     }
-    // Old bundle: All three products (loyalty + spin + menu)
-    else if (sorted.length === 3 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu')) {
-      return 23;
-    }
-    // Loyalty + Spin
-    else if (sorted.length === 2 && sorted.includes('loyalty') && sorted.includes('spin')) {
-      return 20;
-    }
-    // Loyalty + Menu
-    else if (sorted.length === 2 && sorted.includes('loyalty') && sorted.includes('menu')) {
-      return 20;
-    }
-    // Spin + Menu
-    else if (sorted.length === 2 && sorted.includes('spin') && sorted.includes('menu')) {
-      return 15;
-    }
-    // Individual prices (including new combinations with shift)
+    // Individual prices for all other combinations
     else {
       return selectedProducts.reduce((total, id) => {
         const product = products.find(p => p.id === id);
@@ -212,12 +196,12 @@ export default function SelectProducts() {
                       Complete Bundle Discount! 🎉
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Save €10/month when you get all four products
+                      Save €8/month when you get all four products
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-muted-foreground line-through">€38</div>
-                    <div className="text-2xl font-bold text-primary">€28</div>
+                    <div className="text-sm text-muted-foreground line-through">€33</div>
+                    <div className="text-2xl font-bold text-primary">€24.99</div>
                   </div>
                 </div>
               </CardContent>
