@@ -48,37 +48,21 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 // Product pricing configuration
 const PRODUCT_PRICES = {
-  'loyalty': 1500, // €15 in cents
-  'spin': 1000,    // €10 in cents
+  'loyalty': 1000, // €10 in cents
+  'spin': 800,     // €8 in cents
   'menu': 500,     // €5 in cents
-  'shift': 800,    // €8 in cents
+  'shift': 1000,   // €10 in cents
 };
 
 // Calculate price based on selected products
 function calculateProductPrice(products: string[]): number {
   const sortedProducts = [...products].sort();
   
-  // All four products - Bundle discount (€28 instead of €38)
+  // All four products - Bundle discount (€24.99 instead of €33)
   if (sortedProducts.length === 4 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu') && sortedProducts.includes('shift')) {
-    return 2800;
+    return 2499;
   }
-  // Old bundle: All three products (loyalty + spin + menu)
-  else if (sortedProducts.length === 3 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
-    return 2300;
-  }
-  // Loyalty + Spin
-  else if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin')) {
-    return 2000;
-  }
-  // Loyalty + Menu
-  else if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('menu')) {
-    return 2000;
-  }
-  // Spin + Menu
-  else if (sortedProducts.length === 2 && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
-    return 1500;
-  }
-  // Individual prices (including new combinations with shift)
+  // Individual prices for all other combinations
   else {
     return sortedProducts.reduce((sum, product) => {
       return sum + (PRODUCT_PRICES[product as keyof typeof PRODUCT_PRICES] || 0);
@@ -92,14 +76,6 @@ function getProductDescription(products: string[]): string {
   
   if (sortedProducts.length === 4 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu') && sortedProducts.includes('shift')) {
     return "Complete Bundle: Loyalty Cards, Spin Wheel, Menu Builder & Shift Manager";
-  } else if (sortedProducts.length === 3 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
-    return "Full access: Loyalty Cards, Spin Wheel & Menu Builder";
-  } else if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin')) {
-    return "Full access: Loyalty Cards & Spin Wheel campaigns";
-  } else if (sortedProducts.length === 2 && sortedProducts.includes('loyalty') && sortedProducts.includes('menu')) {
-    return "Access to Loyalty Cards & Menu Builder";
-  } else if (sortedProducts.length === 2 && sortedProducts.includes('spin') && sortedProducts.includes('menu')) {
-    return "Access to Spin Wheel & Menu Builder";
   } else if (sortedProducts.includes('loyalty')) {
     return "Access to Loyalty Cards feature";
   } else if (sortedProducts.includes('spin')) {
