@@ -20,14 +20,33 @@ export default function SubscriptionRequired() {
   }, [user, setLocation]);
 
   const calculatePrice = () => {
-    if (!user?.selectedProducts) return 0;
-    if (user.selectedProducts.length === 2) return 20;
-    if (user.selectedProducts.includes('loyalty')) return 15;
-    if (user.selectedProducts.includes('spin')) return 10;
-    return 0;
+    if (!user?.selectedProducts || user.selectedProducts.length === 0) return 0;
+    
+    const sorted = [...user.selectedProducts].sort();
+    
+    // All four products - Bundle discount (€24.99 instead of €33)
+    if (sorted.length === 4 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu') && sorted.includes('shift')) {
+      return 24.99;
+    }
+    
+    // Individual prices for all other combinations
+    const productPrices: Record<string, number> = {
+      loyalty: 10,
+      spin: 8,
+      menu: 5,
+      shift: 10,
+    };
+    
+    return user.selectedProducts.reduce((total, id) => {
+      return total + (productPrices[id] || 0);
+    }, 0);
   };
 
   const price = calculatePrice();
+
+  // Check if trial has expired
+  const hasExpiredTrial = user?.trialEndsAt && new Date(user.trialEndsAt) <= new Date();
+  const isTrialExpired = hasExpiredTrial && user?.subscriptionStatus !== 'active';
 
   const checkoutMutation = useMutation({
     mutationFn: createCheckoutSession,
@@ -50,15 +69,22 @@ export default function SubscriptionRequired() {
           <div className="flex justify-center mb-6">
             <AlertCircle className="w-16 h-16 text-destructive" />
           </div>
-          <CardTitle className="text-2xl font-semibold mb-2">Subscription Required</CardTitle>
+          <CardTitle className="text-2xl font-semibold mb-2">
+            {isTrialExpired ? "Free Trial Expired" : "Subscription Required"}
+          </CardTitle>
           <CardDescription className="text-base">
-            Your payment was not completed or your subscription is not active.
+            {isTrialExpired 
+              ? "Your 3-day free trial has ended. Subscribe now to continue using uniHub."
+              : "Your payment was not completed or your subscription is not active."
+            }
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-muted-foreground text-center">
-            To access the dashboard, you need an active subscription for €{price}/month. 
-            If you just completed payment, please wait a moment and refresh the page.
+            {isTrialExpired
+              ? "To continue accessing the dashboard and all your data, subscribe now for just €" + price + "/month."
+              : "To access the dashboard, you need an active subscription for €" + price + "/month. If you just completed payment, please wait a moment and refresh the page."
+            }
           </p>
           <div className="flex flex-col gap-3">
             <Button 

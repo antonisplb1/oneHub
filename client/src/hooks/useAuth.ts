@@ -30,8 +30,22 @@ export function useAuth() {
         return;
       }
       
-      if (user.subscriptionStatus !== "active") {
+      // Check if user has active subscription OR active trial
+      const hasActiveTrial = user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
+      const hasActiveSubscription = user.subscriptionStatus === "active";
+      
+      if (!hasActiveSubscription && !hasActiveTrial) {
         setLocation("/subscription-required");
+        return;
+      }
+      
+      // Check if user needs to select products first
+      if (!user.selectedProducts || user.selectedProducts.length === 0) {
+        setLocation("/select-products");
+        toast({
+          title: "Welcome!",
+          description: "Please select the products you'd like to use during your free trial.",
+        });
         return;
       }
       

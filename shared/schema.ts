@@ -21,6 +21,7 @@ export const users = pgTable("users", {
   stripeSubscriptionId: text("stripe_subscription_id"),
   subscriptionStatus: text("subscription_status").default("inactive"),
   subscriptionEndsAt: timestamp("subscription_ends_at"),
+  trialEndsAt: timestamp("trial_ends_at"),
   selectedProducts: text("selected_products").array().default(sql`ARRAY[]::text[]`),
   shiftAccessPin: text("shift_access_pin"),
   createdAt: timestamp("created_at").defaultNow(),

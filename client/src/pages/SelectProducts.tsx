@@ -51,8 +51,12 @@ const products: Product[] = [
 export default function SelectProducts() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+
+  // Check if user has active trial
+  const hasActiveTrial = user?.trialEndsAt && new Date(user.trialEndsAt) > new Date();
+  const hasActiveSubscription = user?.subscriptionStatus === "active";
 
   const selectProductsMutation = useMutation({
     mutationFn: async (products: string[]) => {
@@ -62,20 +66,33 @@ export default function SelectProducts() {
         body: JSON.stringify({ products }),
       });
       
-      // Then, create a checkout session
+      // If user is on trial, just redirect to dashboard (no payment needed)
+      if (hasActiveTrial && !hasActiveSubscription) {
+        return { isTrialFlow: true };
+      }
+      
+      // Otherwise, create a checkout session for payment
       const checkoutRes = await apiRequest<{ url: string }>('/api/stripe/create-checkout-session', {
         method: 'POST',
       });
       
-      return checkoutRes;
+      return { isTrialFlow: false, url: checkoutRes.url };
     },
     onSuccess: (data) => {
-      toast({
-        title: "Products selected",
-        description: "Opening checkout in new tab...",
-      });
-      // Open Stripe checkout in new tab (fixes Replit iframe sandbox restrictions)
-      window.open(data.url, '_blank');
+      if (data.isTrialFlow) {
+        toast({
+          title: "Products selected",
+          description: "You can now access your dashboard and explore during your free trial!",
+        });
+        setLocation("/dashboard");
+      } else {
+        toast({
+          title: "Products selected",
+          description: "Opening checkout in new tab...",
+        });
+        // Open Stripe checkout in new tab (fixes Replit iframe sandbox restrictions)
+        window.open(data.url, '_blank');
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -227,6 +244,8 @@ export default function SelectProducts() {
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Saving...
               </>
+            ) : hasActiveTrial && !hasActiveSubscription ? (
+              "Start Free Trial"
             ) : (
               "Continue to Payment"
             )}

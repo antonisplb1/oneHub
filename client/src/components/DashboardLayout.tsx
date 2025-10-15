@@ -24,8 +24,11 @@ import {
   Scan,
   UtensilsCrossed,
   CalendarClock,
+  Clock,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
 import logoImage from "@assets/blob-b137548_1759662451793.png";
 
@@ -122,13 +125,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [location, setLocation] = useLocation();
   const { user, logout, isAuthenticated, isLoading } = useAuth();
 
+  // Check if user has active subscription OR active trial
+  const hasActiveTrial = user && user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
+  const hasActiveSubscription = user && user.subscriptionStatus === "active";
+  const hasAccess = hasActiveSubscription || hasActiveTrial;
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       setLocation("/auth");
-    } else if (!isLoading && user && user.subscriptionStatus !== "active") {
+    } else if (!isLoading && user && !hasAccess) {
       setLocation("/subscription-required");
     }
-  }, [isAuthenticated, isLoading, user, setLocation]);
+  }, [isAuthenticated, isLoading, user, hasAccess, setLocation]);
 
   if (isLoading || !user) {
     return (
@@ -138,10 +146,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  if (user.subscriptionStatus !== "active") {
+  if (!hasAccess) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Verifying subscription...</p>
+        <p className="text-muted-foreground">Verifying access...</p>
       </div>
     );
   }
@@ -189,6 +197,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               Logout
             </Button>
           </header>
+          
+          {/* Trial Status Banner */}
+          {hasActiveTrial && !hasActiveSubscription && user.trialEndsAt && (
+            <Alert className="mx-4 mt-4 border-primary/50 bg-primary/5" data-testid="alert-trial-status">
+              <Clock className="h-4 w-4 text-primary" />
+              <AlertDescription className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">
+                    Free Trial: {Math.ceil((new Date(user.trialEndsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    Subscribe now to continue using uniHub after your trial ends
+                  </span>
+                </div>
+                <Link href="/select-products">
+                  <Button size="sm" data-testid="button-upgrade-now">
+                    Upgrade Now <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <main className="flex-1 overflow-auto p-6">
             {children}
           </main>

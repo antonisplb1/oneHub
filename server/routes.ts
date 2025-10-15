@@ -111,10 +111,18 @@ function requireEmailVerification(req: Request, res: Response, next: Function) {
 }
 
 function requireSubscription(req: Request, res: Response, next: Function) {
-  if (req.isAuthenticated() && req.user!.emailVerified && req.user!.subscriptionStatus === "active") {
+  if (!req.isAuthenticated() || !req.user!.emailVerified) {
+    return res.status(403).json({ error: "Authentication required" });
+  }
+
+  const hasActiveSubscription = req.user!.subscriptionStatus === "active";
+  const hasActiveTrial = req.user!.trialEndsAt && new Date(req.user!.trialEndsAt) > new Date();
+
+  if (hasActiveSubscription || hasActiveTrial) {
     return next();
   }
-  res.status(403).json({ error: "Active subscription required" });
+
+  res.status(403).json({ error: "Active subscription or trial required" });
 }
 
 // Rate limiter for signup endpoint - prevents spam registrations
@@ -324,6 +332,10 @@ export function registerRoutes(app: Express) {
         name: user.shopName,
       });
 
+      // Set trial to expire 3 days from now
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 3);
+
       const [updatedUser] = await db
         .update(users)
         .set({
@@ -331,6 +343,7 @@ export function registerRoutes(app: Express) {
           verificationToken: null,
           verificationTokenExpiry: null,
           stripeCustomerId: stripeCustomer.id,
+          trialEndsAt: trialEndsAt,
         })
         .where(eq(users.id, user.id))
         .returning();
