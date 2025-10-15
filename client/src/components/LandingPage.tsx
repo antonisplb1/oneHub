@@ -1,7 +1,26 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Award, Gift, UtensilsCrossed, Check, ArrowRight, Sparkles, Shield, Zap, Calendar } from "lucide-react";
+import { 
+  Award, 
+  Gift, 
+  UtensilsCrossed, 
+  Check, 
+  ArrowRight, 
+  Sparkles, 
+  Shield, 
+  Zap, 
+  Calendar,
+  Target,
+  Eye,
+  Coffee,
+  Pizza,
+  Wine,
+  Cake,
+  Scissors,
+  ShoppingBag,
+  CheckCircle
+} from "lucide-react";
 import { SiStripe } from "react-icons/si";
 import logoImage from "@assets/blob-b137548_1759662451793.png";
 
@@ -17,9 +36,6 @@ export default function LandingPage() {
             </div>
           </Link>
           <div className="flex items-center gap-3">
-            <Link href="/about">
-              <Button variant="ghost" data-testid="button-about">About</Button>
-            </Link>
             <Link href="/demo">
               <Button variant="ghost" data-testid="button-demo">Demo</Button>
             </Link>
@@ -238,8 +254,227 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Trust Indicators Section */}
+      {/* Mission & Vision Section */}
       <section className="py-16 px-6 bg-muted/30">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid md:grid-cols-2 gap-8">
+            <Card className="hover-elevate" data-testid="card-mission">
+              <CardHeader>
+                <div className="w-14 h-14 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Target className="w-7 h-7 text-primary" />
+                </div>
+                <CardTitle className="text-3xl">Our Mission</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground leading-relaxed text-lg">
+                  To simplify customer engagement for small and medium-sized businesses by offering powerful 
+                  digital tools that feel effortless to use. We aim to replace paper loyalty cards and clunky 
+                  apps with elegant, web-first solutions that boost repeat business, increase brand loyalty, 
+                  and create genuine connections.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate" data-testid="card-vision">
+              <CardHeader>
+                <div className="w-14 h-14 rounded-lg bg-chart-3/10 flex items-center justify-center mb-4">
+                  <Eye className="w-7 h-7 text-chart-3" />
+                </div>
+                <CardTitle className="text-3xl">Our Vision</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground leading-relaxed text-lg">
+                  To make digital customer engagement accessible to every local business, regardless of size 
+                  or tech experience. We envision a world where every café, bakery, or boutique can deliver 
+                  a seamless digital experience to customers — effortlessly.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Who We Serve Section */}
+      <section className="py-16 px-6">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-12">
+            <h3 className="text-4xl md:text-5xl font-bold mb-4">Who We Serve</h3>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              uniHub is built for local businesses with returning customers. If you want to reward loyalty 
+              and drive repeat visits, we're here to help.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+            <Card className="hover-elevate text-center" data-testid="card-business-cafes">
+              <CardContent className="pt-6">
+                <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                  <Coffee className="w-8 h-8 text-primary" />
+                </div>
+                <h4 className="font-semibold">Cafés & Coffee Shops</h4>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate text-center" data-testid="card-business-restaurants">
+              <CardContent className="pt-6">
+                <div className="w-16 h-16 mx-auto rounded-full bg-chart-3/10 flex items-center justify-center mb-3">
+                  <Pizza className="w-8 h-8 text-chart-3" />
+                </div>
+                <h4 className="font-semibold">Restaurants & Takeaways</h4>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate text-center" data-testid="card-business-bars">
+              <CardContent className="pt-6">
+                <div className="w-16 h-16 mx-auto rounded-full bg-chart-4/10 flex items-center justify-center mb-3">
+                  <Wine className="w-8 h-8 text-chart-4" />
+                </div>
+                <h4 className="font-semibold">Bars & Nightlife</h4>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate text-center" data-testid="card-business-bakeries">
+              <CardContent className="pt-6">
+                <div className="w-16 h-16 mx-auto rounded-full bg-chart-5/10 flex items-center justify-center mb-3">
+                  <Cake className="w-8 h-8 text-chart-5" />
+                </div>
+                <h4 className="font-semibold">Bakeries & Sweet Shops</h4>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate text-center" data-testid="card-business-salons">
+              <CardContent className="pt-6">
+                <div className="w-16 h-16 mx-auto rounded-full bg-chart-2/10 flex items-center justify-center mb-3">
+                  <Scissors className="w-8 h-8 text-chart-2" />
+                </div>
+                <h4 className="font-semibold">Salons & Barbers</h4>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate text-center" data-testid="card-business-retail">
+              <CardContent className="pt-6">
+                <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                  <ShoppingBag className="w-8 h-8 text-primary" />
+                </div>
+                <h4 className="font-semibold">Boutiques & Retail</h4>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose uniHub Section */}
+      <section className="py-16 px-6 bg-muted/30">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-12">
+            <h3 className="text-4xl md:text-5xl font-bold mb-4">Why Businesses Choose uniHub</h3>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Join thousands of small businesses moving toward digital-first loyalty and engagement tools.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card className="hover-elevate" data-testid="card-benefit-browser">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-chart-2" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">100% Browser-Based</h4>
+                    <p className="text-sm text-muted-foreground">
+                      No apps or downloads required for you or your customers. Everything works in the browser.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate" data-testid="card-benefit-qr">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-chart-2" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Fast QR Code Setup</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Get started in minutes with simple QR codes. Your customers scan and engage instantly.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate" data-testid="card-benefit-design">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-chart-2" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Clean, Modern Design</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Mobile-friendly interface that looks professional and works beautifully on all devices.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate" data-testid="card-benefit-affordable">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-chart-2" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Affordable & Scalable</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Pricing that works for any business size. Start small and scale as you grow.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate" data-testid="card-benefit-features">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-chart-2" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Continuous Improvements</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Regular updates with new features like menus, analytics, and customer insights.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-elevate" data-testid="card-benefit-easy">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-chart-2" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">No Coding Required</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Easy-to-use dashboard that anyone can master. No technical skills needed.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Indicators Section */}
+      <section className="py-16 px-6">
         <div className="container mx-auto max-w-6xl">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
@@ -302,7 +537,6 @@ export default function LandingPage() {
             <div>
               <h5 className="font-semibold mb-3">Company</h5>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/about" data-testid="link-footer-about">About</Link></li>
                 <li><Link href="/demo" data-testid="link-footer-demo">Demo</Link></li>
                 <li><Link href="/pricing" data-testid="link-footer-pricing">Pricing</Link></li>
               </ul>

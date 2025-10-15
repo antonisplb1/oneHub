@@ -33,7 +33,6 @@ import PublicMenu from "@/pages/PublicMenu";
 import PublicShifts from "@/pages/PublicShifts";
 import ShiftsManager from "@/pages/ShiftsManager";
 import Pricing from "@/pages/Pricing";
-import About from "@/pages/About";
 import CookiePolicy from "@/pages/CookiePolicy";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
@@ -124,7 +123,6 @@ function Router() {
       <Route path="/menu/:merchantId" component={PublicMenu} />
       <Route path="/:username/shifts" component={PublicShifts} />
       <Route path="/pricing" component={Pricing} />
-      <Route path="/about" component={About} />
       <Route path="/cookie-policy" component={CookiePolicy} />
       <Route path="/privacy-policy" component={PrivacyPolicy} />
       <Route path="/terms-of-service" component={TermsOfService} />

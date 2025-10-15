@@ -454,11 +454,6 @@ export default function TermsOfService() {
         <div className="container mx-auto max-w-4xl">
           <div className="flex flex-col md:flex-row gap-6 justify-between items-center mb-6">
             <div className="flex flex-wrap gap-4 justify-center">
-              <Link href="/about">
-                <Button variant="ghost" className="text-sm" data-testid="link-about">
-                  About
-                </Button>
-              </Link>
               <Link href="/privacy-policy">
                 <Button variant="ghost" className="text-sm" data-testid="link-privacy-policy">
                   Privacy Policy

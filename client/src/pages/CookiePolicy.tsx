@@ -25,9 +25,6 @@ export default function CookiePolicy() {
             </div>
           </Link>
           <div className="flex items-center gap-3">
-            <Link href="/about">
-              <Button variant="ghost" data-testid="button-about">About</Button>
-            </Link>
             <Link href="/demo">
               <Button variant="ghost" data-testid="button-demo">Demo</Button>
             </Link>
