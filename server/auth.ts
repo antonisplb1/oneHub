@@ -135,6 +135,14 @@ export function setupAuth(app: Express) {
           req.session.subuserId = subuser.id;
           req.session.permissions = subuser.permissions || [];
 
+          console.log("[DEBUG] Subuser login - Setting session data:", {
+            isSubuser: true,
+            subuserId: subuser.id,
+            permissions: subuser.permissions || [],
+            subuserEmail: subuser.email,
+            ownerEmail: owner.email,
+          });
+
           // Return owner's data but mark as subuser in session
           return done(null, owner);
         } catch (err) {

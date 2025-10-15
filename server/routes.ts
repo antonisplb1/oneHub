@@ -323,12 +323,19 @@ export function registerRoutes(app: Express) {
 
   app.get("/api/auth/me", (req, res) => {
     if (req.isAuthenticated()) {
-      res.json({ 
+      const sessionData = {
         user: req.user,
         isSubuser: req.session.isSubuser || false,
         subuserId: req.session.subuserId,
         permissions: req.session.permissions || [],
+      };
+      console.log("[DEBUG] /api/auth/me - Session data:", {
+        isSubuser: req.session.isSubuser,
+        subuserId: req.session.subuserId,
+        permissions: req.session.permissions,
+        userEmail: req.user?.email,
       });
+      res.json(sessionData);
     } else {
       res.status(401).json({ error: "Not authenticated" });
     }
