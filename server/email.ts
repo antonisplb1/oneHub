@@ -20,7 +20,10 @@ export async function sendVerificationEmail(
 ) {
   try {
     const { client, fromEmail } = getResendClient();
-    const verifyUrl = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}` : "http://localhost:5000"}/verify-email/${token}`;
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://unihub.live' 
+      : 'http://localhost:5000';
+    const verifyUrl = `${baseUrl}/verify-email/${token}`;
 
     await client.emails.send({
       from: fromEmail,
@@ -51,7 +54,10 @@ export async function sendPasswordResetEmail(
 ) {
   try {
     const { client, fromEmail } = getResendClient();
-    const resetUrl = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}` : "http://localhost:5000"}/reset-password/${token}`;
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://unihub.live' 
+      : 'http://localhost:5000';
+    const resetUrl = `${baseUrl}/reset-password/${token}`;
 
     await client.emails.send({
       from: fromEmail,
