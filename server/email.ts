@@ -20,8 +20,10 @@ export async function sendVerificationEmail(
 ) {
   try {
     const { client, fromEmail } = getResendClient();
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://unihub.live' 
+    // Use REPLIT_DOMAINS if available (production), otherwise use localhost
+    const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim();
+    const baseUrl = replitDomain 
+      ? `https://${replitDomain}` 
       : 'http://localhost:5000';
     const verifyUrl = `${baseUrl}/verify-email/${token}`;
 
@@ -54,8 +56,10 @@ export async function sendPasswordResetEmail(
 ) {
   try {
     const { client, fromEmail } = getResendClient();
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://unihub.live' 
+    // Use REPLIT_DOMAINS if available (production), otherwise use localhost
+    const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim();
+    const baseUrl = replitDomain 
+      ? `https://${replitDomain}` 
       : 'http://localhost:5000';
     const resetUrl = `${baseUrl}/reset-password/${token}`;
 
@@ -91,8 +95,10 @@ export async function sendSubuserInvitationEmail(
 ) {
   try {
     const { client, fromEmail } = getResendClient();
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://unihub.live' 
+    // Use REPLIT_DOMAINS if available (production), otherwise use localhost
+    const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim();
+    const baseUrl = replitDomain 
+      ? `https://${replitDomain}` 
       : 'http://localhost:5000';
     const setupUrl = `${baseUrl}/subuser-setup/${token}`;
 
