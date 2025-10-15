@@ -92,10 +92,22 @@ function SidebarMenuItems() {
       return items.filter(item => {
         // Hide owner-only items for subusers
         if (item.ownerOnly) return false;
-        // Show items without permission requirements
-        if (!item.permission) return true;
-        // Show items that match user permissions
-        return permissions.includes(item.permission);
+        
+        // Always show Dashboard (home page)
+        if (item.href === '/dashboard') return true;
+        
+        // Show Customers only if user has at least one permission
+        if (item.href === '/dashboard/customers') {
+          return permissions.length > 0;
+        }
+        
+        // For items with permission requirements, check if user has that permission
+        if (item.permission) {
+          return permissions.includes(item.permission);
+        }
+        
+        // Hide other items without specific permission requirements
+        return false;
       });
     }
   };

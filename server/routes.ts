@@ -318,16 +318,10 @@ export function registerRoutes(app: Express) {
           req.session.isSubuser = true;
           req.session.subuserId = subuserId;
           req.session.permissions = permissions;
-          console.log("[DEBUG] Login callback - Setting subuser session data:", {
-            isSubuser: true,
-            subuserId,
-            permissions,
-          });
         } else {
           req.session.isSubuser = false;
           req.session.subuserId = undefined;
           req.session.permissions = undefined;
-          console.log("[DEBUG] Login callback - Setting owner session data");
         }
 
         // Explicitly save session to persist data
@@ -336,7 +330,6 @@ export function registerRoutes(app: Express) {
             console.error("Session save error:", saveErr);
             return res.status(500).json({ error: "Session save failed" });
           }
-          console.log("[DEBUG] Session saved successfully");
           res.json({ user: cleanUser });
         });
       });
@@ -351,19 +344,12 @@ export function registerRoutes(app: Express) {
 
   app.get("/api/auth/me", (req, res) => {
     if (req.isAuthenticated()) {
-      const sessionData = {
+      res.json({ 
         user: req.user,
         isSubuser: req.session.isSubuser || false,
         subuserId: req.session.subuserId,
         permissions: req.session.permissions || [],
-      };
-      console.log("[DEBUG] /api/auth/me - Session data:", {
-        isSubuser: req.session.isSubuser,
-        subuserId: req.session.subuserId,
-        permissions: req.session.permissions,
-        userEmail: req.user?.email,
       });
-      res.json(sessionData);
     } else {
       res.status(401).json({ error: "Not authenticated" });
     }
