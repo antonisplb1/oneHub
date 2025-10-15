@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import type { Subuser } from "@shared/schema";
 
 const PERMISSION_OPTIONS = [
+  { value: 'dashboard', label: 'Dashboard', description: 'Access to overview and home page' },
+  { value: 'customers', label: 'Customers', description: 'View and manage customer list' },
   { value: 'loyalty', label: 'Loyalty Cards', description: 'Manage customer loyalty cards and stamps' },
   { value: 'spin', label: 'Spin Wheel', description: 'Create spin tokens and manage prizes' },
   { value: 'menu', label: 'Menu Builder', description: 'Edit menu categories and items' },
