@@ -15,14 +15,14 @@ const PRODUCT_INFO = [
     id: 'loyalty',
     name: 'Loyalty Cards',
     description: 'Digital loyalty card program with stamp collection',
-    price: 15,
+    price: 10,
     icon: Ticket,
   },
   {
     id: 'spin',
     name: 'Spin Wheel',
     description: 'Prize wheel campaigns for customer engagement',
-    price: 10,
+    price: 8,
     icon: Gift,
   },
   {
@@ -36,7 +36,7 @@ const PRODUCT_INFO = [
     id: 'shift',
     name: 'Shift Manager',
     description: 'Employee shift scheduling',
-    price: 8,
+    price: 10,
     icon: Calendar,
   },
 ];
@@ -253,33 +253,17 @@ export default function SettingsPage() {
   const calculatePrice = (products: string[]) => {
     const sorted = [...products].sort();
     
-    // All four products - Bundle discount (€28 instead of €38)
+    // All four products - Bundle discount (€24.99 instead of €33)
     if (sorted.length === 4 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu') && sorted.includes('shift')) {
-      return 28;
+      return 24.99;
     }
-    // Old bundle: All three products (loyalty + spin + menu)
-    else if (sorted.length === 3 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu')) {
-      return 23;
-    }
-    // Loyalty + Spin
-    else if (sorted.length === 2 && sorted.includes('loyalty') && sorted.includes('spin')) {
-      return 20;
-    }
-    // Loyalty + Menu
-    else if (sorted.length === 2 && sorted.includes('loyalty') && sorted.includes('menu')) {
-      return 20;
-    }
-    // Spin + Menu
-    else if (sorted.length === 2 && sorted.includes('spin') && sorted.includes('menu')) {
-      return 15;
-    }
-    // Individual prices
+    // Individual prices for all other combinations
     else {
       let total = 0;
-      if (products.includes('loyalty')) total += 15;
-      if (products.includes('spin')) total += 10;
+      if (products.includes('loyalty')) total += 10;
+      if (products.includes('spin')) total += 8;
       if (products.includes('menu')) total += 5;
-      if (products.includes('shift')) total += 8;
+      if (products.includes('shift')) total += 10;
       return total;
     }
   };
@@ -535,50 +519,12 @@ export default function SettingsPage() {
                     Complete Bundle Discount!
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Save €10/month with all four products
+                    Save €8/month with all four products
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-muted-foreground line-through">€38</div>
-                  <div className="text-xl font-bold text-primary">€28</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedProducts.length === 3 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && (
-            <div className="p-4 bg-primary/5 border border-primary rounded-md">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-primary" data-testid="text-bundle-discount">
-                    Bundle Discount Applied!
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Save €7/month with all three products
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground line-through">€30</div>
-                  <div className="text-xl font-bold text-primary">€23</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedProducts.length === 2 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && (
-            <div className="p-4 bg-primary/5 border border-primary rounded-md">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-primary" data-testid="text-bundle-discount">
-                    Bundle Discount Applied!
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Save €5/month with both products
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground line-through">€25</div>
-                  <div className="text-xl font-bold text-primary">€20</div>
+                  <div className="text-sm text-muted-foreground line-through">€33</div>
+                  <div className="text-xl font-bold text-primary">€24.99</div>
                 </div>
               </div>
             </div>
