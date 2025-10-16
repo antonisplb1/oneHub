@@ -1,0 +1,86 @@
+🎯 GOAL for /demo
+
+The visitor just clicked “Watch 1-minute demo” — they’re not ready to buy yet.
+
+They expect a short guided tour of how uniHub works (video, screenshots, or GIFs).
+
+Pricing belongs elsewhere — /pricing is the right place for that.
+
+✅ New /demo Structure (Recommended)
+1️⃣ Hero Section – Quick Overview
+
+Header:
+
+See How uniHub Transforms Your Business in 1 Minute
+
+Subtext:
+
+Watch how you can launch a loyalty card, spin wheel, digital menu, and staff manager — all in one simple dashboard.
+
+Content:
+🎥 Embed a short video (screen recording with captions or animation)
+Button: “Try uniHub Free” → /signup
+
+2️⃣ How It Works (Interactive Walkthrough)
+
+Break this into 4 simple steps, each with an image, short caption, and icon.
+
+Step 1 — Create Your Account
+
+🪄 “Sign up, verify your email, and get instant access to your dashboard.”
+
+Step 2 — Pick Your Tools
+
+🧩 “Choose the features you want: Loyalty, Spin Wheel, Menu, or Shift Manager.”
+
+Step 3 — Launch Your Campaigns
+
+🚀 “Generate QR codes for your customers, menus, or promotions instantly.”
+
+Step 4 — Watch Engagement Grow
+
+📊 “Track loyalty stamps, spins, and team activity in real time — all from one place.”
+
+💡 Option: Add a carousel or animated screenshots (e.g. dashboard → QR code → customer view).
+
+3️⃣ Product Highlights (Visual Only)
+
+Instead of pricing, show action shots of each core feature with one-sentence benefits:
+
+Product	Visual	Tagline
+🪙 Loyalty Cards	Screenshot of digital card + QR	“Reward repeat customers instantly.”
+🎡 Spin Wheel	Animation of spinning wheel	“Create promotions your customers love.”
+📋 Digital Menu	Image of mobile menu	“Modernize your restaurant with no apps needed.”
+🕒 Shift Manager	Screenshot of calendar	“Simplify staff scheduling for your team.”
+4️⃣ Call-to-Action
+
+Simple and direct:
+
+Ready to see it in action?
+Try uniHub free for 3 days — no credit card required.
+[Start Free Trial] button
+
+5️⃣ Optional Section: “Why Businesses Love uniHub”
+
+Show 2–3 testimonials or logos (even mock ones at first).
+If you don’t have testimonials yet, use “Business types” instead:
+
+Trusted by cafés, salons, restaurants, and local shops.
+
+❌ Remove or Move
+
+All pricing info → move to /pricing (you already have that).
+
+Feature-by-feature technical lists → move to /features or your blog/help center.
+
+Legal/footer → stays as is.
+
+✨ Bonus Tips
+
+Add a 1-minute narrated video (use Loom or Animoto if you don’t want to show your face).
+
+Add captions directly on screen (“Set up your loyalty card in 30 seconds”).
+
+Keep background music upbeat and clean.
+
+If you can’t record a full video, use scroll-based GIFs or screenshots with arrows and captions.
