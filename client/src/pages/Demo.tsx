@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserPlus, Settings, Rocket, TrendingUp, Award, Gift, UtensilsCrossed, Calendar, QrCode, ScanLine, Wallet, Users, BarChart3, CheckCircle, ArrowRight, Play } from "lucide-react";
-import logoImage from "@assets/blob-b137548_1759662451793.png";
+import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
 
 export default function Demo() {
   return (

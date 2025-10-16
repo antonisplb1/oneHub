@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import logoImage from "@assets/blob-b137548_1759662451793.png";
+import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
 
 export default function SubuserSetup() {
   const [, params] = useRoute("/subuser-setup/:token");

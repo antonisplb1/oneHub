@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUp, FileText, CreditCard, Shield, AlertCircle, Scale } from "lucide-react";
-import logoImage from "@assets/blob-b137548_1759662451793.png";
+import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
 
 export default function TermsOfService() {
   const scrollToTop = () => {

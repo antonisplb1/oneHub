@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Award, Gift, UtensilsCrossed, Check, ArrowRight, Shield, CheckCircle, Sparkles, Calendar } from "lucide-react";
 import { SiStripe } from "react-icons/si";
-import logoImage from "@assets/blob-b137548_1759662451793.png";
+import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
 
 export default function Pricing() {
   return (

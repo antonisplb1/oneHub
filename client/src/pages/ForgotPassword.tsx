@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
-import logoImage from "@assets/blob-b137548_1759662451793.png";
+import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
