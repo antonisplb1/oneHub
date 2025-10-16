@@ -811,7 +811,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/customers", requireSubscription, requirePermission('customers'), async (req, res) => {
+  app.get("/api/customers", requireSubscription, requirePermission('loyalty'), async (req, res) => {
     try {
       const customerList = await db
         .select()
@@ -2622,6 +2622,9 @@ export function registerRoutes(app: Express) {
   
   // Create subuser (owner only)
   app.post("/api/subusers", ownerOnly, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
 
     try {
       const { email, permissions } = insertSubuserSchema
@@ -2683,6 +2686,9 @@ export function registerRoutes(app: Express) {
 
   // List subusers (owner only)
   app.get("/api/subusers", ownerOnly, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
 
     try {
       const subusersList = await db.query.subusers.findMany({
@@ -2701,6 +2707,9 @@ export function registerRoutes(app: Express) {
 
   // Update subuser permissions (owner only)
   app.patch("/api/subusers/:id", ownerOnly, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
 
     try {
       const { id } = req.params;
@@ -2733,6 +2742,9 @@ export function registerRoutes(app: Express) {
 
   // Delete subuser (owner only)
   app.delete("/api/subusers/:id", ownerOnly, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
 
     try {
       const { id } = req.params;
