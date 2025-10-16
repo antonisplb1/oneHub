@@ -54,25 +54,70 @@ export default function LandingPage() {
         <div className="container mx-auto max-w-5xl text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8">
             <Sparkles className="w-4 h-4" />
-            <span>All-in-One Engagement Platform</span>
+            <span>3-Day Free Trial – No Card Needed</span>
           </div>
           <h2 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Turn Customers Into<br />Loyal Regulars
+            Grow Repeat Business.<br />Simplify Your Operations.
           </h2>
-          <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            Digital loyalty cards, prize wheels, menus, and shift scheduling. Everything you need to engage customers and manage your team.
+          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+            uniHub gives cafés, salons, and local shops everything they need to reward customers, run promotions, and manage staff — all from one simple dashboard.
           </p>
+          <div className="flex gap-6 justify-center flex-wrap mb-10 text-sm">
+            <div className="flex items-center gap-2">
+              <Check className="w-5 h-5 text-chart-2" />
+              <span>Digital Loyalty Cards</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check className="w-5 h-5 text-chart-2" />
+              <span>Spin-to-Win Campaigns</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check className="w-5 h-5 text-chart-2" />
+              <span>QR Menus</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check className="w-5 h-5 text-chart-2" />
+              <span>Shift Scheduling</span>
+            </div>
+          </div>
           <div className="flex gap-4 justify-center flex-wrap">
             <Link href="/auth">
               <Button size="lg" className="text-base px-8" data-testid="button-get-started">
-                Get Started <ArrowRight className="ml-2 w-4 h-4" />
+                Start Free Trial – No Card Needed <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
-            <Link href="/pricing">
-              <Button size="lg" variant="outline" className="text-base px-8" data-testid="button-view-pricing">
-                View Pricing
+            <Link href="/demo">
+              <Button size="lg" variant="outline" className="text-base px-8" data-testid="button-watch-demo">
+                Watch 1-Minute Demo
               </Button>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Social Proof Section */}
+      <section className="py-8 px-6 bg-muted/20">
+        <div className="container mx-auto max-w-6xl">
+          <p className="text-center text-sm text-muted-foreground mb-4">
+            Trusted by local businesses in Cyprus, Greece & beyond
+          </p>
+          <div className="flex justify-center items-center gap-8 flex-wrap">
+            <div className="text-center">
+              <div className="text-lg font-semibold">Café Aroma</div>
+              <div className="text-xs text-muted-foreground">Nicosia</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold">The Barber Room</div>
+              <div className="text-xs text-muted-foreground">Limassol</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold">SweetBite Bakery</div>
+              <div className="text-xs text-muted-foreground">Athens</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold">Chill Café</div>
+              <div className="text-xs text-muted-foreground">Larnaca</div>
+            </div>
           </div>
         </div>
       </section>
@@ -81,7 +126,7 @@ export default function LandingPage() {
       <section className="py-20 px-6 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h3 className="text-3xl md:text-4xl font-bold mb-4">Four Powerful Products</h3>
+            <h3 className="text-3xl md:text-4xl font-bold mb-4">Four Tools. One Platform. Everything You Need to Grow.</h3>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Choose the tools you need. Each product works independently or together seamlessly.
             </p>
@@ -98,7 +143,7 @@ export default function LandingPage() {
               </CardHeader>
               <CardContent className="flex-1">
                 <p className="text-sm text-muted-foreground mb-4">
-                  Reward repeat customers with digital stamp cards and wallet integration.
+                  Replace paper cards with a digital loyalty system that customers love.
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2">
@@ -127,7 +172,7 @@ export default function LandingPage() {
               </CardHeader>
               <CardContent className="flex-1">
                 <p className="text-sm text-muted-foreground mb-4">
-                  Create exciting spin-to-win campaigns with customizable prizes and tracking.
+                  Run gamified promotions that keep people coming back.
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2">
@@ -156,7 +201,7 @@ export default function LandingPage() {
               </CardHeader>
               <CardContent className="flex-1">
                 <p className="text-sm text-muted-foreground mb-4">
-                  Beautiful digital menus with photos, accessible via QR code. No printing needed.
+                  Show off your menu beautifully — no printing or app required.
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2">
@@ -185,7 +230,7 @@ export default function LandingPage() {
               </CardHeader>
               <CardContent className="flex-1">
                 <p className="text-sm text-muted-foreground mb-4">
-                  Employee scheduling with weekly calendar views and PIN-protected crew access.
+                  Keep your team organized with simple drag-and-drop scheduling.
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2">
@@ -204,6 +249,14 @@ export default function LandingPage() {
               </CardContent>
             </Card>
           </div>
+          
+          <div className="text-center mt-12">
+            <Link href="/pricing">
+              <Button variant="ghost" className="text-base" data-testid="button-explore-features">
+                Explore all features <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -211,7 +264,10 @@ export default function LandingPage() {
       <section className="py-20 px-6">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-12">
-            <h3 className="text-3xl md:text-4xl font-bold mb-4">Why uniHub.live?</h3>
+            <h3 className="text-3xl md:text-4xl font-bold mb-4">Choose What You Need, Pay Only for What You Use</h3>
+            <p className="text-lg text-muted-foreground">
+              No bundles, no contracts — just the tools that make your business run better.
+            </p>
           </div>
 
           <Card className="bg-gradient-to-br from-primary/5 to-chart-2/5 border-primary/20">
@@ -245,11 +301,17 @@ export default function LandingPage() {
           </Card>
 
           <div className="text-center mt-12">
-            <Link href="/pricing">
-              <Button size="lg" className="text-base px-8" data-testid="button-see-pricing">
-                See Pricing <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </Link>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-chart-2/10 text-chart-2 text-sm font-medium mb-6">
+              <Check className="w-4 h-4" />
+              <span>3-Day Free Trial — Test everything with no commitment</span>
+            </div>
+            <div>
+              <Link href="/pricing">
+                <Button size="lg" className="text-base px-8" data-testid="button-see-pricing">
+                  See Pricing <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -311,7 +373,8 @@ export default function LandingPage() {
                 <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-3">
                   <Coffee className="w-8 h-8 text-primary" />
                 </div>
-                <h4 className="font-semibold">Cafés & Coffee Shops</h4>
+                <h4 className="font-semibold mb-1">Cafés & Coffee Shops</h4>
+                <p className="text-xs text-muted-foreground">Reward your regulars effortlessly</p>
               </CardContent>
             </Card>
 
@@ -320,7 +383,8 @@ export default function LandingPage() {
                 <div className="w-16 h-16 mx-auto rounded-full bg-chart-3/10 flex items-center justify-center mb-3">
                   <Pizza className="w-8 h-8 text-chart-3" />
                 </div>
-                <h4 className="font-semibold">Restaurants & Takeaways</h4>
+                <h4 className="font-semibold mb-1">Restaurants & Takeaways</h4>
+                <p className="text-xs text-muted-foreground">QR menus and loyalty, all in one</p>
               </CardContent>
             </Card>
 
@@ -329,7 +393,8 @@ export default function LandingPage() {
                 <div className="w-16 h-16 mx-auto rounded-full bg-chart-4/10 flex items-center justify-center mb-3">
                   <Wine className="w-8 h-8 text-chart-4" />
                 </div>
-                <h4 className="font-semibold">Bars & Nightlife</h4>
+                <h4 className="font-semibold mb-1">Bars & Nightlife</h4>
+                <p className="text-xs text-muted-foreground">Run exciting spin wheel promos</p>
               </CardContent>
             </Card>
 
@@ -338,7 +403,8 @@ export default function LandingPage() {
                 <div className="w-16 h-16 mx-auto rounded-full bg-chart-5/10 flex items-center justify-center mb-3">
                   <Cake className="w-8 h-8 text-chart-5" />
                 </div>
-                <h4 className="font-semibold">Bakeries & Sweet Shops</h4>
+                <h4 className="font-semibold mb-1">Bakeries & Sweet Shops</h4>
+                <p className="text-xs text-muted-foreground">Digital loyalty made sweet</p>
               </CardContent>
             </Card>
 
@@ -347,7 +413,8 @@ export default function LandingPage() {
                 <div className="w-16 h-16 mx-auto rounded-full bg-chart-2/10 flex items-center justify-center mb-3">
                   <Scissors className="w-8 h-8 text-chart-2" />
                 </div>
-                <h4 className="font-semibold">Salons & Barbers</h4>
+                <h4 className="font-semibold mb-1">Salons & Barbers</h4>
+                <p className="text-xs text-muted-foreground">Schedule staff and reward clients</p>
               </CardContent>
             </Card>
 
@@ -356,9 +423,18 @@ export default function LandingPage() {
                 <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-3">
                   <ShoppingBag className="w-8 h-8 text-primary" />
                 </div>
-                <h4 className="font-semibold">Boutiques & Retail</h4>
+                <h4 className="font-semibold mb-1">Boutiques & Retail</h4>
+                <p className="text-xs text-muted-foreground">Engage shoppers with digital rewards</p>
               </CardContent>
             </Card>
+          </div>
+          
+          <div className="text-center mt-12">
+            <Link href="/demo">
+              <Button variant="ghost" className="text-base" data-testid="button-see-how-works">
+                See how uniHub works for your business type <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -469,21 +545,61 @@ export default function LandingPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="hover-elevate bg-gradient-to-br from-primary/5 to-chart-2/5 border-primary/20" data-testid="card-benefit-trial">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">3-Day Free Trial</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Test everything with no commitment. No credit card required to start.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Testimonial */}
+          <div className="mt-12 max-w-3xl mx-auto">
+            <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
+              <CardContent className="p-8">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Award className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-lg italic mb-4">
+                      "We replaced paper stamp cards with uniHub's loyalty system and our repeat visits increased 25%!"
+                    </p>
+                    <p className="text-sm font-semibold">— Café Aroma, Nicosia</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
 
-      {/* Trust Indicators Section */}
-      <section className="py-16 px-6">
+      {/* Security & Trust Section */}
+      <section className="py-16 px-6 bg-muted/20">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="text-center mb-12">
+            <h3 className="text-3xl md:text-4xl font-bold mb-3">Built with Privacy and Reliability in Mind</h3>
+            <p className="text-lg text-muted-foreground">Your business data is secure, compliant, and always accessible</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="text-center">
               <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <SiStripe className="w-8 h-8 text-primary" />
               </div>
-              <h4 className="text-lg font-semibold mb-2">Secure Payments</h4>
+              <h4 className="text-lg font-semibold mb-2">Stripe-Powered Payments</h4>
               <p className="text-sm text-muted-foreground">
-                All transactions powered by Stripe for secure, reliable payments
+                Secure, reliable payment processing
               </p>
             </div>
 
@@ -493,18 +609,57 @@ export default function LandingPage() {
               </div>
               <h4 className="text-lg font-semibold mb-2">GDPR Compliant</h4>
               <p className="text-sm text-muted-foreground">
-                Your data is protected with enterprise-grade security
+                Enterprise-grade data protection
               </p>
             </div>
 
             <div className="text-center">
               <div className="w-16 h-16 mx-auto rounded-full bg-chart-3/10 flex items-center justify-center mb-4">
-                <Zap className="w-8 h-8 text-chart-3" />
+                <Shield className="w-8 h-8 text-chart-3" />
+              </div>
+              <h4 className="text-lg font-semibold mb-2">SSL Secured</h4>
+              <p className="text-sm text-muted-foreground">
+                All data encrypted in transit
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto rounded-full bg-chart-4/10 flex items-center justify-center mb-4">
+                <Zap className="w-8 h-8 text-chart-4" />
               </div>
               <h4 className="text-lg font-semibold mb-2">Cancel Anytime</h4>
               <p className="text-sm text-muted-foreground">
-                No long-term contracts. Cancel your subscription with one click
+                No contracts. One-click cancellation
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section className="py-20 px-6">
+        <div className="container mx-auto max-w-4xl text-center">
+          <h3 className="text-4xl md:text-5xl font-bold mb-6">Ready to Modernize Your Business?</h3>
+          <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
+            Join local cafés, salons, and retail shops using uniHub to reward customers and simplify operations.
+          </p>
+          <Link href="/auth">
+            <Button size="lg" className="text-lg px-12 py-6" data-testid="button-final-cta">
+              Start Free Trial – No Credit Card Needed <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+          </Link>
+          <div className="flex gap-6 justify-center flex-wrap mt-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <Check className="w-4 h-4 text-chart-2" />
+              <span>3-day free trial</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Check className="w-4 h-4 text-chart-2" />
+              <span>No commitment</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Check className="w-4 h-4 text-chart-2" />
+              <span>Cancel anytime</span>
             </div>
           </div>
         </div>
