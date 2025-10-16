@@ -564,12 +564,12 @@ export default function LandingPage() {
           </div>
 
           {/* Testimonial */}
-          <div className="mt-12 max-w-3xl mx-auto">
+          <div className="mt-12 max-w-3xl mx-auto" data-testid="section-testimonial">
             <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
-              <CardContent className="p-8">
+              <CardContent className="p-8" data-testid="card-testimonial">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Award className="w-6 h-6 text-primary" />
+                    <Award className="w-6 h-6 text-primary" aria-label="Award" />
                   </div>
                   <div>
                     <p className="text-lg italic mb-4">
