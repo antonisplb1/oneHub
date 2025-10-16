@@ -2,67 +2,93 @@
 
 ## Overview
 
-uniHub is a B2B SaaS platform offering digital loyalty card programs, spin-to-win campaigns, digital menu creation, and employee shift management for merchants through a unified dashboard. Merchants can subscribe to Loyalty Cards (€10/month), Spin Wheel (€8/month), Menu Builder (€5/month), Shift Manager (€10/month), or the Complete Bundle (All Four for €24.99/month, saves €8). The platform provides tools for managing campaigns, customer engagement, analytics, and crew scheduling. Customers interact via mobile devices for loyalty, QR code scanning, and spin-to-win promotions, with optional integration into Apple Wallet and Google Wallet. Employees access shift schedules via PIN-protected public URLs. The platform consolidates previously separate applications, providing unified authentication, subscription management, and shared customer data, aiming to enhance merchant capabilities, customer engagement, and staff coordination.
+uniHub is a B2B SaaS platform providing a unified dashboard for merchants to manage digital loyalty card programs, spin-to-win campaigns, digital menus, and employee shifts. It aims to enhance merchant capabilities, customer engagement, and staff coordination by consolidating previously separate applications into a single platform with unified authentication, subscription management, and shared customer data. Merchants can subscribe to individual products (Loyalty Cards, Spin Wheel, Menu Builder, Shift Manager) or a Complete Bundle, with a focus on flexible product selection and pricing. The platform facilitates customer interaction via mobile devices, QR codes, and digital wallet integrations, and allows employees to access shift schedules securely.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
+## Development Demo Account
+
+A fully populated demo account exists for testing and video recording purposes:
+
+**Login Credentials:**
+- Email: `demo@unihub.local`
+- Password: `DemoUniHub2025!`
+- Shop Name (URL): `aroma-cafe`
+- Shift Access PIN: `1234`
+
+**Demo Data Summary:**
+- 15 customers with loyalty cards (stamps: 2, 3, 4, 5, 6, 7, 7, 8, 9, 9, 10, 10, 10)
+- 97 loyalty transaction history entries
+- 8 spin wheel prizes (Free Coffee, 10% Off, 20% Off, Free Pastry, Buy 1 Get 1 Free, Free Upgrade, €5 Voucher, Try Again)
+- 60 spin history entries (past 14 days)
+- 4 menu categories: Coffee & Drinks (10 items), Breakfast (6 items), Pastries & Desserts (6 items), Daily Specials (4 items)
+- 6 crew members: Alex Thompson, Maria Rodriguez, John Wilson, Sarah Kim, Tom Anderson, Elena Petrou
+- 21 shifts for the current week (Oct 13-19, 2025) with morning/afternoon/evening coverage
+- 3 timeframe presets: Morning Shift (07:00-15:00), Afternoon Shift (12:00-20:00), Evening Shift (16:00-23:00)
+- All 4 products enabled: Loyalty Cards, Spin Wheel, Menu Builder, Shift Manager
+- Email verified, 3-day free trial active
+
+**Public URLs:**
+- Public Shift Schedule: `/aroma-cafe/shifts` (PIN: 1234)
+
+**Verification (Oct 16, 2025):**
+- ✅ Login successful with credentials
+- ✅ Dashboard loads with all 4 products enabled
+- ✅ Customers page shows 15 customers with loyalty cards
+- ✅ Spin Wheel page displays 8 prizes and spin history
+- ✅ Menu Builder shows 4 categories with 26 items
+- ✅ Shift Manager displays 6 crew members and weekly schedule
+- ✅ All data verified via automated e2e testing
+
+**Note:** This account is for development/testing only and contains realistic sample data for demonstrating all platform features.
+
 ## System Architecture
 
 ### Frontend Architecture
-
-The frontend is built with **React, TypeScript, and Vite**, using **Wouter** for routing and **TanStack Query** for server state management. **shadcn/ui** (based on Radix UI) and **Tailwind CSS** define the UI, designed with a dual aesthetic: professional for merchants and playful for customers. It features a flexible HSL-based color palette and Inter font family, with components organized into UI primitives, feature-specific, and page components. Routing includes public, customer-facing, and protected dashboard routes with authentication guards.
+Built with React, TypeScript, and Vite, utilizing Wouter for routing and TanStack Query for server state management. UI is designed using shadcn/ui (Radix UI) and Tailwind CSS, featuring a dual aesthetic for merchants (professional) and customers (playful), with a flexible HSL-based color palette and Inter font family.
 
 ### Backend Architecture
-
-The backend uses **Express.js with TypeScript**, **Passport.js** for session-based authentication, and **Drizzle ORM** for database interactions with **Neon serverless PostgreSQL**. Authentication uses `scrypt` for password hashing and secure, httpOnly session cookies. The API is RESTful under `/api/*`, handling authentication, loyalty, customer management, QR codes, wallet integrations, and spin wheel functionalities. **Zod schemas** enforce data validation, and Drizzle Kit manages database migrations.
+Uses Express.js with TypeScript, Passport.js for session-based authentication, and Drizzle ORM for database interactions with Neon serverless PostgreSQL. Employs `scrypt` for password hashing, secure httpOnly session cookies, and Zod schemas for data validation. APIs are RESTful.
 
 ### System Design
 
--   **Flexible Product Selection & Pricing**: uniHub offers Loyalty Cards (€10/month), Spin Wheel (€8/month), Menu Builder (€5/month), and Shift Manager (€10/month), with one bundle discount: Complete Bundle (All Four for €24.99/month saves €8). Users select products post-registration, and the dashboard menu dynamically adjusts based on `selectedProducts`. Stripe handles proration for subscription changes. The checkout session endpoint automatically creates a Stripe customer for new users if one doesn't exist, ensuring seamless first-time subscription flow.
--   **Registration & Authentication Flow**: Features email verification via Resend, password reset functionality, and 3-day free trial. Users verify email, gain immediate dashboard access with trial, and are prompted to subscribe when trial expires. Trial start date is set upon email verification.
--   **Free Trial System**: 3-day trial period automatically starts upon email verification. Users get full dashboard access during trial. Trial status banner in dashboard shows days remaining with upgrade CTA. Post-trial, users see "Trial Expired" message and must subscribe to continue.
--   **Security**: Implements a three-layer anti-spam system including Express rate-limiting, Cloudflare Turnstile CAPTCHA (environment-aware), and a daily cron job to remove unverified accounts older than 48 hours.
--   **Digital Menu Builder**: Allows merchants to create and manage digital menus with categories, items, and images. Menu item images are stored using Replit Object Storage with a 5MB file size limit, presigned upload URLs for direct-to-cloud uploads, and public ACL policies for customer viewing. The system maintains backward compatibility by supporting both object storage keys (`imageStorageKey`) and legacy direct URLs (`imageUrl`). Features drag-and-drop menu item reordering using @dnd-kit library with automatic displayOrder calculation - merchants can reorder items within categories by dragging the grip icon, with changes persisting via bulk update endpoint (POST /api/menu-items/reorder). Generates QR codes for public menu access, with a customer-friendly public menu page featuring a warm color palette, sticky navigation, and responsive design. Merchants can upload custom banner images (max 5MB, stored as data URLs in menuBannerImage field, recommended 1920x600px) for the public menu header. Banners use cover sizing (backgroundSize: cover) to fill the entire hero area while maintaining aspect ratio, with centered positioning and overflow hidden to ensure no content extends beyond boundaries. A semi-transparent overlay ensures text readability. When no banner is uploaded, the public menu page displays comprehensive brand theming based on the merchant's loyalty card brand color (cardBackgroundColor): a subtle gradient background (0.12→0.05→0.02→0 opacity fade) and a dynamic hero header with the brand color gradient (solid to 80% opacity). Text color on the hero automatically adjusts using WCAG contrast ratio calculations to ensure optimal readability (white text on banner images or white/black text on brand color gradients depending on brand color luminance), meeting AA accessibility standards. Defaults to blue (#4285F4) for loading/error states.
--   **Customer Notification Messaging**: Merchants can send push notifications to Google Wallet loyalty card holders via a dashboard UI, with messages saved for history tracking. Google Wallet API limits to 3 notifications per 24 hours per loyalty class.
--   **QR Code System**: Generates Merchant Join, Customer Loyalty, and Spin Wheel QR codes. A merchant dashboard scanner is available for loyalty stamp operations.
--   **Digital Wallet Integration**: Includes buttons for Apple Wallet and Google Wallet on customer loyalty cards, with planned full integration. For iOS users, the customer loyalty card includes automatic device detection and dismissible instructions for adding the card to the home screen as a web app. Web app manifest meta tags are dynamically set using the merchant's logo as the icon, providing a native app-like experience until full Apple Wallet integration is complete.
--   **MyShift Employee Shift Manager**: Comprehensive shift scheduling system enabling merchants to manage employee shifts and crew rosters through the dashboard. Features include crew member management (add/delete crew names), weekly calendar view with Monday-Sunday layout, shift CRUD operations with crew dropdown selection, and 4-6 digit PIN protection for public crew access. Public crew view accessible at `/{store-username}/shifts` displays branded weekly calendar with merchant logo and colors, read-only shift information showing employee name/role/time/notes, and mobile-responsive design. Built with reusable ShiftSchedule component for calendar rendering, date-fns utilities for week calculations (getWeekRange, addWeeks, isSameDay), and TanStack Query for data management. Dashboard at `/dashboard/shifts` includes five sections: crew roster management, timeframe presets (reusable shift time templates with name, startTime, endTime that can be selected when creating shifts for faster workflow), weekly schedule with navigation, shift form dialog with 24-hour time inputs and validation (endTime > startTime), and PIN management with masked display and set/change functionality. Shift form supports both preset selection (auto-fills times) and manual time entry.
--   **Subuser/Team Management System**: Complete multi-user access control system allowing store owners to invite team members with granular permissions. Features email invitation flow with password setup, session-based authentication distinguishing owners from subusers, and permission-based dashboard access control. Seven permission types: `dashboard` (overview access), `customers` (customer list), `loyalty` (loyalty cards & QR scanner), `spin` (spin wheel), `menu` (menu builder), `shift` (shift manager), and `analytics` (reports). Owners manage team via `/dashboard/team` with add/edit/delete capabilities. Subusers login with email/password, see only permitted features in sidebar, and cannot access Account/Settings/Billing. Backend enforces permissions via middleware on all feature routes. Session persistence ensures subuser permissions survive page refreshes.
+-   **Flexible Product Selection & Pricing**: Merchants choose products post-registration, with dynamic dashboard adjustments. Stripe handles subscription and proration.
+-   **Registration & Authentication**: Includes email verification via Resend, password reset, and a 3-day free trial activated upon email verification.
+-   **Security**: Features Express rate-limiting, Cloudflare Turnstile CAPTCHA, and daily cron jobs for unverified account removal.
+-   **Digital Menu Builder**: Allows merchants to create menus with categories, items, and images. Images are stored in Replit Object Storage, supporting presigned upload URLs. Features drag-and-drop reordering and generates QR codes for public menu access. The public menu page is customer-friendly, with dynamic branding based on loyalty card color, responsive design, and WCAG-compliant text readability.
+-   **Customer Notification Messaging**: Merchants can send push notifications to Google Wallet loyalty card holders via a dashboard UI.
+-   **QR Code System**: Generates Merchant Join, Customer Loyalty, and Spin Wheel QR codes, with a merchant dashboard scanner for loyalty stamps.
+-   **Digital Wallet Integration**: Includes Apple Wallet and Google Wallet buttons on customer loyalty cards, with web app manifest for iOS home screen integration.
+-   **MyShift Employee Shift Manager**: Comprehensive scheduling system with crew member management, weekly calendar view, shift CRUD operations, timeframe presets, and PIN-protected public access to schedules.
+-   **Subuser/Team Management System**: Multi-user access control with email invitations, granular permissions (dashboard, customers, loyalty, spin, menu, shift, analytics), and backend enforcement of access rights.
 
 ### Database Schema
-
-Key tables include `users` (merchants), `subusers`, `customers`, `loyaltyCards`, `loyaltyTransactions`, `rewards`, `spinTokens`, `spins`, `menuCategories`, `menuItems`, `messages`, `shifts`, `crewMembers`, and `timeframePresets`. UUID primary keys, cascade deletes, and timestamps are standard. The `users` table includes `emailVerified`, `verificationToken`, `resetPasswordToken`, `shiftAccessPin` (4-6 digit PIN for public crew access), and `selectedProducts` (text array storing product choices like 'loyalty', 'spin', 'menu', 'shift'). The `subusers` table stores team members with `ownerId` (FK to users), `email`, `passwordHash`, `permissions` (text array with values: 'dashboard', 'customers', 'loyalty', 'spin', 'menu', 'shift', 'analytics'), and email verification fields. The `shifts` table stores shift schedules with employeeName, employeeRole, shiftDate, startTime, endTime, and notes. The `crewMembers` table maintains crew roster with member names linked to merchants. The `timeframePresets` table stores reusable shift time templates with name, startTime, and endTime for efficient shift creation.
+Key tables include `users`, `subusers`, `customers`, `loyaltyCards`, `loyaltyTransactions`, `rewards`, `spinTokens`, `spins`, `menuCategories`, `menuItems`, `messages`, `shifts`, `crewMembers`, and `timeframePresets`. Uses UUID primary keys, cascade deletes, and timestamps. Includes fields for email verification, reset tokens, `shiftAccessPin`, `selectedProducts`, and `permissions` for subusers.
 
 ### UI/UX Decisions
-
--   **Landing Page Redesign (Comprehensive)**: Clean, professional landing page optimized for conversion. Features benefit-driven hero section with headline "Grow Repeat Business. Simplify Your Operations.", dual CTAs (Start Free Trial + Watch Demo), feature checkmarks (Digital Loyalty Cards, Spin-to-Win Campaigns, QR Menus, Shift Scheduling), and 3-day free trial badge. Social proof section with trusted local business names from Cyprus/Greece. "Four Tools. One Platform." product section with benefit-focused descriptions. "Choose What You Need, Pay Only for What You Use" section with bundle pricing and free trial reminder. Who We Serve section (6 business types with mini-taglines: Cafés, Restaurants, Bars, Bakeries, Salons, Retail) and CTA. Why Businesses Choose uniHub section (6 benefits plus 3-day free trial card and customer testimonial from Café Aroma with Award icon). Security & Trust section with 4 pillars (Stripe-Powered Payments, GDPR Compliant, SSL Secured, Cancel Anytime). Final CTA section "Ready to Modernize Your Business?" with strong call-to-action and Check icons. All icons use lucide-react (no emojis per design guidelines). Comprehensive footer with product/company/legal links.
--   **Pricing Page**: Dedicated responsive pricing page with five individual product cards (€10/€8/€5/€10) plus featured Complete Bundle card (€24.99 saves €8). Includes detailed feature lists, FAQs, trust indicators, and clear CTAs. Product cards use unified design matching the landing page for consistency.
--   **Demo Page**: Visual walkthrough page redesigned to demonstrate how uniHub works in 1 minute. Features hero section "See How uniHub Transforms Your Business in 1 Minute" with video/GIF placeholder and Start Free Trial CTA. Includes "How It Works" section with 4 simple steps (Create Account, Pick Tools, Launch Campaigns, Track Engagement) using icons and clear descriptions. Product Highlights section displays 4 visual cards (Loyalty, Spin, Menu, Shift) with mockup visuals and taglines only - NO pricing information. Final CTA section "Ready to see it in action?" with 3-day free trial messaging. All pricing information removed from /demo and lives only at /pricing page. Design consistent with landing page using lucide-react icons.
--   **Public Menu Page**: Designed for customers with a warm, appetizing aesthetic, gradient hero, sticky category navigation, large typography, generous spacing, and responsive layout.
--   **Legal & Compliance Pages**: Cookie consent system with banner and preferences dialog, plus three comprehensive legal pages (Cookie Policy, Privacy Policy, Terms of Service) with professional structure and contact email (antonispleipell@gmail.com). All pages feature consistent navigation and footer links.
+-   **Landing Page**: Professional, conversion-optimized design with benefit-driven hero, dual CTAs, social proof, product features, pricing overview, "Who We Serve" section, "Why uniHub" benefits, and security assurances. Uses lucide-react icons.
+-   **Pricing Page**: Dedicated responsive page detailing individual product and bundle pricing with feature lists and FAQs.
+-   **Demo Page**: Visual walkthrough demonstrating platform functionality in simple steps, focusing on "how it works" and product highlights without pricing information.
+-   **Public Menu Page**: Customer-centric design with warm aesthetics, sticky navigation, large typography, and responsiveness.
+-   **Legal & Compliance**: Cookie consent system and comprehensive legal pages (Cookie Policy, Privacy Policy, Terms of Service).
 
 ## External Dependencies
 
 ### Third-Party Services
-
--   **Stripe**: Payment processing for flexible subscription billing and proration.
+-   **Stripe**: Payment processing for subscriptions.
 -   **Neon**: Serverless PostgreSQL database.
--   **Resend**: Transactional email service for verification and password resets.
--   **Cloudflare Turnstile**: CAPTCHA service for anti-spam.
+-   **Resend**: Transactional email service.
+-   **Cloudflare Turnstile**: CAPTCHA for anti-spam.
 -   **Google Wallet API**: For push notifications to loyalty card holders.
 
 ### UI/Development Libraries
-
--   **Radix UI**: Accessible, unstyled UI primitives.
+-   **Radix UI**: Accessible UI primitives.
 -   **shadcn/ui**: Pre-styled Radix UI components with Tailwind CSS.
 -   **Wouter**: Frontend routing.
 -   **TanStack Query**: Server state management.
--   **Passport.js**: Authentication and session management.
+-   **Passport.js**: Authentication.
 -   **Drizzle ORM**: Database interactions.
--   **Zod**: Runtime schema validation.
--   **react-icons/si**: For Stripe logo.
+-   **Zod**: Schema validation.
 -   **date-fns**: Date manipulation.
--   **nanoid**: Unique token generation.
--   **class-variance-authority**, **clsx**, **tailwind-merge**: Conditional CSS class composition.
