@@ -28,6 +28,8 @@ import Demo from "@/pages/Demo";
 import SelectProducts from "@/pages/SelectProducts";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
+import AdminForgotPassword from "@/pages/AdminForgotPassword";
+import AdminResetPassword from "@/pages/AdminResetPassword";
 import MenuBuilder from "@/pages/MenuBuilder";
 import PublicMenu from "@/pages/PublicMenu";
 import PublicShifts from "@/pages/PublicShifts";
@@ -48,6 +50,8 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/admin" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/admin/forgot-password" component={AdminForgotPassword} />
+      <Route path="/admin/reset-password/:token" component={AdminResetPassword} />
       <Route path="/verify-email/:token" component={VerifyEmail} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password/:token" component={ResetPassword} />
