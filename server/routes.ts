@@ -665,6 +665,82 @@ export function registerRoutes(app: Express) {
     res.json({ success: true });
   });
 
+  app.post("/api/admin/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      const [admin] = await db
+        .select()
+        .from(adminUsers)
+        .where(eq(adminUsers.email, email))
+        .limit(1);
+
+      if (!admin) {
+        return res.json({ success: true, message: "If that email exists, a password reset link has been sent" });
+      }
+
+      const resetPasswordToken = generateToken();
+      const resetPasswordExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await db
+        .update(adminUsers)
+        .set({
+          resetPasswordToken,
+          resetPasswordExpiry,
+        })
+        .where(eq(adminUsers.id, admin.id));
+
+      await sendPasswordResetEmail(admin.email, "Admin", resetPasswordToken, true);
+
+      res.json({ success: true, message: "If that email exists, a password reset link has been sent" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Password reset request failed" });
+    }
+  });
+
+  app.post("/api/admin/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        return res.status(400).json({ error: "Token and new password are required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+
+      const [admin] = await db
+        .select()
+        .from(adminUsers)
+        .where(eq(adminUsers.resetPasswordToken, token))
+        .limit(1);
+
+      if (!admin) {
+        return res.status(400).json({ error: "Invalid reset token" });
+      }
+
+      if (admin.resetPasswordExpiry && admin.resetPasswordExpiry < new Date()) {
+        return res.status(400).json({ error: "Reset token has expired" });
+      }
+
+      const passwordHash = await hashPassword(newPassword);
+
+      await db
+        .update(adminUsers)
+        .set({
+          passwordHash,
+          resetPasswordToken: null,
+          resetPasswordExpiry: null,
+        })
+        .where(eq(adminUsers.id, admin.id));
+
+      res.json({ success: true, message: "Password reset successfully" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Password reset failed" });
+    }
+  });
+
   // Admin: Create fully-activated user (bypasses email verification and subscription)
   app.post("/api/admin/users", requireAdminAuth, async (req, res) => {
     try {

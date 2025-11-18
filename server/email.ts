@@ -53,6 +53,7 @@ export async function sendPasswordResetEmail(
   email: string,
   shopName: string,
   token: string,
+  isAdmin: boolean = false,
 ) {
   try {
     const { client, fromEmail } = getResendClient();
@@ -61,17 +62,19 @@ export async function sendPasswordResetEmail(
     const baseUrl = replitDomain 
       ? `https://${replitDomain}` 
       : (process.env.NODE_ENV === 'production' ? 'https://unihub.live' : 'http://localhost:5000');
-    const resetUrl = `${baseUrl}/reset-password/${token}`;
+    const resetUrl = isAdmin 
+      ? `${baseUrl}/admin/reset-password/${token}`
+      : `${baseUrl}/reset-password/${token}`;
 
     await client.emails.send({
       from: fromEmail,
       to: email,
-      subject: "Reset your uniHub password",
+      subject: `Reset your uniHub ${isAdmin ? 'Admin ' : ''}password`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #333;">Password Reset Request</h1>
           <p style="color: #666; font-size: 16px;">Hi ${shopName},</p>
-          <p style="color: #666; font-size: 16px;">We received a request to reset your password. Click the button below to create a new password:</p>
+          <p style="color: #666; font-size: 16px;">We received a request to reset your ${isAdmin ? 'admin ' : ''}password. Click the button below to create a new password:</p>
           <div style="margin: 30px 0;">
             <a href="${resetUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password</a>
           </div>
