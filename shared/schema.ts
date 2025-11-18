@@ -114,6 +114,8 @@ export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  resetPasswordToken: text("reset_password_token"),
+  resetPasswordExpiry: timestamp("reset_password_expiry"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
