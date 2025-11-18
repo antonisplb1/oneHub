@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { ShieldCheck } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -111,6 +111,13 @@ export default function AdminLogin() {
                 {loginMutation.isPending ? "Logging in..." : "Login"}
               </Button>
             </form>
+            <div className="mt-6 text-center">
+              <Link href="/admin/forgot-password">
+                <Button variant="ghost" size="sm" data-testid="link-admin-forgot-password">
+                  Forgot Password?
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
