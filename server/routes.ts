@@ -39,6 +39,7 @@ import { nanoid } from "nanoid";
 import Stripe from "stripe";
 import QRCode from "qrcode";
 import { GoogleWalletService, type LoyaltyPassData } from "./googleWallet";
+import { AppleWalletService, isAppleWalletConfigured, type AppleLoyaltyPassData } from "./appleWallet";
 import { sendVerificationEmail, sendPasswordResetEmail, sendSubuserInvitationEmail } from "./email";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
@@ -1921,6 +1922,59 @@ export function registerRoutes(app: Express) {
 
   app.get("/api/wallet/apple/:customerId", async (req, res) => {
     try {
+      const userAgent = req.headers['user-agent'] || '';
+      const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+      const isMacOS = /Macintosh|Mac OS X/i.test(userAgent) && /Safari/i.test(userAgent);
+      const isAppleDevice = isIOS || isMacOS;
+
+      if (!isAppleWalletConfigured()) {
+        return res.status(503).send(`
+          <html>
+            <head>
+              <title>Apple Wallet — Coming Soon</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px 20px; max-width: 500px; margin: 0 auto; background: #f5f5f7; color: #1d1d1f; }
+                .card { background: white; border-radius: 18px; padding: 36px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); text-align: center; }
+                h1 { font-size: 22px; font-weight: 600; margin-bottom: 12px; }
+                p { color: #6e6e73; line-height: 1.5; }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <div style="font-size:48px; margin-bottom: 16px;">&#128179;</div>
+                <h1>Apple Wallet — Almost Ready</h1>
+                <p>Apple Wallet integration is being set up. Please check back soon — your loyalty card will be available to add shortly.</p>
+              </div>
+            </body>
+          </html>
+        `);
+      }
+
+      if (!isAppleDevice) {
+        return res.status(200).send(`
+          <html>
+            <head>
+              <title>Apple Wallet — iPhone Required</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px 20px; max-width: 500px; margin: 0 auto; background: #f5f5f7; color: #1d1d1f; }
+                .card { background: white; border-radius: 18px; padding: 36px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); text-align: center; }
+                h1 { font-size: 22px; font-weight: 600; margin-bottom: 12px; }
+                p { color: #6e6e73; line-height: 1.5; }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <div style="font-size:48px; margin-bottom: 16px;">&#128241;</div>
+                <h1>Open on your iPhone</h1>
+                <p>Apple Wallet passes can only be added from an iPhone, iPad, or Mac with Safari. Please open this link on your Apple device.</p>
+              </div>
+            </body>
+          </html>
+        `);
+      }
+
       const [result] = await db
         .select({
           card: loyaltyCards,
@@ -1933,32 +1987,50 @@ export function registerRoutes(app: Express) {
         .where(eq(customers.id, req.params.customerId))
         .limit(1);
 
-      if (!result) {
+      if (!result || !result.customer || !result.user) {
         return res.status(404).send("Loyalty card not found");
       }
 
-      res.status(501).send(`
+      const passData: AppleLoyaltyPassData = {
+        customerId: result.customer.id,
+        customerName: result.customer.name!,
+        shopName: result.user.shopName,
+        stamps: result.card.stamps,
+        maxStamps: result.card.maxStamps,
+        rewardText: result.card.rewardText || 'Loyalty Reward',
+        customerQrCode: result.customer.customerQrCode || result.customer.id,
+        cardBackgroundColor: result.user.cardBackgroundColor,
+      };
+
+      const appleWalletService = new AppleWalletService();
+      const passBuffer = await appleWalletService.generatePass(passData);
+
+      const filename = `${result.user.shopName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-loyalty.pkpass`;
+      res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', passBuffer.length.toString());
+      res.send(passBuffer);
+    } catch (error: any) {
+      console.error('Apple Wallet error:', error);
+      res.status(500).send(`
         <html>
-          <head><title>Apple Wallet Setup Required</title></head>
-          <body style="font-family: sans-serif; padding: 40px; max-width: 600px; margin: 0 auto;">
-            <h1>🔧 Apple Wallet Setup Required</h1>
-            <p>To enable Apple Wallet passes, you need to:</p>
-            <ol>
-              <li>Enroll in Apple Developer Program ($99/year)</li>
-              <li>Create a Pass Type ID in Apple Developer Portal</li>
-              <li>Generate and download a Pass Signing Certificate</li>
-              <li>Install the <code>passkit-generator</code> npm package</li>
-              <li>Create a .pass template folder with icons and pass.json</li>
-              <li>Add certificate files to the server</li>
-            </ol>
-            <p><strong>Customer:</strong> ${result.customer?.name || 'Customer'}<br>
-            <strong>Points:</strong> ${result.card.stamps}/${result.card.maxStamps}</p>
-            <p><a href="https://developer.apple.com/documentation/walletpasses">View Apple Wallet Documentation →</a></p>
+          <head>
+            <title>Error</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px 20px; max-width: 500px; margin: 0 auto; background: #f5f5f7; color: #1d1d1f; }
+              .card { background: white; border-radius: 18px; padding: 36px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); text-align: center; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div style="font-size:48px; margin-bottom: 16px;">&#10060;</div>
+              <h1 style="font-size:22px;">Error generating pass</h1>
+              <p style="color:#6e6e73;">Please try again later. If the issue persists, contact support.</p>
+            </div>
           </body>
         </html>
       `);
-    } catch (error: any) {
-      res.status(500).send(error.message);
     }
   });
 
