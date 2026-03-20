@@ -13,6 +13,15 @@ function getResendClient() {
   };
 }
 
+function getBaseUrl(): string {
+  if (process.env.APP_BASE_URL) {
+    return process.env.APP_BASE_URL.replace(/\/$/, "");
+  }
+  const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim();
+  if (replitDomain) return `https://${replitDomain}`;
+  return process.env.NODE_ENV === 'production' ? 'https://unihub.live' : 'http://localhost:5000';
+}
+
 export async function sendVerificationEmail(
   email: string,
   shopName: string,
@@ -20,12 +29,7 @@ export async function sendVerificationEmail(
 ) {
   try {
     const { client, fromEmail } = getResendClient();
-    // Always use REPLIT_DOMAINS when available (works in both dev and production on Replit)
-    const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim();
-    const baseUrl = replitDomain 
-      ? `https://${replitDomain}` 
-      : (process.env.NODE_ENV === 'production' ? 'https://unihub.live' : 'http://localhost:5000');
-    const verifyUrl = `${baseUrl}/verify-email/${token}`;
+    const verifyUrl = `${getBaseUrl()}/verify-email/${token}`;
 
     await client.emails.send({
       from: fromEmail,
@@ -57,14 +61,9 @@ export async function sendPasswordResetEmail(
 ) {
   try {
     const { client, fromEmail } = getResendClient();
-    // Always use REPLIT_DOMAINS when available (works in both dev and production on Replit)
-    const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim();
-    const baseUrl = replitDomain 
-      ? `https://${replitDomain}` 
-      : (process.env.NODE_ENV === 'production' ? 'https://unihub.live' : 'http://localhost:5000');
     const resetUrl = isAdmin 
-      ? `${baseUrl}/admin/reset-password/${token}`
-      : `${baseUrl}/reset-password/${token}`;
+      ? `${getBaseUrl()}/admin/reset-password/${token}`
+      : `${getBaseUrl()}/reset-password/${token}`;
 
     await client.emails.send({
       from: fromEmail,
@@ -98,12 +97,7 @@ export async function sendSubuserInvitationEmail(
 ) {
   try {
     const { client, fromEmail } = getResendClient();
-    // Always use REPLIT_DOMAINS when available (works in both dev and production on Replit)
-    const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim();
-    const baseUrl = replitDomain 
-      ? `https://${replitDomain}` 
-      : (process.env.NODE_ENV === 'production' ? 'https://unihub.live' : 'http://localhost:5000');
-    const setupUrl = `${baseUrl}/subuser-setup/${token}`;
+    const setupUrl = `${getBaseUrl()}/subuser-setup/${token}`;
 
     const permissionLabels: Record<string, string> = {
       'loyalty': 'QR Scanner (Loyalty Cards)',

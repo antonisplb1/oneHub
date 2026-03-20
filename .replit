@@ -49,3 +49,4 @@ integrations = ["javascript_stripe:1.0.0", "javascript_database:1.0.0", "resend:
 
 [userenv.production]
 DEMO_SEED = "true"
+APP_BASE_URL = "https://unihub.live"
