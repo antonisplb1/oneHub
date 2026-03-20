@@ -73,6 +73,15 @@ function hexToRgbCss(hex: string): string {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
+function normalizePem(raw: string, type: 'CERTIFICATE' | 'PRIVATE KEY'): string {
+  if (!raw) return raw;
+  let pem = raw.replace(/\\n/g, '\n').trim();
+  if (pem.startsWith('-----BEGIN')) return pem;
+  const base64 = pem.replace(/[\s\r\n]+/g, '');
+  const lines = base64.match(/.{1,64}/g) ?? [];
+  return `-----BEGIN ${type}-----\n${lines.join('\n')}\n-----END ${type}-----`;
+}
+
 export class AppleWalletService {
   private passTypeId: string;
   private teamId: string;
@@ -82,8 +91,8 @@ export class AppleWalletService {
   constructor() {
     this.passTypeId = process.env.APPLE_WALLET_PASS_TYPE_ID!;
     this.teamId = process.env.APPLE_WALLET_TEAM_ID!;
-    this.privateKeyPem = process.env.APPLE_WALLET_PRIVATE_KEY_PEM!;
-    this.certPem = process.env.APPLE_WALLET_CERT_PEM!;
+    this.privateKeyPem = normalizePem(process.env.APPLE_WALLET_PRIVATE_KEY_PEM!, 'PRIVATE KEY');
+    this.certPem = normalizePem(process.env.APPLE_WALLET_CERT_PEM!, 'CERTIFICATE');
 
     if (!this.passTypeId) throw new Error('APPLE_WALLET_PASS_TYPE_ID is not set');
     if (!this.teamId) throw new Error('APPLE_WALLET_TEAM_ID is not set');
