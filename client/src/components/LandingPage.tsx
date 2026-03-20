@@ -1,687 +1,485 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Award, 
-  Gift, 
-  UtensilsCrossed, 
-  Check, 
-  ArrowRight, 
-  Sparkles, 
-  Shield, 
-  Zap, 
+import {
+  Award,
+  Gift,
+  UtensilsCrossed,
   Calendar,
-  Target,
-  Eye,
-  Coffee,
-  Pizza,
-  Wine,
-  Cake,
-  Scissors,
-  ShoppingBag,
-  CheckCircle
+  ArrowRight,
+  Shield,
+  Zap,
+  CheckCircle,
+  Minus,
 } from "lucide-react";
 import { SiStripe } from "react-icons/si";
 import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
 
+const GOLD = "#c9a84c";
+const GOLD_DIM = "rgba(201,168,76,0.18)";
+const GOLD_BORDER = "rgba(201,168,76,0.25)";
+const SURFACE = "#111111";
+const BORDER = "rgba(255,255,255,0.07)";
+const MUTED = "rgba(255,255,255,0.45)";
+
+function Logo({ size = "lg" }: { size?: "sm" | "lg" }) {
+  const textSize = size === "lg" ? "text-4xl md:text-5xl" : "text-xl";
+  return (
+    <span className={`${textSize} tracking-tight`} style={{ fontWeight: 300, letterSpacing: "-0.01em" }}>
+      <span className="text-white" style={{ fontWeight: 300 }}>uni</span>
+      <span style={{ color: GOLD, fontStyle: "italic", fontWeight: 600 }}>Hub</span>
+    </span>
+  );
+}
+
+function GoldDash() {
+  return <span style={{ color: GOLD }} className="mr-3 select-none">—</span>;
+}
+
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen" style={{ backgroundColor: "#080808", color: "white" }}>
+
+      {/* ─── HEADER ─── */}
+      <header
+        className="sticky top-0 z-50 border-b"
+        style={{ backgroundColor: "rgba(8,8,8,0.92)", borderColor: BORDER, backdropFilter: "blur(12px)" }}
+      >
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <Link href="/" data-testid="link-home">
-            <div className="flex items-center gap-3 cursor-pointer">
-              <img src={logoImage} alt="uniHub logo" className="h-8 w-8" />
-              <h1 className="text-2xl font-semibold text-primary">uniHub</h1>
+            <div className="flex items-center gap-2.5 cursor-pointer">
+              <img src={logoImage} alt="uniHub logo" className="h-7 w-7" />
+              <Logo size="sm" />
             </div>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
             <Link href="/demo">
-              <Button variant="ghost" data-testid="button-demo">Demo</Button>
+              <Button variant="ghost" data-testid="button-demo"
+                className="text-white/60 hover:text-white hover:bg-white/5">Demo</Button>
             </Link>
             <Link href="/pricing">
-              <Button variant="ghost" data-testid="button-pricing">Pricing</Button>
+              <Button variant="ghost" data-testid="button-pricing"
+                className="text-white/60 hover:text-white hover:bg-white/5">Pricing</Button>
             </Link>
             <Link href="/auth?mode=login">
-              <Button variant="outline" data-testid="button-login">Login</Button>
+              <Button variant="outline" data-testid="button-login"
+                className="ml-2 border-white/20 text-white bg-transparent hover:bg-white/5">Login</Button>
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="py-20 md:py-32 px-6">
-        <div className="container mx-auto max-w-5xl text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8">
-            <Sparkles className="w-4 h-4" />
-            <span>3-Day Free Trial – No Card Needed</span>
-          </div>
-          <h2 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Grow Repeat Business.<br />Simplify Your Operations.
-          </h2>
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            uniHub gives cafés, salons, and local shops everything they need to reward customers, run promotions, and manage staff — all from one simple dashboard.
-          </p>
-          <div className="flex gap-6 justify-center flex-wrap mb-10 text-sm">
-            <div className="flex items-center gap-2">
-              <Check className="w-5 h-5 text-chart-2" />
-              <span>Digital Loyalty Cards</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-5 h-5 text-chart-2" />
-              <span>Spin-to-Win Campaigns</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-5 h-5 text-chart-2" />
-              <span>QR Menus</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-5 h-5 text-chart-2" />
-              <span>Shift Scheduling</span>
-            </div>
-          </div>
-          <div className="flex gap-4 justify-center flex-wrap">
-            <Link href="/auth">
-              <Button size="lg" className="text-base px-8" data-testid="button-get-started">
-                Start Free Trial – No Card Needed <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </Link>
-            <Link href="/demo">
-              <Button size="lg" variant="outline" className="text-base px-8" data-testid="button-watch-demo">
-                Watch 1-Minute Demo
-              </Button>
-            </Link>
+      {/* ─── HERO ─── */}
+      <section className="relative flex flex-col items-center justify-center text-center px-6 py-32 md:py-44 overflow-hidden">
+        {/* Subtle radial glow */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(201,168,76,0.07) 0%, transparent 70%)",
+          }}
+        />
+
+        {/* App icon */}
+        <img
+          src={logoImage}
+          alt="uniHub icon"
+          className="h-20 w-20 md:h-24 md:w-24 mb-10 relative"
+          style={{ filter: "drop-shadow(0 0 24px rgba(201,168,76,0.35))" }}
+        />
+
+        {/* Wordmark */}
+        <Logo size="lg" />
+
+        {/* Tagline */}
+        <p
+          className="mt-5 text-lg md:text-xl italic"
+          style={{ color: GOLD, fontWeight: 300, letterSpacing: "0.02em" }}
+        >
+          One hub for every venue.
+        </p>
+
+        {/* Thin rule */}
+        <div className="mt-8 mb-8 w-12 border-t" style={{ borderColor: GOLD_BORDER }} />
+
+        {/* Feature pills */}
+        <div className="flex flex-col items-center gap-2 text-xs tracking-[0.2em] uppercase mb-12"
+          style={{ color: MUTED }}>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+            <span><GoldDash />Loyalty Cards</span>
+            <span><GoldDash />Spin-to-Win</span>
+            <span><GoldDash />Digital Menus</span>
+            <span><GoldDash />Shift Management</span>
           </div>
         </div>
-      </section>
 
-      {/* Social Proof Section */}
-      <section className="py-8 px-6 bg-muted/20">
-        <div className="container mx-auto max-w-6xl">
-          <p className="text-center text-sm text-muted-foreground mb-4">
-            Trusted by local businesses in Cyprus, Greece & beyond
-          </p>
-          <div className="flex justify-center items-center gap-8 flex-wrap">
-            <div className="text-center">
-              <div className="text-lg font-semibold">Café Aroma</div>
-              <div className="text-xs text-muted-foreground">Nicosia</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-semibold">The Barber Room</div>
-              <div className="text-xs text-muted-foreground">Limassol</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-semibold">SweetBite Bakery</div>
-              <div className="text-xs text-muted-foreground">Athens</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-semibold">Chill Café</div>
-              <div className="text-xs text-muted-foreground">Larnaca</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Products Section */}
-      <section className="py-20 px-6 bg-muted/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h3 className="text-3xl md:text-4xl font-bold mb-4">Four Tools. One Platform. Everything You Need to Grow.</h3>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Choose the tools you need. Each product works independently or together seamlessly.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Loyalty Cards */}
-            <Card className="hover-elevate flex flex-col" data-testid="product-card-loyalty">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
-                  <Award className="w-6 h-6 text-primary" />
-                </div>
-                <CardTitle className="text-xl">Loyalty Cards</CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Replace paper cards with a digital loyalty system that customers love.
-                </p>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Digital stamp cards</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Google Wallet support</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">QR code scanning</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Spin Wheel */}
-            <Card className="hover-elevate flex flex-col" data-testid="product-card-spin">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-chart-3/10 flex items-center justify-center mb-3">
-                  <Gift className="w-6 h-6 text-chart-3" />
-                </div>
-                <CardTitle className="text-xl">Spin Wheel</CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Run gamified promotions that keep people coming back.
-                </p>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Customizable wheels</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Prize tracking</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Social sharing</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Menu Builder */}
-            <Card className="hover-elevate flex flex-col" data-testid="product-card-menu">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-chart-4/10 flex items-center justify-center mb-3">
-                  <UtensilsCrossed className="w-6 h-6 text-chart-4" />
-                </div>
-                <CardTitle className="text-xl">Menu Builder</CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Show off your menu beautifully — no printing or app required.
-                </p>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Photo uploads</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">QR code generation</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Real-time updates</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Shift Manager */}
-            <Card className="hover-elevate flex flex-col" data-testid="product-card-shift">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-chart-5/10 flex items-center justify-center mb-3">
-                  <Calendar className="w-6 h-6 text-chart-5" />
-                </div>
-                <CardTitle className="text-xl">Shift Manager</CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Keep your team organized with simple drag-and-drop scheduling.
-                </p>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Weekly scheduling</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Crew management</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Public shift URL</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="text-center mt-12">
-            <Link href="/pricing">
-              <Button variant="ghost" className="text-base" data-testid="button-explore-features">
-                Explore all features <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Why uniHub.live Section */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center mb-12">
-            <h3 className="text-3xl md:text-4xl font-bold mb-4">Choose What You Need, Pay Only for What You Use</h3>
-            <p className="text-lg text-muted-foreground">
-              No bundles, no contracts — just the tools that make your business run better.
-            </p>
-          </div>
-
-          <Card className="bg-gradient-to-br from-primary/5 to-chart-2/5 border-primary/20">
-            <CardContent className="p-8 md:p-12">
-              <div className="flex items-start gap-6">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Zap className="w-7 h-7 text-primary" />
-                </div>
-                <div>
-                  <h4 className="text-2xl font-bold mb-4">Choose Only What You Need</h4>
-                  <p className="text-lg text-muted-foreground leading-relaxed">
-                    uniHub.live offers flexibility by letting you choose only the products you need — without locking you into higher-tier plans that include tools you may not use.
-                  </p>
-                  <div className="mt-6 flex gap-3 flex-wrap">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border">
-                      <Check className="w-4 h-4 text-chart-2" />
-                      <span className="text-sm font-medium">Pay only for what you use</span>
-                    </div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border">
-                      <Check className="w-4 h-4 text-chart-2" />
-                      <span className="text-sm font-medium">No forced bundles</span>
-                    </div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border">
-                      <Check className="w-4 h-4 text-chart-2" />
-                      <span className="text-sm font-medium">Cancel anytime</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="text-center mt-12">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-chart-2/10 text-chart-2 text-sm font-medium mb-6">
-              <Check className="w-4 h-4" />
-              <span>3-Day Free Trial — Test everything with no commitment</span>
-            </div>
-            <div>
-              <Link href="/pricing">
-                <Button size="lg" className="text-base px-8" data-testid="button-see-pricing">
-                  See Pricing <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Mission & Vision Section */}
-      <section className="py-16 px-6 bg-muted/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card className="hover-elevate" data-testid="card-mission">
-              <CardHeader>
-                <div className="w-14 h-14 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Target className="w-7 h-7 text-primary" />
-                </div>
-                <CardTitle className="text-3xl">Our Mission</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground leading-relaxed text-lg">
-                  To simplify customer engagement for small and medium-sized businesses by offering powerful 
-                  digital tools that feel effortless to use. We aim to replace paper loyalty cards and clunky 
-                  apps with elegant, web-first solutions that boost repeat business, increase brand loyalty, 
-                  and create genuine connections.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate" data-testid="card-vision">
-              <CardHeader>
-                <div className="w-14 h-14 rounded-lg bg-chart-3/10 flex items-center justify-center mb-4">
-                  <Eye className="w-7 h-7 text-chart-3" />
-                </div>
-                <CardTitle className="text-3xl">Our Vision</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground leading-relaxed text-lg">
-                  To make digital customer engagement accessible to every local business, regardless of size 
-                  or tech experience. We envision a world where every café, bakery, or boutique can deliver 
-                  a seamless digital experience to customers — effortlessly.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Who We Serve Section */}
-      <section className="py-16 px-6">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12">
-            <h3 className="text-4xl md:text-5xl font-bold mb-4">Who We Serve</h3>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              uniHub is built for local businesses with returning customers. If you want to reward loyalty 
-              and drive repeat visits, we're here to help.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            <Card className="hover-elevate text-center" data-testid="card-business-cafes">
-              <CardContent className="pt-6">
-                <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                  <Coffee className="w-8 h-8 text-primary" />
-                </div>
-                <h4 className="font-semibold mb-1">Cafés & Coffee Shops</h4>
-                <p className="text-xs text-muted-foreground">Reward your regulars effortlessly</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate text-center" data-testid="card-business-restaurants">
-              <CardContent className="pt-6">
-                <div className="w-16 h-16 mx-auto rounded-full bg-chart-3/10 flex items-center justify-center mb-3">
-                  <Pizza className="w-8 h-8 text-chart-3" />
-                </div>
-                <h4 className="font-semibold mb-1">Restaurants & Takeaways</h4>
-                <p className="text-xs text-muted-foreground">QR menus and loyalty, all in one</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate text-center" data-testid="card-business-bars">
-              <CardContent className="pt-6">
-                <div className="w-16 h-16 mx-auto rounded-full bg-chart-4/10 flex items-center justify-center mb-3">
-                  <Wine className="w-8 h-8 text-chart-4" />
-                </div>
-                <h4 className="font-semibold mb-1">Bars & Nightlife</h4>
-                <p className="text-xs text-muted-foreground">Run exciting spin wheel promos</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate text-center" data-testid="card-business-bakeries">
-              <CardContent className="pt-6">
-                <div className="w-16 h-16 mx-auto rounded-full bg-chart-5/10 flex items-center justify-center mb-3">
-                  <Cake className="w-8 h-8 text-chart-5" />
-                </div>
-                <h4 className="font-semibold mb-1">Bakeries & Sweet Shops</h4>
-                <p className="text-xs text-muted-foreground">Digital loyalty made sweet</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate text-center" data-testid="card-business-salons">
-              <CardContent className="pt-6">
-                <div className="w-16 h-16 mx-auto rounded-full bg-chart-2/10 flex items-center justify-center mb-3">
-                  <Scissors className="w-8 h-8 text-chart-2" />
-                </div>
-                <h4 className="font-semibold mb-1">Salons & Barbers</h4>
-                <p className="text-xs text-muted-foreground">Schedule staff and reward clients</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate text-center" data-testid="card-business-retail">
-              <CardContent className="pt-6">
-                <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                  <ShoppingBag className="w-8 h-8 text-primary" />
-                </div>
-                <h4 className="font-semibold mb-1">Boutiques & Retail</h4>
-                <p className="text-xs text-muted-foreground">Engage shoppers with digital rewards</p>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="text-center mt-12">
-            <Link href="/demo">
-              <Button variant="ghost" className="text-base" data-testid="button-see-how-works">
-                See how uniHub works for your business type <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Why Choose uniHub Section */}
-      <section className="py-16 px-6 bg-muted/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12">
-            <h3 className="text-4xl md:text-5xl font-bold mb-4">Why Businesses Choose uniHub</h3>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Join thousands of small businesses moving toward digital-first loyalty and engagement tools.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="hover-elevate" data-testid="card-benefit-browser">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-5 h-5 text-chart-2" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">100% Browser-Based</h4>
-                    <p className="text-sm text-muted-foreground">
-                      No apps or downloads required for you or your customers. Everything works in the browser.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate" data-testid="card-benefit-qr">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-5 h-5 text-chart-2" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Fast QR Code Setup</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Get started in minutes with simple QR codes. Your customers scan and engage instantly.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate" data-testid="card-benefit-design">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-5 h-5 text-chart-2" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Clean, Modern Design</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Mobile-friendly interface that looks professional and works beautifully on all devices.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate" data-testid="card-benefit-affordable">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-5 h-5 text-chart-2" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Affordable & Scalable</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Pricing that works for any business size. Start small and scale as you grow.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate" data-testid="card-benefit-features">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-5 h-5 text-chart-2" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Continuous Improvements</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Regular updates with new features like menus, analytics, and customer insights.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate" data-testid="card-benefit-easy">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-5 h-5 text-chart-2" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">No Coding Required</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Easy-to-use dashboard that anyone can master. No technical skills needed.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate bg-gradient-to-br from-primary/5 to-chart-2/5 border-primary/20" data-testid="card-benefit-trial">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">3-Day Free Trial</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Test everything with no commitment. No credit card required to start.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Testimonial */}
-          <div className="mt-12 max-w-3xl mx-auto" data-testid="section-testimonial">
-            <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
-              <CardContent className="p-8" data-testid="card-testimonial">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Award className="w-6 h-6 text-primary" aria-label="Award" />
-                  </div>
-                  <div>
-                    <p className="text-lg italic mb-4">
-                      "We replaced paper stamp cards with uniHub's loyalty system and our repeat visits increased 25%!"
-                    </p>
-                    <p className="text-sm font-semibold">— Café Aroma, Nicosia</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Security & Trust Section */}
-      <section className="py-16 px-6 bg-muted/20">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12">
-            <h3 className="text-3xl md:text-4xl font-bold mb-3">Built with Privacy and Reliability in Mind</h3>
-            <p className="text-lg text-muted-foreground">Your business data is secure, compliant, and always accessible</p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <SiStripe className="w-8 h-8 text-primary" />
-              </div>
-              <h4 className="text-lg font-semibold mb-2">Stripe-Powered Payments</h4>
-              <p className="text-sm text-muted-foreground">
-                Secure, reliable payment processing
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto rounded-full bg-chart-2/10 flex items-center justify-center mb-4">
-                <Shield className="w-8 h-8 text-chart-2" />
-              </div>
-              <h4 className="text-lg font-semibold mb-2">GDPR Compliant</h4>
-              <p className="text-sm text-muted-foreground">
-                Enterprise-grade data protection
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto rounded-full bg-chart-3/10 flex items-center justify-center mb-4">
-                <Shield className="w-8 h-8 text-chart-3" />
-              </div>
-              <h4 className="text-lg font-semibold mb-2">SSL Secured</h4>
-              <p className="text-sm text-muted-foreground">
-                All data encrypted in transit
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto rounded-full bg-chart-4/10 flex items-center justify-center mb-4">
-                <Zap className="w-8 h-8 text-chart-4" />
-              </div>
-              <h4 className="text-lg font-semibold mb-2">Cancel Anytime</h4>
-              <p className="text-sm text-muted-foreground">
-                No contracts. One-click cancellation
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA Section */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto max-w-4xl text-center">
-          <h3 className="text-4xl md:text-5xl font-bold mb-6">Ready to Modernize Your Business?</h3>
-          <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            Join local cafés, salons, and retail shops using uniHub to reward customers and simplify operations.
-          </p>
+        {/* CTAs */}
+        <div className="flex gap-4 flex-wrap justify-center">
           <Link href="/auth">
-            <Button size="lg" className="text-lg px-12 py-6" data-testid="button-final-cta">
-              Start Free Trial – No Credit Card Needed <ArrowRight className="ml-2 w-5 h-5" />
+            <Button
+              size="lg"
+              className="text-sm px-8 font-medium tracking-wide"
+              style={{ backgroundColor: GOLD, color: "#080808", border: "none" }}
+              data-testid="button-get-started"
+            >
+              Start Free Trial <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
           </Link>
-          <div className="flex gap-6 justify-center flex-wrap mt-6 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-chart-2" />
-              <span>3-day free trial</span>
+          <Link href="/demo">
+            <Button
+              size="lg"
+              variant="outline"
+              className="text-sm px-8 font-medium tracking-wide bg-transparent"
+              style={{ borderColor: GOLD_BORDER, color: "white" }}
+              data-testid="button-watch-demo"
+            >
+              Watch Demo
+            </Button>
+          </Link>
+        </div>
+
+        <p className="mt-5 text-xs" style={{ color: MUTED }}>
+          3-day free trial — no credit card required
+        </p>
+      </section>
+
+      {/* ─── DIVIDER ─── */}
+      <div className="border-t" style={{ borderColor: BORDER }} />
+
+      {/* ─── PRODUCTS ─── */}
+      <section className="py-24 px-6">
+        <div className="container mx-auto max-w-5xl">
+
+          <div className="text-center mb-16">
+            <p className="text-xs tracking-[0.25em] uppercase mb-4" style={{ color: GOLD }}>
+              Platform
+            </p>
+            <h2 className="text-3xl md:text-4xl font-light text-white">
+              Four tools. One platform.
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-px" style={{ backgroundColor: BORDER }}>
+            {/* Loyalty Cards */}
+            <div
+              className="p-10 flex flex-col gap-4"
+              style={{ backgroundColor: "#080808" }}
+              data-testid="product-card-loyalty"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <Award className="w-5 h-5" style={{ color: GOLD }} />
+                <h3 className="text-sm tracking-[0.15em] uppercase" style={{ color: GOLD }}>
+                  Loyalty Cards
+                </h3>
+              </div>
+              <p className="text-white font-light text-lg leading-relaxed">
+                Digital stamp cards that live in Apple Wallet and Google Wallet — updated in real-time when you scan.
+              </p>
+              <ul className="space-y-2 mt-2">
+                {["Digital stamp cards", "Apple & Google Wallet", "QR code scanning", "Auto stamp updates"].map(f => (
+                  <li key={f} className="flex items-center gap-2 text-sm" style={{ color: MUTED }}>
+                    <Minus className="w-3 h-3 flex-shrink-0" style={{ color: GOLD }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-chart-2" />
-              <span>No commitment</span>
+
+            {/* Spin Wheel */}
+            <div
+              className="p-10 flex flex-col gap-4"
+              style={{ backgroundColor: "#080808" }}
+              data-testid="product-card-spin"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <Gift className="w-5 h-5" style={{ color: GOLD }} />
+                <h3 className="text-sm tracking-[0.15em] uppercase" style={{ color: GOLD }}>
+                  Spin-to-Win
+                </h3>
+              </div>
+              <p className="text-white font-light text-lg leading-relaxed">
+                Gamified promotions that keep customers excited and coming back for more.
+              </p>
+              <ul className="space-y-2 mt-2">
+                {["Customizable prize wheels", "Win-chance control", "Prize tracking", "Instant customer access"].map(f => (
+                  <li key={f} className="flex items-center gap-2 text-sm" style={{ color: MUTED }}>
+                    <Minus className="w-3 h-3 flex-shrink-0" style={{ color: GOLD }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-chart-2" />
-              <span>Cancel anytime</span>
+
+            {/* Menu Builder */}
+            <div
+              className="p-10 flex flex-col gap-4"
+              style={{ backgroundColor: "#080808" }}
+              data-testid="product-card-menu"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <UtensilsCrossed className="w-5 h-5" style={{ color: GOLD }} />
+                <h3 className="text-sm tracking-[0.15em] uppercase" style={{ color: GOLD }}>
+                  Digital Menus
+                </h3>
+              </div>
+              <p className="text-white font-light text-lg leading-relaxed">
+                A beautiful QR menu your guests scan at the table — updated instantly, no printing.
+              </p>
+              <ul className="space-y-2 mt-2">
+                {["Photo uploads", "QR code generated", "Real-time updates", "Mobile-first design"].map(f => (
+                  <li key={f} className="flex items-center gap-2 text-sm" style={{ color: MUTED }}>
+                    <Minus className="w-3 h-3 flex-shrink-0" style={{ color: GOLD }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
             </div>
+
+            {/* Shift Manager */}
+            <div
+              className="p-10 flex flex-col gap-4"
+              style={{ backgroundColor: "#080808" }}
+              data-testid="product-card-shift"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <Calendar className="w-5 h-5" style={{ color: GOLD }} />
+                <h3 className="text-sm tracking-[0.15em] uppercase" style={{ color: GOLD }}>
+                  Shift Management
+                </h3>
+              </div>
+              <p className="text-white font-light text-lg leading-relaxed">
+                Keep your team organized with simple weekly scheduling and a PIN-protected public schedule.
+              </p>
+              <ul className="space-y-2 mt-2">
+                {["Weekly calendar view", "Crew management", "Public shift URL", "PIN-protected access"].map(f => (
+                  <li key={f} className="flex items-center gap-2 text-sm" style={{ color: MUTED }}>
+                    <Minus className="w-3 h-3 flex-shrink-0" style={{ color: GOLD }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="text-center mt-12">
+            <Link href="/pricing">
+              <Button
+                variant="ghost"
+                data-testid="button-explore-features"
+                className="text-sm tracking-wide hover:bg-white/5"
+                style={{ color: GOLD }}
+              >
+                View full pricing <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-12 px-6">
-        <div className="container mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-4 gap-8">
+      {/* ─── DIVIDER ─── */}
+      <div className="border-t" style={{ borderColor: BORDER }} />
+
+      {/* ─── WHY UNIHUB ─── */}
+      <section className="py-24 px-6" style={{ backgroundColor: SURFACE }}>
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center mb-16">
+            <p className="text-xs tracking-[0.25em] uppercase mb-4" style={{ color: GOLD }}>
+              Why uniHub
+            </p>
+            <h2 className="text-3xl md:text-4xl font-light text-white">
+              Built for venues. Priced to grow.
+            </h2>
+            <p className="mt-4 text-base font-light max-w-xl mx-auto" style={{ color: MUTED }}>
+              Choose only the tools you need. No bundles, no contracts — cancel anytime.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                id: "card-benefit-browser",
+                icon: CheckCircle,
+                title: "100% Browser-Based",
+                body: "No app downloads for you or your customers. Everything works instantly in the browser.",
+              },
+              {
+                id: "card-benefit-qr",
+                icon: Zap,
+                title: "Live in Minutes",
+                body: "Scan a QR, add a stamp, update a menu — operations that take seconds, not hours.",
+              },
+              {
+                id: "card-benefit-affordable",
+                icon: Shield,
+                title: "Pay Only for What You Use",
+                body: "Individual product pricing. No expensive bundles or features you'll never touch.",
+              },
+              {
+                id: "card-benefit-design",
+                icon: CheckCircle,
+                title: "Apple & Google Wallet",
+                body: "Passes update automatically when you stamp — no customer action required.",
+              },
+              {
+                id: "card-benefit-features",
+                icon: Zap,
+                title: "Continuously Updated",
+                body: "New features ship regularly. Your subscription always includes the latest tools.",
+              },
+              {
+                id: "card-benefit-easy",
+                icon: Shield,
+                title: "No Technical Skills",
+                body: "An intuitive dashboard anyone on your team can use from day one.",
+              },
+            ].map(({ id, icon: Icon, title, body }) => (
+              <div key={id} data-testid={id} className="flex flex-col gap-3">
+                <div
+                  className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: GOLD_DIM }}
+                >
+                  <Icon className="w-4 h-4" style={{ color: GOLD }} />
+                </div>
+                <h4 className="text-white font-medium">{title}</h4>
+                <p className="text-sm font-light leading-relaxed" style={{ color: MUTED }}>{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── DIVIDER ─── */}
+      <div className="border-t" style={{ borderColor: BORDER }} />
+
+      {/* ─── SOCIAL PROOF ─── */}
+      <section className="py-24 px-6">
+        <div className="container mx-auto max-w-3xl text-center">
+          <p className="text-xs tracking-[0.25em] uppercase mb-10" style={{ color: GOLD }}>
+            Trusted by local businesses
+          </p>
+
+          <blockquote data-testid="section-testimonial">
+            <div data-testid="card-testimonial">
+              <p
+                className="text-xl md:text-2xl font-light italic leading-relaxed text-white mb-8"
+              >
+                "We replaced paper stamp cards with uniHub's loyalty system and our repeat visits increased 25%."
+              </p>
+              <p className="text-sm tracking-[0.15em] uppercase" style={{ color: MUTED }}>
+                — Café Aroma, Nicosia
+              </p>
+            </div>
+          </blockquote>
+
+          <div className="mt-16 flex justify-center gap-12 flex-wrap">
+            {[
+              { name: "Café Aroma", loc: "Nicosia" },
+              { name: "The Barber Room", loc: "Limassol" },
+              { name: "SweetBite Bakery", loc: "Athens" },
+              { name: "Chill Café", loc: "Larnaca" },
+            ].map(({ name, loc }) => (
+              <div key={name} className="text-center">
+                <div className="text-sm font-medium text-white">{name}</div>
+                <div className="text-xs mt-0.5" style={{ color: MUTED }}>{loc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── DIVIDER ─── */}
+      <div className="border-t" style={{ borderColor: BORDER }} />
+
+      {/* ─── TRUST STRIP ─── */}
+      <section className="py-16 px-6" style={{ backgroundColor: SURFACE }}>
+        <div className="container mx-auto max-w-5xl">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {[
+              { icon: SiStripe, label: "Stripe Payments", sub: "Secure & reliable processing" },
+              { icon: Shield, label: "GDPR Compliant", sub: "Enterprise-grade protection" },
+              { icon: Shield, label: "SSL Secured", sub: "All data encrypted in transit" },
+              { icon: Zap, label: "Cancel Anytime", sub: "No contracts, one click" },
+            ].map(({ icon: Icon, label, sub }) => (
+              <div key={label}>
+                <div
+                  className="w-10 h-10 mx-auto rounded-md flex items-center justify-center mb-3"
+                  style={{ backgroundColor: GOLD_DIM }}
+                >
+                  <Icon className="w-5 h-5" style={{ color: GOLD }} />
+                </div>
+                <p className="text-sm font-medium text-white">{label}</p>
+                <p className="text-xs mt-1" style={{ color: MUTED }}>{sub}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── FINAL CTA ─── */}
+      <section className="py-32 px-6 text-center relative overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: "radial-gradient(ellipse 60% 60% at 50% 100%, rgba(201,168,76,0.06) 0%, transparent 70%)",
+          }}
+        />
+        <div className="relative container mx-auto max-w-2xl">
+          <p className="text-xs tracking-[0.25em] uppercase mb-6" style={{ color: GOLD }}>
+            Get started
+          </p>
+          <h2 className="text-3xl md:text-5xl font-light text-white mb-6">
+            Ready to modernize<br />your venue?
+          </h2>
+          <p className="text-base font-light mb-10" style={{ color: MUTED }}>
+            Join cafés, salons, and local shops across Cyprus and beyond using uniHub.
+          </p>
+          <Link href="/auth">
+            <Button
+              size="lg"
+              className="text-sm px-10 tracking-wide font-medium"
+              style={{ backgroundColor: GOLD, color: "#080808", border: "none" }}
+              data-testid="button-final-cta"
+            >
+              Start Free Trial <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
+          </Link>
+          <div className="flex gap-8 justify-center flex-wrap mt-6 text-xs" style={{ color: MUTED }}>
+            <span>3-day free trial</span>
+            <span>·</span>
+            <span>No credit card</span>
+            <span>·</span>
+            <span>Cancel anytime</span>
+          </div>
+
+          <div
+            className="inline-flex items-center gap-2 mt-10 px-5 py-2 rounded-full border text-xs tracking-[0.15em] uppercase"
+            style={{ borderColor: GOLD_BORDER, color: MUTED }}
+            data-testid="card-benefit-trial"
+          >
+            <span style={{ color: GOLD }}>●</span>
+            3-day free trial — everything included
+          </div>
+        </div>
+      </section>
+
+      {/* ─── FOOTER ─── */}
+      <footer className="border-t py-16 px-6" style={{ borderColor: BORDER, backgroundColor: "#050505" }}>
+        <div className="container mx-auto max-w-5xl">
+          <div className="grid md:grid-cols-4 gap-10 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <img src={logoImage} alt="uniHub logo" className="h-6 w-6" />
-                <span className="font-semibold text-lg">uniHub</span>
+                <span className="text-base" style={{ fontWeight: 300 }}>
+                  <span className="text-white">uni</span>
+                  <span style={{ color: GOLD, fontStyle: "italic", fontWeight: 600 }}>Hub</span>
+                </span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                All-in-one platform for customer engagement and team management.
+              <p className="text-xs leading-relaxed" style={{ color: MUTED }}>
+                One hub for every venue. Loyalty, menus, spin campaigns, and team management — all in one place.
               </p>
             </div>
 
             <div>
-              <h5 className="font-semibold mb-3">Products</h5>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <h5 className="text-xs tracking-[0.18em] uppercase mb-4" style={{ color: GOLD }}>Products</h5>
+              <ul className="space-y-2.5 text-sm" style={{ color: MUTED }}>
                 <li><Link href="/pricing" data-testid="link-footer-loyalty">Loyalty Cards</Link></li>
                 <li><Link href="/pricing" data-testid="link-footer-spin">Spin Wheel</Link></li>
                 <li><Link href="/pricing" data-testid="link-footer-menu">Menu Builder</Link></li>
@@ -690,16 +488,16 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <h5 className="font-semibold mb-3">Company</h5>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <h5 className="text-xs tracking-[0.18em] uppercase mb-4" style={{ color: GOLD }}>Company</h5>
+              <ul className="space-y-2.5 text-sm" style={{ color: MUTED }}>
                 <li><Link href="/demo" data-testid="link-footer-demo">Demo</Link></li>
                 <li><Link href="/pricing" data-testid="link-footer-pricing">Pricing</Link></li>
               </ul>
             </div>
 
             <div>
-              <h5 className="font-semibold mb-3">Legal</h5>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <h5 className="text-xs tracking-[0.18em] uppercase mb-4" style={{ color: GOLD }}>Legal</h5>
+              <ul className="space-y-2.5 text-sm" style={{ color: MUTED }}>
                 <li><Link href="/privacy-policy" data-testid="link-footer-privacy">Privacy Policy</Link></li>
                 <li><Link href="/terms-of-service" data-testid="link-footer-terms">Terms of Service</Link></li>
                 <li><Link href="/cookie-policy" data-testid="link-footer-cookies">Cookie Policy</Link></li>
@@ -707,8 +505,9 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-            <p>© 2025 uniHub. All rights reserved.</p>
+          <div className="border-t pt-8 flex flex-wrap items-center justify-between gap-4" style={{ borderColor: BORDER }}>
+            <p className="text-xs" style={{ color: MUTED }}>© 2025 uniHub. All rights reserved.</p>
+            <p className="text-xs" style={{ color: MUTED }}>info@unihub.live</p>
           </div>
         </div>
       </footer>
