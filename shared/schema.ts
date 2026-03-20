@@ -319,6 +319,21 @@ export type InsertShift = z.infer<typeof insertShiftSchema>;
 export type TimeframePreset = typeof timeframePresets.$inferSelect;
 export type InsertTimeframePreset = z.infer<typeof insertTimeframePresetSchema>;
 
+// Apple Wallet PassKit device registrations
+export const appleWalletDevices = pgTable('apple_wallet_devices', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  deviceLibraryIdentifier: text('device_library_identifier').notNull(),
+  pushToken: text('push_token').notNull(),
+  serialNumber: text('serial_number').notNull(),
+  passTypeIdentifier: text('pass_type_identifier').notNull(),
+  customerId: varchar('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  uniq: unique().on(table.deviceLibraryIdentifier, table.serialNumber, table.passTypeIdentifier),
+}));
+
+export type AppleWalletDevice = typeof appleWalletDevices.$inferSelect;
+
 // Validation schemas
 export const signupSchema = z.object({
   email: z.string().email("Please enter a valid email"),

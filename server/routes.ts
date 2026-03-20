@@ -31,15 +31,16 @@ import {
   insertShiftSchema,
   insertTimeframePresetSchema,
   insertSubuserSchema,
+  appleWalletDevices,
 } from "@shared/schema";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, gt } from "drizzle-orm";
 import { hashPassword, generateToken, comparePasswords } from "./auth";
 import passport from "passport";
 import { nanoid } from "nanoid";
 import Stripe from "stripe";
 import QRCode from "qrcode";
 import { GoogleWalletService, type LoyaltyPassData } from "./googleWallet";
-import { AppleWalletService, isAppleWalletConfigured, type AppleLoyaltyPassData } from "./appleWallet";
+import { AppleWalletService, isAppleWalletConfigured, getPassSerialNumber, generatePassAuthToken, sendApnsWalletPush, type AppleLoyaltyPassData } from "./appleWallet";
 import { sendVerificationEmail, sendPasswordResetEmail, sendSubuserInvitationEmail } from "./email";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
@@ -1228,6 +1229,22 @@ export function registerRoutes(app: Express) {
         }
       }
 
+      // Apple Wallet PassKit push (non-blocking)
+      if (isAppleWalletConfigured()) {
+        const appleSerialNumber = getPassSerialNumber(customer.id);
+        db.select()
+          .from(appleWalletDevices)
+          .where(eq(appleWalletDevices.serialNumber, appleSerialNumber))
+          .then((devices) => {
+            for (const device of devices) {
+              sendApnsWalletPush(device.pushToken).catch((err) =>
+                console.error(`[Apple Wallet] APNs push failed for ${device.deviceLibraryIdentifier}:`, err)
+              );
+            }
+          })
+          .catch((err) => console.error('[Apple Wallet] Device lookup failed:', err));
+      }
+
       res.json({ 
         success: true, 
         card: updatedCard, 
@@ -2032,6 +2049,160 @@ export function registerRoutes(app: Express) {
         </html>
       `);
     }
+  });
+
+  // === Apple PassKit Web Service ===
+  // These endpoints are called by iOS when managing Apple Wallet passes.
+
+  function validateApplePassAuth(req: Request, serialNumber: string): boolean {
+    const authHeader = req.headers.authorization || '';
+    if (!authHeader.startsWith('ApplePass ')) return false;
+    const token = authHeader.slice('ApplePass '.length).trim();
+    const customerId = serialNumber.substring(0, 36);
+    return token === generatePassAuthToken(customerId);
+  }
+
+  // Register a device to receive push notifications for a pass
+  app.post('/api/apple-wallet/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber', async (req, res) => {
+    const { deviceLibraryIdentifier, passTypeIdentifier, serialNumber } = req.params;
+    const { pushToken } = req.body;
+
+    if (!validateApplePassAuth(req, serialNumber)) return res.status(401).send();
+    if (!pushToken) return res.status(400).send();
+
+    const customerId = serialNumber.substring(0, 36);
+
+    try {
+      const existing = await db.select().from(appleWalletDevices).where(and(
+        eq(appleWalletDevices.deviceLibraryIdentifier, deviceLibraryIdentifier),
+        eq(appleWalletDevices.serialNumber, serialNumber),
+        eq(appleWalletDevices.passTypeIdentifier, passTypeIdentifier),
+      )).limit(1);
+
+      if (existing.length > 0) {
+        if (existing[0].pushToken !== pushToken) {
+          await db.update(appleWalletDevices).set({ pushToken }).where(eq(appleWalletDevices.id, existing[0].id));
+        }
+        return res.status(200).send();
+      }
+
+      await db.insert(appleWalletDevices).values({ deviceLibraryIdentifier, pushToken, serialNumber, passTypeIdentifier, customerId });
+      console.log(`[PassKit] Device registered for serial ${serialNumber}`);
+      return res.status(201).send();
+    } catch (err) {
+      console.error('[PassKit] Register device error:', err);
+      return res.status(500).send();
+    }
+  });
+
+  // Unregister a device
+  app.delete('/api/apple-wallet/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber', async (req, res) => {
+    const { deviceLibraryIdentifier, passTypeIdentifier, serialNumber } = req.params;
+
+    if (!validateApplePassAuth(req, serialNumber)) return res.status(401).send();
+
+    try {
+      await db.delete(appleWalletDevices).where(and(
+        eq(appleWalletDevices.deviceLibraryIdentifier, deviceLibraryIdentifier),
+        eq(appleWalletDevices.serialNumber, serialNumber),
+        eq(appleWalletDevices.passTypeIdentifier, passTypeIdentifier),
+      ));
+      console.log(`[PassKit] Device unregistered for serial ${serialNumber}`);
+      return res.status(200).send();
+    } catch (err) {
+      console.error('[PassKit] Unregister device error:', err);
+      return res.status(500).send();
+    }
+  });
+
+  // Get serial numbers of passes that have been updated since a given tag
+  app.get('/api/apple-wallet/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier', async (req, res) => {
+    const { deviceLibraryIdentifier, passTypeIdentifier } = req.params;
+    const passesUpdatedSince = req.query.passesUpdatedSince as string | undefined;
+
+    try {
+      const devices = await db.select().from(appleWalletDevices).where(and(
+        eq(appleWalletDevices.deviceLibraryIdentifier, deviceLibraryIdentifier),
+        eq(appleWalletDevices.passTypeIdentifier, passTypeIdentifier),
+      ));
+
+      if (!devices.length) return res.status(204).send();
+
+      const serialNumbers: string[] = [];
+      const now = new Date();
+
+      for (const device of devices) {
+        if (passesUpdatedSince) {
+          const since = new Date(passesUpdatedSince);
+          const [card] = await db.select({ lastStampAt: loyaltyCards.lastStampAt })
+            .from(loyaltyCards)
+            .where(eq(loyaltyCards.customerId, device.customerId))
+            .limit(1);
+          if (card?.lastStampAt && card.lastStampAt > since) {
+            serialNumbers.push(device.serialNumber);
+          }
+        } else {
+          serialNumbers.push(device.serialNumber);
+        }
+      }
+
+      if (!serialNumbers.length) return res.status(204).send();
+
+      return res.json({ lastUpdated: now.toISOString(), serialNumbers });
+    } catch (err) {
+      console.error('[PassKit] Get serial numbers error:', err);
+      return res.status(500).send();
+    }
+  });
+
+  // Return an updated pass for a given serial number
+  app.get('/api/apple-wallet/v1/passes/:passTypeIdentifier/:serialNumber', async (req, res) => {
+    const { passTypeIdentifier, serialNumber } = req.params;
+
+    if (!validateApplePassAuth(req, serialNumber)) return res.status(401).send();
+
+    const customerId = serialNumber.substring(0, 36);
+
+    try {
+      const [result] = await db
+        .select({ card: loyaltyCards, customer: customers, user: users })
+        .from(loyaltyCards)
+        .leftJoin(customers, eq(loyaltyCards.customerId, customers.id))
+        .leftJoin(users, eq(loyaltyCards.userId, users.id))
+        .where(eq(customers.id, customerId))
+        .limit(1);
+
+      if (!result || !result.customer || !result.user) return res.status(404).send();
+
+      const passData: AppleLoyaltyPassData = {
+        customerId: result.customer.id,
+        customerName: result.customer.name!,
+        shopName: result.user.shopName,
+        stamps: result.card.stamps,
+        maxStamps: result.card.maxStamps,
+        rewardText: result.card.rewardText || 'Loyalty Reward',
+        customerQrCode: result.customer.customerQrCode || result.customer.id,
+        cardBackgroundColor: result.user.cardBackgroundColor,
+      };
+
+      const appleWalletService = new AppleWalletService();
+      const passBuffer = await appleWalletService.generatePass(passData);
+
+      const lastModified = result.card.lastStampAt || new Date();
+      res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
+      res.setHeader('Last-Modified', lastModified.toUTCString());
+      console.log(`[PassKit] Serving updated pass for customer ${customerId}, stamps: ${result.card.stamps}`);
+      return res.send(passBuffer);
+    } catch (err) {
+      console.error('[PassKit] Get updated pass error:', err);
+      return res.status(500).send();
+    }
+  });
+
+  // Receive error logs from Apple Wallet
+  app.post('/api/apple-wallet/v1/log', (req, res) => {
+    console.log('[PassKit] Device log:', JSON.stringify(req.body));
+    return res.status(200).send();
   });
 
   app.post("/api/messages", requireAuth, requireSubscription, requirePermission('loyalty'), async (req, res) => {

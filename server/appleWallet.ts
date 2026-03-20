@@ -1,6 +1,7 @@
 import { Template } from '@walletpass/pass-js';
-import { createHash } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 import zlib from 'zlib';
+import http2 from 'http2';
 
 export interface AppleLoyaltyPassData {
   customerId: string;
@@ -82,6 +83,54 @@ function normalizePem(raw: string, type: 'CERTIFICATE' | 'PRIVATE KEY'): string 
   return `-----BEGIN ${type}-----\n${lines.join('\n')}\n-----END ${type}-----`;
 }
 
+export function getPassSerialNumber(customerId: string): string {
+  return `${customerId}-${createHash('sha1').update(customerId).digest('hex').slice(0, 8)}`;
+}
+
+export function generatePassAuthToken(customerId: string): string {
+  const secret = createHash('sha256')
+    .update(`passkit-auth-${process.env.APPLE_WALLET_PASS_TYPE_ID ?? 'pass.live.unihub.loyalty'}`)
+    .digest('hex');
+  return createHmac('sha256', secret).update(customerId).digest('hex');
+}
+
+export async function sendApnsWalletPush(pushToken: string): Promise<void> {
+  const privateKey = normalizePem(process.env.APPLE_WALLET_PRIVATE_KEY_PEM!, 'PRIVATE KEY');
+  const cert = normalizePem(process.env.APPLE_WALLET_CERT_PEM!, 'CERTIFICATE');
+  const passTypeId = process.env.APPLE_WALLET_PASS_TYPE_ID!;
+
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      client.destroy();
+      reject(new Error('APNs push timeout'));
+    }, 10000);
+
+    const client = http2.connect('https://api.push.apple.com', { key: privateKey, cert });
+    client.on('error', (err) => { clearTimeout(timer); client.destroy(); reject(err); });
+
+    const req = client.request({
+      ':method': 'POST',
+      ':path': `/3/device/${pushToken}`,
+      'apns-topic': passTypeId,
+      'apns-push-type': 'background',
+      'content-type': 'application/json',
+    });
+
+    req.write('{}');
+    req.end();
+
+    req.on('response', (headers) => {
+      clearTimeout(timer);
+      client.close();
+      const status = headers[':status'];
+      if (status === 200 || status === 410) resolve();
+      else reject(new Error(`APNs returned status ${status}`));
+    });
+
+    req.on('error', (err) => { clearTimeout(timer); client.destroy(); reject(err); });
+  });
+}
+
 export class AppleWalletService {
   private passTypeId: string;
   private teamId: string;
@@ -107,7 +156,9 @@ export class AppleWalletService {
 
     const [r, g, b] = hexToRgb(bgColor);
 
-    const serialNumber = `${passData.customerId}-${createHash('sha1').update(passData.customerId).digest('hex').slice(0, 8)}`;
+    const serialNumber = getPassSerialNumber(passData.customerId);
+    const authenticationToken = generatePassAuthToken(passData.customerId);
+    const baseUrl = process.env.APP_BASE_URL || 'https://unihub.live';
 
     const template = new Template('storeCard', {
       passTypeIdentifier: this.passTypeId,
@@ -119,6 +170,8 @@ export class AppleWalletService {
       labelColor: 'rgb(200, 220, 255)',
       backgroundColor: hexToRgbCss(bgColor),
       logoText: passData.shopName,
+      webServiceURL: `${baseUrl}/api/apple-wallet`,
+      authenticationToken,
     });
 
     template.setCertificate(this.certPem);
