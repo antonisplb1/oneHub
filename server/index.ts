@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupAuth } from "./auth";
 import { startCleanupService } from "./cleanup";
+import { seedAdminPassword } from "./adminSeed";
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -45,6 +46,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await seedAdminPassword();
   registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

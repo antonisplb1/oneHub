@@ -44,3 +44,9 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_stripe:1.0.0", "javascript_database:1.0.0", "resend:1.0.0", "javascript_object_storage:1.0.0"]
+
+[userenv]
+
+[userenv.production]
+ADMIN_SEED_EMAIL = "admin@unihub.live"
+ADMIN_SEED_PASSWORD = "Admin123*!*!"
