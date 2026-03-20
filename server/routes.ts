@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
+import { seedDemoAccount } from "./demoSeed";
 import { 
   users, 
   customers, 
@@ -784,6 +785,20 @@ export function registerRoutes(app: Express) {
       });
     } catch (error: any) {
       res.status(400).json({ error: error.message || "User creation failed" });
+    }
+  });
+
+  // Admin: Seed demo account with full dummy data
+  app.post("/api/admin/seed-demo", requireAdminAuth, async (req, res) => {
+    try {
+      const result = await seedDemoAccount();
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Demo seed failed" });
     }
   });
 

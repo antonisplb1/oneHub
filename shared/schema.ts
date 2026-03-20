@@ -370,5 +370,5 @@ export const adminCreateUserSchema = z.object({
   email: z.string().email("Please enter a valid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   shopName: z.string().min(1, "Shop name is required"),
-  selectedProducts: z.array(z.enum(['loyalty', 'spin', 'menu'])).default(['loyalty', 'spin']),
+  selectedProducts: z.array(z.enum(['loyalty', 'spin', 'menu', 'shift'])).default(['loyalty', 'spin']),
 });

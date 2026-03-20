@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { setupAuth } from "./auth";
 import { startCleanupService } from "./cleanup";
 import { seedAdminPassword } from "./adminSeed";
+import { seedDemoAccount } from "./demoSeed";
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -47,6 +48,10 @@ app.use((req, res, next) => {
 
 (async () => {
   await seedAdminPassword();
+  if (process.env.DEMO_SEED === "true") {
+    const result = await seedDemoAccount();
+    console.log(`[DemoSeed] ${result.message}`);
+  }
   registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
