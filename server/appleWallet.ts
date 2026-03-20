@@ -120,7 +120,16 @@ export class AppleWalletService {
     await template.images.add('logo', makePng(160, 50, r, g, b), '1x');
     await template.images.add('logo', makePng(320, 100, r, g, b), '2x');
 
-    const pass = template.createPass();
+    const pass = template.createPass({
+      barcodes: [
+        {
+          format: 'PKBarcodeFormatQR',
+          message: passData.customerQrCode,
+          messageEncoding: 'iso-8859-1',
+          altText: passData.customerQrCode,
+        },
+      ],
+    });
 
     pass.primaryFields.add({
       key: 'stamps',
@@ -153,15 +162,6 @@ export class AppleWalletService {
       label: 'Member',
       value: passData.customerName,
     });
-
-    (pass as any).fields.barcodes = [
-      {
-        format: 'PKBarcodeFormatQR',
-        message: passData.customerQrCode,
-        messageEncoding: 'iso-8859-1',
-        altText: passData.customerQrCode,
-      },
-    ];
 
     return pass.asBuffer();
   }
