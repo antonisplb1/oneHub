@@ -60,7 +60,7 @@ Uses Express.js with TypeScript, Passport.js for session-based authentication, a
 -   **Digital Menu Builder**: Allows merchants to create menus with categories, items, and images. Images are stored in Replit Object Storage, supporting presigned upload URLs. Features drag-and-drop reordering and generates QR codes for public menu access. The public menu page is customer-friendly, with dynamic branding based on loyalty card color, responsive design, and WCAG-compliant text readability.
 -   **Customer Notification Messaging**: Merchants can send push notifications to Google Wallet loyalty card holders via a dashboard UI.
 -   **QR Code System**: Generates Merchant Join, Customer Loyalty, and Spin Wheel QR codes, with a merchant dashboard scanner for loyalty stamps.
--   **Digital Wallet Integration**: Includes Apple Wallet and Google Wallet buttons on customer loyalty cards, with web app manifest for iOS home screen integration.
+-   **Digital Wallet Integration**: Google Wallet is fully integrated (live stamp updates via API). Apple Wallet integration is built and ready (`server/appleWallet.ts` using `@walletpass/pass-js`); it generates signed `.pkpass` files on demand. The integration is activated by setting `APPLE_WALLET_CERT_PEM` env var with the PEM-encoded Pass Type certificate from Apple Developer Portal. Pass Type ID: `pass.live.unihub.loyalty`, Team ID: `782KA53BM3`. The WWDR G4 certificate, private key, and other config are already stored as env vars. Apple Wallet endpoint gracefully handles missing cert (shows "coming soon" page) and non-Apple devices (shows "use iPhone" page).
 -   **MyShift Employee Shift Manager**: Comprehensive scheduling system with crew member management, weekly calendar view, shift CRUD operations, timeframe presets, and PIN-protected public access to schedules.
 -   **Subuser/Team Management System**: Multi-user access control with email invitations, granular permissions (dashboard, customers, loyalty, spin, menu, shift, analytics), and backend enforcement of access rights.
 
@@ -82,6 +82,7 @@ Key tables include `users`, `subusers`, `customers`, `loyaltyCards`, `loyaltyTra
 -   **Resend**: Transactional email service.
 -   **Cloudflare Turnstile**: CAPTCHA for anti-spam.
 -   **Google Wallet API**: For push notifications to loyalty card holders.
+-   **Apple Wallet (PassKit)**: `@walletpass/pass-js` generates signed `.pkpass` files. Requires `APPLE_WALLET_CERT_PEM` (PEM of Pass Type cert from Apple Developer Portal). All other creds already set in env vars.
 
 ### UI/Development Libraries
 -   **Radix UI**: Accessible UI primitives.

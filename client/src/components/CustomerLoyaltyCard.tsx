@@ -189,7 +189,7 @@ export default function CustomerLoyaltyCard() {
                   <li>Tap "Add" to confirm</li>
                 </ol>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Note: Full Apple Wallet integration is coming soon! For now, save this page for quick access.
+                  Tip: You can also tap the Apple Wallet button below to add your loyalty card directly.
                 </p>
               </AlertDescription>
             </Alert>
