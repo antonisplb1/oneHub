@@ -1,433 +1,398 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Award, Gift, UtensilsCrossed, Check, ArrowRight, Shield, CheckCircle, Sparkles, Calendar } from "lucide-react";
+import { Award, Gift, UtensilsCrossed, Calendar, ArrowRight, Shield, CheckCircle, Minus } from "lucide-react";
 import { SiStripe } from "react-icons/si";
 import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
 
+const GOLD = "#c9a84c";
+const GOLD_DIM = "rgba(201,168,76,0.18)";
+const GOLD_BORDER = "rgba(201,168,76,0.25)";
+const SURFACE = "#111111";
+const BORDER = "rgba(255,255,255,0.07)";
+const MUTED = "rgba(255,255,255,0.45)";
+
+const plans = [
+  {
+    id: "loyalty",
+    testid: "card-pricing-loyalty",
+    btnTestid: "button-select-loyalty",
+    icon: Award,
+    title: "Loyalty Cards",
+    price: "€10",
+    features: ["Digital stamp cards", "Apple & Google Wallet", "Unlimited customers", "QR code scanning", "Built-in scanner"],
+  },
+  {
+    id: "spin",
+    testid: "card-pricing-spin",
+    btnTestid: "button-select-spin",
+    icon: Gift,
+    title: "Spin Wheel",
+    price: "€8",
+    features: ["Customizable wheels", "Set win probabilities", "Unlimited campaigns", "Prize tracking", "Social sharing"],
+  },
+  {
+    id: "menu",
+    testid: "card-pricing-menu",
+    btnTestid: "button-select-menu",
+    icon: UtensilsCrossed,
+    title: "Menu Builder",
+    price: "€5",
+    features: ["Create categories & items", "Add photos & descriptions", "QR code generation", "Real-time updates", "Public menu page"],
+  },
+  {
+    id: "shift",
+    testid: "card-pricing-shift",
+    btnTestid: "button-select-shift",
+    icon: Calendar,
+    title: "Shift Manager",
+    price: "€10",
+    features: ["Weekly calendar view", "Crew management", "PIN-protected access", "Branded crew view", "Public shift URL"],
+  },
+];
+
 export default function Pricing() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header Navigation */}
-      <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen" style={{ backgroundColor: "#080808", color: "white" }}>
+
+      {/* ─── HEADER ─── */}
+      <header
+        className="sticky top-0 z-50 border-b"
+        style={{ backgroundColor: "rgba(8,8,8,0.92)", borderColor: BORDER, backdropFilter: "blur(12px)" }}
+      >
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <Link href="/" data-testid="link-home">
-            <div className="flex items-center gap-3 cursor-pointer">
-              <img src={logoImage} alt="uniHub logo" className="h-8 w-8" />
-              <h1 className="text-2xl font-semibold text-primary">uniHub</h1>
+            <div className="flex items-center gap-2.5 cursor-pointer">
+              <img src={logoImage} alt="uniHub logo" className="h-7 w-7" />
+              <span className="text-xl tracking-tight">
+                <span className="text-white" style={{ fontWeight: 300 }}>uni</span>
+                <span style={{ color: GOLD, fontStyle: "italic", fontWeight: 600 }}>Hub</span>
+              </span>
             </div>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
             <Link href="/demo">
-              <Button variant="ghost" data-testid="button-demo">Demo</Button>
+              <Button variant="ghost" data-testid="button-demo"
+                className="text-white/60 hover:text-white hover:bg-white/5">Demo</Button>
             </Link>
             <Link href="/pricing">
-              <Button variant="ghost" data-testid="button-pricing">Pricing</Button>
+              <Button variant="ghost" data-testid="button-pricing"
+                className="text-white/60 hover:text-white hover:bg-white/5">Pricing</Button>
             </Link>
             <Link href="/auth?mode=login">
-              <Button variant="outline" data-testid="button-login">Login</Button>
+              <Button variant="outline" data-testid="button-login"
+                className="ml-2 border-white/20 text-white bg-transparent hover:bg-white/5">Login</Button>
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto max-w-6xl text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8">
-            <CheckCircle className="w-4 h-4" />
-            <span>No Hidden Fees</span>
-          </div>
-          <h2 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Simple, Transparent Pricing
-          </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+      {/* ─── HERO ─── */}
+      <section className="relative px-6 py-28 md:py-36 text-center overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(201,168,76,0.07) 0%, transparent 70%)" }}
+        />
+        <div className="relative container mx-auto max-w-3xl">
+          <p className="text-xs tracking-[0.25em] uppercase mb-6" style={{ color: GOLD }}>Pricing</p>
+          <h1 className="text-4xl md:text-6xl font-light text-white mb-6 leading-tight">
+            Simple,<br />transparent pricing.
+          </h1>
+          <p className="text-lg font-light max-w-xl mx-auto" style={{ color: MUTED }}>
             Choose the products you need. Pay only for what you use. Cancel anytime.
           </p>
+          <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full" style={{ border: `1px solid ${GOLD_BORDER}`, color: MUTED }}>
+            <CheckCircle className="w-3.5 h-3.5" style={{ color: GOLD }} />
+            <span className="text-xs tracking-wide">No hidden fees. No contracts.</span>
+          </div>
         </div>
       </section>
 
-      {/* Pricing Cards Section */}
-      <section className="py-16 px-6">
-        <div className="container mx-auto max-w-7xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-            {/* Loyalty Cards */}
-            <Card className="hover-elevate flex flex-col" data-testid="card-pricing-loyalty">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
-                  <Award className="w-6 h-6 text-primary" />
+      {/* ─── DIVIDER ─── */}
+      <div className="border-t" style={{ borderColor: BORDER }} />
+
+      {/* ─── PRICING CARDS ─── */}
+      <section className="py-20 px-6">
+        <div className="container mx-auto max-w-5xl">
+          <div className="grid md:grid-cols-2 gap-px mb-px" style={{ backgroundColor: BORDER }}>
+            {plans.map(({ id, testid, btnTestid, icon: Icon, title, price, features }) => (
+              <div
+                key={id}
+                className="p-10 flex flex-col gap-6"
+                style={{ backgroundColor: "#080808" }}
+                data-testid={testid}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-9 h-9 rounded-md flex items-center justify-center"
+                    style={{ backgroundColor: GOLD_DIM }}
+                  >
+                    <Icon className="w-4 h-4" style={{ color: GOLD }} />
+                  </div>
+                  <h3 className="text-sm tracking-[0.15em] uppercase" style={{ color: GOLD }}>{title}</h3>
                 </div>
-                <CardTitle className="text-2xl">Loyalty Cards</CardTitle>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold">€10</span>
-                  <span className="text-muted-foreground">/month</span>
+
+                <div>
+                  <span className="text-5xl font-light text-white">{price}</span>
+                  <span className="text-sm ml-1" style={{ color: MUTED }}>/month</span>
                 </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
+
+                <div className="w-8 border-t" style={{ borderColor: GOLD_BORDER }} />
+
                 <ul className="space-y-3 flex-1">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Digital stamp cards</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Google Wallet support</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Unlimited customers</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">QR code scanning</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Built-in scanner</span>
-                  </li>
+                  {features.map(f => (
+                    <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: MUTED }}>
+                      <Minus className="w-3 h-3 flex-shrink-0" style={{ color: GOLD }} />
+                      {f}
+                    </li>
+                  ))}
                 </ul>
-                <Link href="/auth" className="mt-6">
-                  <Button variant="outline" className="w-full" data-testid="button-select-loyalty">
+
+                <Link href="/auth">
+                  <Button
+                    variant="outline"
+                    className="w-full border-white/15 text-white bg-transparent hover:bg-white/5 tracking-wide text-sm"
+                    data-testid={btnTestid}
+                  >
                     Get Started
                   </Button>
                 </Link>
-              </CardContent>
-            </Card>
-
-            {/* Spin Wheel */}
-            <Card className="hover-elevate flex flex-col" data-testid="card-pricing-spin">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-chart-3/10 flex items-center justify-center mb-3">
-                  <Gift className="w-6 h-6 text-chart-3" />
-                </div>
-                <CardTitle className="text-2xl">Spin Wheel</CardTitle>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold">€8</span>
-                  <span className="text-muted-foreground">/month</span>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <ul className="space-y-3 flex-1">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Customizable wheels</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Set win probabilities</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Unlimited campaigns</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Prize tracking</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Social sharing</span>
-                  </li>
-                </ul>
-                <Link href="/auth" className="mt-6">
-                  <Button variant="outline" className="w-full" data-testid="button-select-spin">
-                    Get Started
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            {/* Menu Builder */}
-            <Card className="hover-elevate flex flex-col" data-testid="card-pricing-menu">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-chart-4/10 flex items-center justify-center mb-3">
-                  <UtensilsCrossed className="w-6 h-6 text-chart-4" />
-                </div>
-                <CardTitle className="text-2xl">Menu Builder</CardTitle>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold">€5</span>
-                  <span className="text-muted-foreground">/month</span>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <ul className="space-y-3 flex-1">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Create categories & items</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Add photos & descriptions</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">QR code generation</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Real-time updates</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Public menu page</span>
-                  </li>
-                </ul>
-                <Link href="/auth" className="mt-6">
-                  <Button variant="outline" className="w-full" data-testid="button-select-menu">
-                    Get Started
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            {/* Shift Manager */}
-            <Card className="hover-elevate flex flex-col" data-testid="card-pricing-shift">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-chart-5/10 flex items-center justify-center mb-3">
-                  <Calendar className="w-6 h-6 text-chart-5" />
-                </div>
-                <CardTitle className="text-2xl">Shift Manager</CardTitle>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold">€10</span>
-                  <span className="text-muted-foreground">/month</span>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <ul className="space-y-3 flex-1">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Weekly calendar view</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Crew management</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">PIN-protected access</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Branded crew view</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Public shift URL</span>
-                  </li>
-                </ul>
-                <Link href="/auth" className="mt-6">
-                  <Button variant="outline" className="w-full" data-testid="button-select-shift">
-                    Get Started
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            {/* All Products Bundle - FEATURED */}
-            <Card className="hover-elevate flex flex-col border-primary relative" data-testid="card-pricing-bundle">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="bg-primary text-primary-foreground" data-testid="badge-best-value">
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  Best Value - Save €8
-                </Badge>
               </div>
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
-                  <Award className="w-6 h-6 text-primary" />
+            ))}
+          </div>
+
+          {/* Bundle card */}
+          <div
+            className="p-10 relative"
+            style={{ backgroundColor: "#080808", border: `1px solid ${GOLD_BORDER}` }}
+            data-testid="card-pricing-bundle"
+          >
+            <div
+              className="absolute -top-px left-0 right-0 h-px"
+              style={{ backgroundColor: GOLD }}
+            />
+            <div className="grid md:grid-cols-2 gap-10 items-center">
+              <div>
+                <div
+                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs tracking-[0.15em] uppercase mb-6"
+                  style={{ backgroundColor: GOLD_DIM, color: GOLD }}
+                  data-testid="badge-best-value"
+                >
+                  Best Value — Save €8
                 </div>
-                <CardTitle className="text-2xl">Complete Bundle</CardTitle>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold">€24.99</span>
-                  <span className="text-muted-foreground">/month</span>
+                <h3 className="text-3xl font-light text-white mb-3">Complete Bundle</h3>
+                <div className="mb-2">
+                  <span className="text-6xl font-light text-white">€24.99</span>
+                  <span className="text-sm ml-1" style={{ color: MUTED }}>/month</span>
                 </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <ul className="space-y-3 flex-1">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm font-medium">Everything in Loyalty Cards</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm font-medium">Everything in Spin Wheel</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm font-medium">Everything in Menu Builder</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm font-medium">Everything in Shift Manager</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-chart-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Unified dashboard</span>
-                  </li>
-                </ul>
-                <Link href="/auth" className="mt-6">
-                  <Button className="w-full" data-testid="button-select-bundle">
-                    Get Started
+                <p className="text-sm mb-8" style={{ color: MUTED }}>
+                  All four tools included. One price, everything you need.
+                </p>
+                <Link href="/auth">
+                  <Button
+                    className="text-sm px-8 tracking-wide font-medium"
+                    style={{ backgroundColor: GOLD, color: "#080808", border: "none" }}
+                    data-testid="button-select-bundle"
+                  >
+                    Get Started <ArrowRight className="ml-2 w-4 h-4" />
                   </Button>
                 </Link>
-              </CardContent>
-            </Card>
+              </div>
+              <ul className="space-y-3">
+                {[
+                  "Everything in Loyalty Cards",
+                  "Everything in Spin Wheel",
+                  "Everything in Menu Builder",
+                  "Everything in Shift Manager",
+                  "Unified dashboard",
+                ].map(f => (
+                  <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: MUTED }}>
+                    <Minus className="w-3 h-3 flex-shrink-0" style={{ color: GOLD }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Trust Indicators Section */}
-      <section className="py-16 px-6 bg-muted/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-10">
-            <h3 className="text-3xl md:text-4xl font-bold mb-3">Why Businesses Trust uniHub</h3>
-            <p className="text-lg text-muted-foreground">Built with security, transparency, and flexibility in mind</p>
+      {/* ─── DIVIDER ─── */}
+      <div className="border-t" style={{ borderColor: BORDER }} />
+
+      {/* ─── TRUST ─── */}
+      <section className="py-20 px-6" style={{ backgroundColor: SURFACE }}>
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center mb-14">
+            <p className="text-xs tracking-[0.25em] uppercase mb-4" style={{ color: GOLD }}>Trust</p>
+            <h2 className="text-3xl font-light text-white">Why businesses trust uniHub</h2>
           </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="hover-elevate text-center" data-testid="card-trust-stripe">
-              <CardHeader>
-                <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                  <SiStripe className="w-8 h-8 text-primary" />
+          <div className="grid md:grid-cols-3 gap-px" style={{ backgroundColor: BORDER }}>
+            {[
+              { icon: SiStripe, label: "Stripe Payments", body: "Industry-leading payment security with PCI compliance and fraud protection built-in.", testid: "card-trust-stripe" },
+              { icon: Shield, label: "Cancel Anytime", body: "No long-term contracts or hidden fees. Pause or cancel your subscription with one click.", testid: "card-trust-cancel" },
+              { icon: CheckCircle, label: "Transparent Pricing", body: "No hidden charges. What you see on this page is exactly what you pay each month.", testid: "card-trust-transparent" },
+            ].map(({ icon: Icon, label, body, testid }) => (
+              <div
+                key={label}
+                className="p-10 flex flex-col gap-4"
+                style={{ backgroundColor: "#080808" }}
+                data-testid={testid}
+              >
+                <div
+                  className="w-9 h-9 rounded-md flex items-center justify-center"
+                  style={{ backgroundColor: GOLD_DIM }}
+                >
+                  <Icon className="w-4 h-4" style={{ color: GOLD }} />
                 </div>
-                <CardTitle className="text-xl">Secure Payments via Stripe</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Industry-leading payment security with PCI compliance and fraud protection built-in
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate text-center" data-testid="card-trust-cancel">
-              <CardHeader>
-                <div className="w-16 h-16 mx-auto rounded-full bg-chart-3/10 flex items-center justify-center mb-3">
-                  <Shield className="w-8 h-8 text-chart-3" />
-                </div>
-                <CardTitle className="text-xl">Cancel Anytime</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  No long-term commitments or hidden contracts. Pause or cancel your subscription with one click
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate text-center" data-testid="card-trust-transparent">
-              <CardHeader>
-                <div className="w-16 h-16 mx-auto rounded-full bg-chart-2/10 flex items-center justify-center mb-3">
-                  <CheckCircle className="w-8 h-8 text-chart-2" />
-                </div>
-                <CardTitle className="text-xl">Get What You See</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Transparent pricing with no hidden fees. What you see is exactly what you pay
-                </p>
-              </CardContent>
-            </Card>
+                <h3 className="text-base font-medium text-white">{label}</h3>
+                <p className="text-sm font-light leading-relaxed" style={{ color: MUTED }}>{body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-16 px-6">
+      {/* ─── DIVIDER ─── */}
+      <div className="border-t" style={{ borderColor: BORDER }} />
+
+      {/* ─── FAQ ─── */}
+      <section className="py-20 px-6">
         <div className="container mx-auto max-w-3xl">
-          <div className="text-center mb-10">
-            <h3 className="text-3xl md:text-4xl font-bold mb-3">Frequently Asked Questions</h3>
-            <p className="text-lg text-muted-foreground">Everything you need to know about our pricing</p>
+          <div className="text-center mb-14">
+            <p className="text-xs tracking-[0.25em] uppercase mb-4" style={{ color: GOLD }}>FAQ</p>
+            <h2 className="text-3xl font-light text-white">Frequently asked questions</h2>
           </div>
 
           <Accordion type="single" collapsible className="w-full" data-testid="accordion-faq">
-            <AccordionItem value="item-1" data-testid="faq-switch">
-              <AccordionTrigger className="text-left">
-                Can I switch products later?
-              </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                Yes, absolutely! You can upgrade, downgrade, or switch between products at any time. 
-                Changes take effect immediately, and we'll prorate your billing accordingly.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-2" data-testid="faq-payment">
-              <AccordionTrigger className="text-left">
-                What payment methods do you accept?
-              </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                We accept all major credit and debit cards through Stripe, including Visa, Mastercard, 
-                American Express, and more. All payments are processed securely with industry-leading encryption.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-3" data-testid="faq-cancel">
-              <AccordionTrigger className="text-left">
-                Can I cancel my subscription?
-              </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                Yes, you can cancel your subscription at any time with no penalties or cancellation fees. 
-                You'll continue to have access until the end of your current billing period.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-4" data-testid="faq-trial">
-              <AccordionTrigger className="text-left">
-                Is there a free trial?
-              </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                Yes! You can explore all features with our demo mode before committing to a subscription. 
-                This allows you to test the platform and see if it's the right fit for your business.
-              </AccordionContent>
-            </AccordionItem>
+            {[
+              {
+                value: "item-1",
+                testid: "faq-switch",
+                q: "Can I switch products later?",
+                a: "Yes, absolutely. You can upgrade, downgrade, or switch between products at any time. Changes take effect immediately and billing is prorated accordingly.",
+              },
+              {
+                value: "item-2",
+                testid: "faq-payment",
+                q: "What payment methods do you accept?",
+                a: "We accept all major credit and debit cards through Stripe, including Visa, Mastercard, and American Express. All payments are processed securely.",
+              },
+              {
+                value: "item-3",
+                testid: "faq-cancel",
+                q: "Can I cancel my subscription?",
+                a: "Yes, anytime with no penalties. You'll keep access until the end of your current billing period.",
+              },
+              {
+                value: "item-4",
+                testid: "faq-trial",
+                q: "Is there a free trial?",
+                a: "Yes — 3 days free, no credit card required. Explore all features before committing to any plan.",
+              },
+            ].map(({ value, testid, q, a }) => (
+              <AccordionItem
+                key={value}
+                value={value}
+                data-testid={testid}
+                style={{ borderColor: BORDER }}
+              >
+                <AccordionTrigger
+                  className="text-left text-white hover:no-underline py-5 text-sm tracking-wide"
+                  style={{ color: "white" }}
+                >
+                  {q}
+                </AccordionTrigger>
+                <AccordionContent
+                  className="text-sm font-light leading-relaxed pb-5"
+                  style={{ color: MUTED }}
+                >
+                  {a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
           </Accordion>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-16 px-6 bg-gradient-to-br from-primary/5 to-chart-2/5">
-        <div className="container mx-auto max-w-3xl text-center">
-          <h3 className="text-3xl md:text-4xl font-bold mb-4">
-            Ready to Get Started?
-          </h3>
-          <p className="text-lg text-muted-foreground mb-8">
-            Join businesses using uniHub to reward customers and drive repeat visits.
+      {/* ─── CTA ─── */}
+      <section className="py-32 px-6 text-center relative overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse 60% 60% at 50% 100%, rgba(201,168,76,0.06) 0%, transparent 70%)" }}
+        />
+        <div className="relative container mx-auto max-w-2xl">
+          <p className="text-xs tracking-[0.25em] uppercase mb-6" style={{ color: GOLD }}>Get started</p>
+          <h2 className="text-3xl md:text-5xl font-light text-white mb-6">
+            Ready to get started?
+          </h2>
+          <p className="text-base font-light mb-10" style={{ color: MUTED }}>
+            Join local businesses using uniHub to reward customers and drive repeat visits.
           </p>
           <Link href="/auth">
-            <Button size="lg" className="text-base px-8" data-testid="button-cta-get-started">
+            <Button
+              size="lg"
+              className="text-sm px-10 tracking-wide font-medium"
+              style={{ backgroundColor: GOLD, color: "#080808", border: "none" }}
+              data-testid="button-cta-get-started"
+            >
               Get Started Now <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
           </Link>
+          <div className="flex gap-8 justify-center flex-wrap mt-6 text-xs" style={{ color: MUTED }}>
+            <span>3-day free trial</span>
+            <span>·</span>
+            <span>No credit card</span>
+            <span>·</span>
+            <span>Cancel anytime</span>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-12 px-6">
-        <div className="container mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-3 gap-8 mb-8">
+      {/* ─── FOOTER ─── */}
+      <footer className="border-t py-16 px-6" style={{ borderColor: BORDER, backgroundColor: "#050505" }}>
+        <div className="container mx-auto max-w-5xl">
+          <div className="grid md:grid-cols-4 gap-10 mb-12">
             <div>
-              <h3 className="font-semibold mb-3">uniHub</h3>
-              <p className="text-sm text-muted-foreground">
-                Digital loyalty cards, spin campaigns, menu builder, and shift management for modern businesses.
+              <div className="flex items-center gap-2 mb-4">
+                <img src={logoImage} alt="uniHub logo" className="h-6 w-6" />
+                <span className="text-base" style={{ fontWeight: 300 }}>
+                  <span className="text-white">uni</span>
+                  <span style={{ color: GOLD, fontStyle: "italic", fontWeight: 600 }}>Hub</span>
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed" style={{ color: MUTED }}>
+                One hub for every venue. Loyalty, menus, spin campaigns, and team management.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-3">Product</h3>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/demo" className="text-muted-foreground hover:text-foreground">Demo</Link></li>
-                <li><Link href="/pricing" className="text-muted-foreground hover:text-foreground">Pricing</Link></li>
+              <h5 className="text-xs tracking-[0.18em] uppercase mb-4" style={{ color: GOLD }}>Products</h5>
+              <ul className="space-y-2.5 text-sm" style={{ color: MUTED }}>
+                <li><Link href="/pricing" data-testid="link-footer-loyalty">Loyalty Cards</Link></li>
+                <li><Link href="/pricing" data-testid="link-footer-spin">Spin Wheel</Link></li>
+                <li><Link href="/pricing" data-testid="link-footer-menu">Menu Builder</Link></li>
+                <li><Link href="/pricing" data-testid="link-footer-shift">Shift Manager</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-3">Legal</h3>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/privacy-policy" className="text-muted-foreground hover:text-foreground" data-testid="link-privacy-policy">Privacy Policy</Link></li>
-                <li><Link href="/terms-of-service" className="text-muted-foreground hover:text-foreground" data-testid="link-terms-of-service">Terms of Service</Link></li>
-                <li><Link href="/cookie-policy" className="text-muted-foreground hover:text-foreground" data-testid="link-cookie-policy">Cookie Policy</Link></li>
+              <h5 className="text-xs tracking-[0.18em] uppercase mb-4" style={{ color: GOLD }}>Company</h5>
+              <ul className="space-y-2.5 text-sm" style={{ color: MUTED }}>
+                <li><Link href="/demo" data-testid="link-footer-demo">Demo</Link></li>
+                <li><Link href="/pricing" data-testid="link-footer-pricing">Pricing</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h5 className="text-xs tracking-[0.18em] uppercase mb-4" style={{ color: GOLD }}>Legal</h5>
+              <ul className="space-y-2.5 text-sm" style={{ color: MUTED }}>
+                <li><Link href="/privacy-policy" data-testid="link-privacy-policy">Privacy Policy</Link></li>
+                <li><Link href="/terms-of-service" data-testid="link-terms-of-service">Terms of Service</Link></li>
+                <li><Link href="/cookie-policy" data-testid="link-cookie-policy">Cookie Policy</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t pt-8 text-center text-sm text-muted-foreground">
-            <p>© 2025 uniHub. All rights reserved.</p>
+          <div className="border-t pt-8 flex flex-wrap items-center justify-between gap-4" style={{ borderColor: BORDER }}>
+            <p className="text-xs" style={{ color: MUTED }}>© 2025 uniHub. All rights reserved.</p>
+            <p className="text-xs" style={{ color: MUTED }}>info@unihub.live</p>
           </div>
         </div>
       </footer>
