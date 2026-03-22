@@ -2,10 +2,14 @@ import { useState } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+
+const GOLD = "#c9a84c";
+const SURFACE = "#111111";
+const BORDER = "rgba(255,255,255,0.07)";
+const MUTED = "rgba(255,255,255,0.45)";
 
 export default function SubuserSetup() {
   const [, params] = useRoute("/subuser-setup/:token");
@@ -19,20 +23,12 @@ export default function SubuserSetup() {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords don't match",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Passwords don't match", variant: "destructive" });
       return;
     }
 
     if (password.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Password must be at least 6 characters", variant: "destructive" });
       return;
     }
 
@@ -52,89 +48,93 @@ export default function SubuserSetup() {
         throw new Error(data.error || "Account setup failed");
       }
 
-      toast({
-        title: "Success",
-        description: data.message || "Account setup complete! You can now log in.",
-      });
-
-      setTimeout(() => {
-        setLocation("/auth");
-      }, 1500);
+      toast({ title: "Success", description: data.message || "Account setup complete! You can now log in." });
+      setTimeout(() => setLocation("/auth"), 1500);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
+    <div
+      className="min-h-screen flex items-center justify-center p-6 relative"
+      style={{ backgroundColor: "#080808", color: "white" }}
+    >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse 50% 40% at 50% 30%, rgba(201,168,76,0.05) 0%, transparent 70%)" }}
+      />
+      <div className="relative w-full max-w-sm">
         <div className="text-center mb-10">
           <Link href="/">
-            <div className="flex items-center justify-center gap-3 cursor-pointer hover:opacity-80 transition-opacity mb-3">
-              <img src={logoImage} alt="uniHub logo" className="h-10 w-10" />
-              <h1 className="text-4xl font-semibold text-primary tracking-tight">uniHub</h1>
+            <div className="inline-flex items-center gap-2 cursor-pointer opacity-70 hover:opacity-100 transition-opacity mb-5">
+              <img src={logoImage} alt="uniHub logo" className="h-7 w-7" />
+              <span className="text-xl tracking-tight">
+                <span className="text-white" style={{ fontWeight: 300 }}>uni</span>
+                <span style={{ color: GOLD, fontStyle: "italic", fontWeight: 600 }}>Hub</span>
+              </span>
             </div>
           </Link>
-          <p className="text-muted-foreground text-lg">Set up your team member account</p>
+          <h1 className="text-2xl font-light text-white mb-1">Set up your account</h1>
+          <p className="text-sm" style={{ color: MUTED }}>Create a password for your team member account</p>
         </div>
 
-        <Card className="border-card-border shadow-sm">
-          <CardHeader className="pb-6">
-            <CardTitle className="text-2xl font-semibold">Create Your Password</CardTitle>
-            <CardDescription className="text-base">
-              Enter a password for your account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-                <Input
-                  id="password"
-                  data-testid="input-password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password" className="text-sm font-medium">Confirm Password</Label>
-                <Input
-                  id="confirm-password"
-                  data-testid="input-confirm-password"
-                  type="password"
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full" 
+        <div
+          className="p-8 rounded-md"
+          style={{ backgroundColor: SURFACE, border: `1px solid ${BORDER}` }}
+        >
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-xs tracking-wide" style={{ color: MUTED }}>
+                Password
+              </Label>
+              <Input
+                id="password"
+                data-testid="input-password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                 disabled={isSubmitting}
-                data-testid="button-setup-account"
-              >
-                {isSubmitting ? "Setting up..." : "Set Up Account"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                className="bg-transparent border-white/10 text-white placeholder:text-white/20 focus-visible:ring-0 focus-visible:border-white/30"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password" className="text-xs tracking-wide" style={{ color: MUTED }}>
+                Confirm Password
+              </Label>
+              <Input
+                id="confirm-password"
+                data-testid="input-confirm-password"
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                disabled={isSubmitting}
+                className="bg-transparent border-white/10 text-white placeholder:text-white/20 focus-visible:ring-0 focus-visible:border-white/30"
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full tracking-wide text-sm font-medium"
+              style={{ backgroundColor: GOLD, color: "#080808", border: "none" }}
+              data-testid="button-setup-account"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Setting up..." : "Set Up Account"}
+            </Button>
+          </form>
+        </div>
 
         <div className="text-center mt-6">
           <Link href="/auth">
-            <span 
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            <span
+              className="text-sm transition-opacity opacity-50 hover:opacity-80 cursor-pointer"
+              style={{ color: MUTED }}
               data-testid="link-back-to-login"
             >
               Back to login

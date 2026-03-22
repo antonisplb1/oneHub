@@ -1,21 +1,49 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { Link } from "wouter";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+
+const GOLD = "#c9a84c";
+const MUTED = "rgba(255,255,255,0.45)";
+const BORDER = "rgba(255,255,255,0.07)";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
+    <div
+      className="min-h-screen w-full flex flex-col items-center justify-center p-6 relative"
+      style={{ backgroundColor: "#080808", color: "white" }}
+    >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse 50% 40% at 50% 50%, rgba(201,168,76,0.05) 0%, transparent 70%)" }}
+      />
+      <div className="relative text-center max-w-md">
+        <Link href="/">
+          <div className="flex items-center justify-center gap-2 mb-12 cursor-pointer opacity-60 hover:opacity-100 transition-opacity">
+            <img src={logoImage} alt="uniHub" className="h-6 w-6" />
+            <span className="text-base" style={{ fontWeight: 300 }}>
+              <span className="text-white">uni</span>
+              <span style={{ color: GOLD, fontStyle: "italic", fontWeight: 600 }}>Hub</span>
+            </span>
           </div>
+        </Link>
 
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
-          </p>
-        </CardContent>
-      </Card>
+        <p className="text-xs tracking-[0.25em] uppercase mb-4" style={{ color: GOLD }}>404</p>
+        <h1 className="text-4xl font-light text-white mb-4">Page not found</h1>
+        <p className="text-base font-light mb-10" style={{ color: MUTED }}>
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+
+        <Link href="/">
+          <Button
+            variant="outline"
+            className="border-white/15 text-white bg-transparent hover:bg-white/5 gap-2 tracking-wide text-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }

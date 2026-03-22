@@ -2,12 +2,20 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Ticket, Gift, Loader2, UtensilsCrossed, Calendar } from "lucide-react";
+import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import { Link } from "wouter";
+
+const GOLD = "#c9a84c";
+const GOLD_DIM = "rgba(201,168,76,0.18)";
+const GOLD_BORDER = "rgba(201,168,76,0.25)";
+const SURFACE = "#111111";
+const BORDER = "rgba(255,255,255,0.07)";
+const MUTED = "rgba(255,255,255,0.45)";
 
 interface Product {
   id: string;
@@ -18,34 +26,10 @@ interface Product {
 }
 
 const products: Product[] = [
-  {
-    id: 'loyalty',
-    name: 'Loyalty Cards',
-    description: 'Digital loyalty card program with stamp collection and rewards',
-    price: 10,
-    icon: Ticket,
-  },
-  {
-    id: 'spin',
-    name: 'Spin Wheel',
-    description: 'Interactive prize wheel campaigns for customer engagement',
-    price: 8,
-    icon: Gift,
-  },
-  {
-    id: 'menu',
-    name: 'Menu Builder',
-    description: 'Create and manage your digital menu for customers',
-    price: 5,
-    icon: UtensilsCrossed,
-  },
-  {
-    id: 'shift',
-    name: 'Shift Manager',
-    description: 'Employee shift scheduling with weekly calendar and crew management',
-    price: 10,
-    icon: Calendar,
-  },
+  { id: 'loyalty', name: 'Loyalty Cards', description: 'Digital loyalty card program with stamp collection and rewards', price: 10, icon: Ticket },
+  { id: 'spin', name: 'Spin Wheel', description: 'Interactive prize wheel campaigns for customer engagement', price: 8, icon: Gift },
+  { id: 'menu', name: 'Menu Builder', description: 'Create and manage your digital menu for customers', price: 5, icon: UtensilsCrossed },
+  { id: 'shift', name: 'Shift Manager', description: 'Employee shift scheduling with weekly calendar and crew management', price: 10, icon: Calendar },
 ];
 
 export default function SelectProducts() {
@@ -54,207 +38,199 @@ export default function SelectProducts() {
   const { user, logout } = useAuth();
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
-  // Check if user has active trial
   const hasActiveTrial = user?.trialEndsAt && new Date(user.trialEndsAt) > new Date();
   const hasActiveSubscription = user?.subscriptionStatus === "active";
 
   const selectProductsMutation = useMutation({
     mutationFn: async (products: string[]) => {
-      // First, save the selected products
       await apiRequest('/api/user/select-products', {
         method: 'POST',
         body: JSON.stringify({ products }),
       });
-      
-      // If user is on trial, just redirect to dashboard (no payment needed)
       if (hasActiveTrial && !hasActiveSubscription) {
         return { isTrialFlow: true };
       }
-      
-      // Otherwise, create a checkout session for payment
       const checkoutRes = await apiRequest<{ url: string }>('/api/stripe/create-checkout-session', {
         method: 'POST',
       });
-      
       return { isTrialFlow: false, url: checkoutRes.url };
     },
     onSuccess: (data) => {
-      // Invalidate auth query to refresh user data with selected products
       queryClient.invalidateQueries({ queryKey: ["/api", "auth", "me"] });
-      
       if (data.isTrialFlow) {
-        toast({
-          title: "Products selected",
-          description: "You can now access your dashboard and explore during your free trial!",
-        });
+        toast({ title: "Products selected", description: "You can now access your dashboard and explore during your free trial!" });
         setLocation("/dashboard");
       } else {
-        toast({
-          title: "Products selected",
-          description: "Opening checkout in new tab...",
-        });
-        // Open Stripe checkout in new tab (fixes Replit iframe sandbox restrictions)
+        toast({ title: "Products selected", description: "Opening checkout in new tab..." });
         window.open(data.url, '_blank');
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: "Selection failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Selection failed", description: error.message, variant: "destructive" });
     },
   });
 
   const toggleProduct = (productId: string) => {
     setSelectedProducts(prev =>
-      prev.includes(productId)
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
+      prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
     );
   };
 
   const calculateTotal = () => {
     const sorted = [...selectedProducts].sort();
-    
-    // All four products - Bundle discount (€24.99 instead of €33)
     if (sorted.length === 4 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu') && sorted.includes('shift')) {
       return 24.99;
     }
-    // Individual prices for all other combinations
-    else {
-      return selectedProducts.reduce((total, id) => {
-        const product = products.find(p => p.id === id);
-        return total + (product?.price || 0);
-      }, 0);
-    }
+    return selectedProducts.reduce((total, id) => {
+      const product = products.find(p => p.id === id);
+      return total + (product?.price || 0);
+    }, 0);
   };
 
   const handleContinue = () => {
     if (selectedProducts.length === 0) {
-      toast({
-        title: "No products selected",
-        description: "Please select at least one product",
-        variant: "destructive",
-      });
+      toast({ title: "No products selected", description: "Please select at least one product", variant: "destructive" });
       return;
     }
     selectProductsMutation.mutate(selectedProducts);
   };
 
+  const isBundleSelected = selectedProducts.length === 4 &&
+    selectedProducts.includes('loyalty') && selectedProducts.includes('spin') &&
+    selectedProducts.includes('menu') && selectedProducts.includes('shift');
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle data-testid="text-page-title">Choose Your Products</CardTitle>
-              <CardDescription data-testid="text-page-description">
-                Select the features you want to include in your subscription
-              </CardDescription>
+    <div
+      className="min-h-screen flex items-center justify-center p-6 relative"
+      style={{ backgroundColor: "#080808", color: "white" }}
+    >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse 60% 50% at 50% 20%, rgba(201,168,76,0.06) 0%, transparent 70%)" }}
+      />
+      <div className="relative w-full max-w-lg">
+        {/* Logo + logout */}
+        <div className="flex items-center justify-between mb-10">
+          <Link href="/">
+            <div className="inline-flex items-center gap-2 cursor-pointer opacity-70 hover:opacity-100 transition-opacity">
+              <img src={logoImage} alt="uniHub logo" className="h-7 w-7" />
+              <span className="text-xl tracking-tight">
+                <span className="text-white" style={{ fontWeight: 300 }}>uni</span>
+                <span style={{ color: GOLD, fontStyle: "italic", fontWeight: 600 }}>Hub</span>
+              </span>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => logout()}
-              data-testid="button-logout"
-            >
-              Logout
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </Link>
+          <button
+            onClick={() => logout()}
+            className="text-xs tracking-wide transition-opacity opacity-50 hover:opacity-80"
+            style={{ color: MUTED }}
+            data-testid="button-logout"
+          >
+            Logout
+          </button>
+        </div>
+
+        <div className="mb-8">
+          <p className="text-xs tracking-[0.25em] uppercase mb-3" style={{ color: GOLD }}>Onboarding</p>
+          <h1 className="text-2xl font-light text-white mb-1" data-testid="text-page-title">Choose your products</h1>
+          <p className="text-sm font-light" style={{ color: MUTED }} data-testid="text-page-description">
+            Select the features you want to include in your subscription
+          </p>
+        </div>
+
+        {/* Product list */}
+        <div className="space-y-2 mb-4">
           {products.map((product) => {
             const Icon = product.icon;
             const isSelected = selectedProducts.includes(product.id);
-            
             return (
-              <Card
+              <div
                 key={product.id}
-                className={`cursor-pointer transition-all hover-elevate ${
-                  isSelected ? 'border-primary' : ''
-                }`}
+                className="flex items-start gap-4 p-5 rounded-md cursor-pointer transition-all"
+                style={{
+                  backgroundColor: isSelected ? GOLD_DIM : SURFACE,
+                  border: `1px solid ${isSelected ? GOLD_BORDER : BORDER}`,
+                }}
                 onClick={() => toggleProduct(product.id)}
                 data-testid={`card-product-${product.id}`}
               >
-                <CardContent className="flex items-start gap-4 p-6">
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => toggleProduct(product.id)}
-                      data-testid={`checkbox-product-${product.id}`}
-                    />
+                <div onClick={(e) => e.stopPropagation()} className="mt-0.5">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleProduct(product.id)}
+                    data-testid={`checkbox-product-${product.id}`}
+                    className="border-white/30 data-[state=checked]:bg-[#c9a84c] data-[state=checked]:border-[#c9a84c]"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon className="w-4 h-4 flex-shrink-0" style={{ color: isSelected ? GOLD : MUTED }} />
+                    <h3 className="font-medium text-white text-sm" data-testid={`text-product-name-${product.id}`}>
+                      {product.name}
+                    </h3>
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Icon className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold text-lg" data-testid={`text-product-name-${product.id}`}>
-                        {product.name}
-                      </h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground" data-testid={`text-product-description-${product.id}`}>
-                      {product.description}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold" data-testid={`text-product-price-${product.id}`}>
-                      €{product.price}
-                    </div>
-                    <div className="text-sm text-muted-foreground">per month</div>
-                  </div>
-                </CardContent>
-              </Card>
+                  <p className="text-xs font-light" style={{ color: MUTED }} data-testid={`text-product-description-${product.id}`}>
+                    {product.description}
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <div className="text-lg font-light text-white" data-testid={`text-product-price-${product.id}`}>€{product.price}</div>
+                  <div className="text-xs" style={{ color: MUTED }}>/ month</div>
+                </div>
+              </div>
             );
           })}
+        </div>
 
-          {selectedProducts.length === 4 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && selectedProducts.includes('shift') && (
-            <Card className="bg-primary/5 border-primary">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-primary" data-testid="text-bundle-discount">
-                      Complete Bundle Discount!
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Save €8/month when you get all four products
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground line-through">€33</div>
-                    <div className="text-2xl font-bold text-primary">€24.99</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <div className="w-full flex items-center justify-between p-4 bg-muted rounded-md">
-            <span className="font-semibold">Total:</span>
-            <span className="text-2xl font-bold" data-testid="text-total-price">
+        {/* Bundle banner */}
+        {isBundleSelected && (
+          <div
+            className="rounded-md p-4 mb-4"
+            style={{ backgroundColor: GOLD_DIM, border: `1px solid ${GOLD_BORDER}` }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium" style={{ color: GOLD }} data-testid="text-bundle-discount">
+                  Complete Bundle Discount
+                </p>
+                <p className="text-xs" style={{ color: MUTED }}>Save €8/month with all four products</p>
+              </div>
+              <div className="text-right">
+                <div className="text-xs line-through" style={{ color: MUTED }}>€33</div>
+                <div className="text-xl font-light text-white">€24.99</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Total + CTA */}
+        <div className="space-y-3">
+          <div
+            className="flex items-center justify-between p-4 rounded-md"
+            style={{ backgroundColor: SURFACE, border: `1px solid ${BORDER}` }}
+          >
+            <span className="text-sm font-medium text-white">Total</span>
+            <span className="text-xl font-light text-white" data-testid="text-total-price">
               €{calculateTotal()}/month
             </span>
           </div>
           <Button
             onClick={handleContinue}
             disabled={selectedProducts.length === 0 || selectProductsMutation.isPending}
-            className="w-full"
-            size="lg"
+            className="w-full tracking-wide text-sm font-medium"
+            style={{ backgroundColor: GOLD, color: "#080808", border: "none" }}
             data-testid="button-continue"
           >
             {selectProductsMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
             ) : hasActiveTrial && !hasActiveSubscription ? (
               "Start Free Trial"
             ) : (
               "Continue to Payment"
             )}
           </Button>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
