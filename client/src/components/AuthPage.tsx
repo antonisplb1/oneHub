@@ -1,16 +1,21 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { useEffect } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import { Loader2 } from "lucide-react";
+
+const GOLD = "#c9a84c";
+const BG = "#080808";
+const SURFACE = "#101010";
+const BORDER = "rgba(255,255,255,0.07)";
+const MUTED = "rgba(255,255,255,0.45)";
 
 export default function AuthPage() {
+  const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
@@ -19,14 +24,15 @@ export default function AuthPage() {
   const [shopName, setShopName] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileError, setTurnstileError] = useState(false);
-  
+
   const { login, signup, isLoggingIn, isSigningUp, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Check URL for mode parameter
-  const urlParams = new URLSearchParams(window.location.search);
-  const mode = urlParams.get('mode');
-  const defaultTab = mode === 'login' ? 'login' : 'signup';
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    if (mode === 'login') setActiveTab('login');
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -41,171 +47,222 @@ export default function AuthPage() {
 
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    if (signupPassword !== confirmPassword) {
-      return;
-    }
+    if (signupPassword !== confirmPassword) return;
     signup({ email: signupEmail, password: signupPassword, confirmPassword, shopName, turnstileToken });
   };
 
+  const inputStyle = {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    color: "#fff",
+  } as React.CSSProperties;
+
+  const labelStyle = { color: "rgba(255,255,255,0.7)", fontSize: "0.8125rem", fontWeight: 500 } as React.CSSProperties;
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div style={{ backgroundColor: BG, minHeight: "100vh" }} className="flex items-center justify-center p-6">
       <div className="w-full max-w-md">
+
         <div className="text-center mb-10">
           <Link href="/">
-            <div className="flex items-center justify-center gap-3 cursor-pointer hover:opacity-80 transition-opacity mb-3">
+            <div className="inline-flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity mb-3">
               <img src={logoImage} alt="uniHub logo" className="h-10 w-10" />
-              <h1 className="text-4xl font-semibold text-primary tracking-tight">uniHub</h1>
+              <h1 className="text-4xl tracking-tight">
+                <span style={{ color: "#fff", fontWeight: 300 }}>uni</span>
+                <span style={{ color: GOLD, fontStyle: "italic", fontWeight: 600 }}>Hub</span>
+              </h1>
             </div>
           </Link>
-          <p className="text-muted-foreground text-lg">Manage loyalty & engagement</p>
+          <p style={{ color: MUTED }} className="text-base">Manage loyalty &amp; engagement</p>
         </div>
 
-        <Card className="border-card-border shadow-sm">
-          <CardHeader className="pb-6">
-            <CardTitle className="text-2xl font-semibold">Welcome</CardTitle>
-            <CardDescription className="text-base">Login or create your account to get started</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue={defaultTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-8">
-                <TabsTrigger value="login" data-testid="tab-login">Login</TabsTrigger>
-                <TabsTrigger value="signup" data-testid="tab-signup">Sign Up</TabsTrigger>
-              </TabsList>
+        <div style={{ backgroundColor: SURFACE, border: `1px solid ${BORDER}` }} className="rounded-xl overflow-hidden">
+          <div style={{ height: "2px", background: `linear-gradient(90deg, ${GOLD} 0%, transparent 65%)` }} />
 
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email" className="text-sm font-medium">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      data-testid="input-login-email"
-                      required
-                      disabled={isLoggingIn}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password" className="text-sm font-medium">Password</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      data-testid="input-login-password"
-                      required
-                      disabled={isLoggingIn}
-                    />
-                  </div>
-                  <Button type="submit" size="lg" className="w-full" data-testid="button-login-submit" disabled={isLoggingIn}>
-                    {isLoggingIn ? "Logging in..." : "Login"}
-                  </Button>
-                  <div className="text-center mt-4">
-                    <a href="/forgot-password" className="text-sm text-primary hover:underline" data-testid="link-forgot-password">
-                      Forgot Password?
-                    </a>
-                  </div>
-                </form>
-              </TabsContent>
+          <div className="p-8">
+            <div
+              className="flex gap-1 mb-8 p-1 rounded-lg"
+              style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+            >
+              {(["login", "signup"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  data-testid={`tab-${tab}`}
+                  className="flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all"
+                  style={{
+                    backgroundColor: activeTab === tab ? GOLD : "transparent",
+                    color: activeTab === tab ? BG : MUTED,
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  {tab === "login" ? "Login" : "Sign Up"}
+                </button>
+              ))}
+            </div>
 
-              <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="shop-name" className="text-sm font-medium">Shop Name</Label>
-                    <Input
-                      id="shop-name"
-                      type="text"
-                      placeholder="My Coffee Shop"
-                      value={shopName}
-                      onChange={(e) => setShopName(e.target.value)}
-                      data-testid="input-shop-name"
-                      required
-                      disabled={isSigningUp}
+            {activeTab === "login" && (
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="login-email" style={labelStyle}>Email</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    data-testid="input-login-email"
+                    required
+                    disabled={isLoggingIn}
+                    style={inputStyle}
+                    className="focus-visible:ring-0 focus-visible:border-white/30 placeholder:text-white/20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password" style={labelStyle}>Password</Label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    data-testid="input-login-password"
+                    required
+                    disabled={isLoggingIn}
+                    style={inputStyle}
+                    className="focus-visible:ring-0 focus-visible:border-white/30 placeholder:text-white/20"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  data-testid="button-login-submit"
+                  disabled={isLoggingIn}
+                  className="w-full py-3 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ backgroundColor: GOLD, color: BG, border: "none", cursor: "pointer" }}
+                >
+                  {isLoggingIn && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isLoggingIn ? "Logging in..." : "Login"}
+                </button>
+                <div className="text-center">
+                  <a href="/forgot-password" style={{ color: GOLD, fontSize: "0.8125rem" }} className="hover:opacity-80 transition-opacity" data-testid="link-forgot-password">
+                    Forgot Password?
+                  </a>
+                </div>
+              </form>
+            )}
+
+            {activeTab === "signup" && (
+              <form onSubmit={handleSignup} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="shop-name" style={labelStyle}>Shop Name</Label>
+                  <Input
+                    id="shop-name"
+                    type="text"
+                    placeholder="My Coffee Shop"
+                    value={shopName}
+                    onChange={(e) => setShopName(e.target.value)}
+                    data-testid="input-shop-name"
+                    required
+                    disabled={isSigningUp}
+                    style={inputStyle}
+                    className="focus-visible:ring-0 focus-visible:border-white/30 placeholder:text-white/20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email" style={labelStyle}>Email</Label>
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={signupEmail}
+                    onChange={(e) => setSignupEmail(e.target.value)}
+                    data-testid="input-signup-email"
+                    required
+                    disabled={isSigningUp}
+                    style={inputStyle}
+                    className="focus-visible:ring-0 focus-visible:border-white/30 placeholder:text-white/20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password" style={labelStyle}>Password</Label>
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    data-testid="input-signup-password"
+                    required
+                    disabled={isSigningUp}
+                    minLength={6}
+                    style={inputStyle}
+                    className="focus-visible:ring-0 focus-visible:border-white/30 placeholder:text-white/20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password" style={labelStyle}>Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    data-testid="input-confirm-password"
+                    required
+                    disabled={isSigningUp}
+                    style={inputStyle}
+                    className="focus-visible:ring-0 focus-visible:border-white/30 placeholder:text-white/20"
+                  />
+                  {confirmPassword && signupPassword !== confirmPassword && (
+                    <p className="text-sm text-destructive mt-1">Passwords don't match</p>
+                  )}
+                </div>
+                <div className="space-y-2" data-testid="turnstile-widget">
+                  <div className="flex justify-center">
+                    <Turnstile
+                      siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                      onSuccess={(token) => {
+                        setTurnstileToken(token);
+                        setTurnstileError(false);
+                      }}
+                      onError={() => {
+                        setTurnstileToken(null);
+                        setTurnstileError(true);
+                      }}
+                      onExpire={() => {
+                        setTurnstileToken(null);
+                      }}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-sm font-medium">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      data-testid="input-signup-email"
-                      required
-                      disabled={isSigningUp}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-sm font-medium">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                      data-testid="input-signup-password"
-                      required
-                      disabled={isSigningUp}
-                      minLength={6}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password" className="text-sm font-medium">Confirm Password</Label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      data-testid="input-confirm-password"
-                      required
-                      disabled={isSigningUp}
-                    />
-                    {confirmPassword && signupPassword !== confirmPassword && (
-                      <p className="text-sm text-destructive mt-1">Passwords don't match</p>
-                    )}
-                  </div>
-                  <div className="space-y-2" data-testid="turnstile-widget">
-                    <div className="flex justify-center">
-                      <Turnstile
-                        siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                        onSuccess={(token) => {
-                          setTurnstileToken(token);
-                          setTurnstileError(false);
-                        }}
-                        onError={() => {
-                          setTurnstileToken(null);
-                          setTurnstileError(true);
-                        }}
-                        onExpire={() => {
-                          setTurnstileToken(null);
-                        }}
-                      />
-                    </div>
-                    {turnstileError && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        Note: CAPTCHA widget may not load in development. This is expected and won't prevent testing.
-                      </p>
-                    )}
-                  </div>
-                  <Button 
-                    type="submit" 
-                    size="lg"
-                    className="w-full" 
-                    data-testid="button-signup-submit" 
-                    disabled={isSigningUp || signupPassword !== confirmPassword}
-                  >
-                    {isSigningUp ? "Creating Account..." : "Create Account"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+                  {turnstileError && (
+                    <p style={{ color: MUTED }} className="text-xs text-center">
+                      Note: CAPTCHA widget may not load in development. This is expected and won't prevent testing.
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  data-testid="button-signup-submit"
+                  disabled={isSigningUp || signupPassword !== confirmPassword}
+                  className="w-full py-3 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ backgroundColor: GOLD, color: BG, border: "none", cursor: "pointer" }}
+                >
+                  {isSigningUp && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isSigningUp ? "Creating Account..." : "Create Account"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+
+        <p style={{ color: "rgba(255,255,255,0.25)" }} className="text-xs text-center mt-6">
+          By signing up you agree to our{" "}
+          <a href="/terms-of-service" style={{ color: GOLD }} className="hover:opacity-80">Terms</a>
+          {" "}&amp;{" "}
+          <a href="/privacy-policy" style={{ color: GOLD }} className="hover:opacity-80">Privacy Policy</a>
+        </p>
       </div>
     </div>
   );

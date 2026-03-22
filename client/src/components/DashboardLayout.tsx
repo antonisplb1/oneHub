@@ -212,16 +212,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   if (isLoading || !user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#080808" }}>
+        <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Loading...</p>
       </div>
     );
   }
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Verifying access...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#080808" }}>
+        <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Verifying access...</p>
       </div>
     );
   }
@@ -237,9 +237,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <SidebarHeader className="p-5 border-b">
             <div className="flex flex-col gap-4">
               <Link href="/dashboard" data-testid="link-home">
-                <div className="flex items-center gap-3 cursor-pointer">
+                <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
                   <img src={logoImage} alt="uniHub logo" className="h-8 w-8" />
-                  <h1 className="text-2xl font-semibold text-primary">uniHub</h1>
+                  <h1 className="text-2xl tracking-tight">
+                    <span style={{ color: "#fff", fontWeight: 300 }}>uni</span>
+                    <span style={{ color: "#c9a84c", fontStyle: "italic", fontWeight: 600 }}>Hub</span>
+                  </h1>
                 </div>
               </Link>
               <div className="flex items-center gap-3">

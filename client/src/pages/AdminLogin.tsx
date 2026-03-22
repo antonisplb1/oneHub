@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useLocation, Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Loader2 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+
+const GOLD = "#c9a84c";
+const BG = "#080808";
+const SURFACE = "#101010";
+const BORDER = "rgba(255,255,255,0.07)";
+const MUTED = "rgba(255,255,255,0.45)";
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
@@ -34,10 +38,7 @@ export default function AdminLogin() {
       return response;
     },
     onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Logged in successfully",
-      });
+      toast({ title: "Success", description: "Logged in successfully" });
       setLocation("/admin/dashboard");
     },
     onError: (error: any) => {
@@ -55,28 +56,38 @@ export default function AdminLogin() {
     loginMutation.mutate({ email, password });
   };
 
+  const inputStyle = {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    color: "#fff",
+  } as React.CSSProperties;
+
+  const labelStyle = { color: "rgba(255,255,255,0.7)", fontSize: "0.8125rem", fontWeight: 500 } as React.CSSProperties;
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div style={{ backgroundColor: BG, minHeight: "100vh" }} className="flex items-center justify-center p-6">
       <div className="w-full max-w-md">
+
         <div className="text-center mb-10">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <ShieldCheck className="h-10 w-10 text-primary" />
-            <h1 className="text-4xl font-semibold text-primary tracking-tight">Admin Portal</h1>
+          <div className="inline-flex items-center gap-3 mb-3">
+            <ShieldCheck style={{ color: GOLD }} className="h-9 w-9" />
+            <h1 className="text-4xl tracking-tight" style={{ color: "#fff", fontWeight: 300 }}>
+              Admin <span style={{ color: GOLD, fontStyle: "italic", fontWeight: 600 }}>Portal</span>
+            </h1>
           </div>
-          <p className="text-muted-foreground text-lg">Secure administrator access</p>
+          <p style={{ color: MUTED }} className="text-base">Secure administrator access</p>
         </div>
 
-        <Card className="border-card-border shadow-sm">
-          <CardHeader className="pb-6">
-            <CardTitle className="text-2xl font-semibold">Admin Login</CardTitle>
-            <CardDescription className="text-base">
-              Enter your administrator credentials
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-6">
+        <div style={{ backgroundColor: SURFACE, border: `1px solid ${BORDER}` }} className="rounded-xl overflow-hidden">
+          <div style={{ height: "2px", background: `linear-gradient(90deg, ${GOLD} 0%, transparent 65%)` }} />
+
+          <div className="p-8">
+            <h2 className="text-lg font-semibold mb-1" style={{ color: "#fff" }}>Admin Login</h2>
+            <p className="text-sm mb-7" style={{ color: MUTED }}>Enter your administrator credentials</p>
+
+            <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="admin-email" className="text-sm font-medium">Email</Label>
+                <Label htmlFor="admin-email" style={labelStyle}>Email</Label>
                 <Input
                   id="admin-email"
                   type="email"
@@ -86,10 +97,12 @@ export default function AdminLogin() {
                   data-testid="input-admin-email"
                   required
                   disabled={loginMutation.isPending}
+                  style={inputStyle}
+                  className="focus-visible:ring-0 focus-visible:border-white/30 placeholder:text-white/20"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="admin-password" className="text-sm font-medium">Password</Label>
+                <Label htmlFor="admin-password" style={labelStyle}>Password</Label>
                 <Input
                   id="admin-password"
                   type="password"
@@ -99,27 +112,31 @@ export default function AdminLogin() {
                   data-testid="input-admin-password"
                   required
                   disabled={loginMutation.isPending}
+                  style={inputStyle}
+                  className="focus-visible:ring-0 focus-visible:border-white/30 placeholder:text-white/20"
                 />
               </div>
-              <Button 
-                type="submit" 
-                size="lg" 
-                className="w-full" 
-                data-testid="button-admin-login-submit" 
+              <button
+                type="submit"
+                data-testid="button-admin-login-submit"
                 disabled={loginMutation.isPending}
+                className="w-full py-3 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ backgroundColor: GOLD, color: BG, border: "none", cursor: "pointer" }}
               >
+                {loginMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                 {loginMutation.isPending ? "Logging in..." : "Login"}
-              </Button>
+              </button>
             </form>
+
             <div className="mt-6 text-center">
               <Link href="/admin/forgot-password">
-                <Button variant="ghost" size="sm" data-testid="link-admin-forgot-password">
+                <span style={{ color: GOLD, fontSize: "0.8125rem", cursor: "pointer" }} className="hover:opacity-80 transition-opacity" data-testid="link-admin-forgot-password">
                   Forgot Password?
-                </Button>
+                </span>
               </Link>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
