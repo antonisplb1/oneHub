@@ -15,14 +15,14 @@ const PRODUCT_INFO = [
     id: 'loyalty',
     name: 'Loyalty Cards',
     description: 'Digital loyalty card program with stamp collection',
-    price: 10,
+    price: 15,
     icon: Ticket,
   },
   {
     id: 'spin',
     name: 'Spin Wheel',
     description: 'Prize wheel campaigns for customer engagement',
-    price: 8,
+    price: 5,
     icon: Gift,
   },
   {
@@ -276,15 +276,15 @@ export default function SettingsPage() {
   const calculatePrice = (products: string[]) => {
     const sorted = [...products].sort();
     
-    // All four products - Bundle discount (€24.99 instead of €33)
+    // All four products - Bundle discount (€24.99 instead of €35)
     if (sorted.length === 4 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu') && sorted.includes('shift')) {
       return 24.99;
     }
     // Individual prices for all other combinations
     else {
       let total = 0;
-      if (products.includes('loyalty')) total += 10;
-      if (products.includes('spin')) total += 8;
+      if (products.includes('loyalty')) total += 15;
+      if (products.includes('spin')) total += 5;
       if (products.includes('menu')) total += 5;
       if (products.includes('shift')) total += 10;
       return total;
@@ -542,11 +542,11 @@ export default function SettingsPage() {
                     Complete Bundle Discount!
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Save €8/month with all four products
+                    Save €10/month with all four products
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-muted-foreground line-through">€33</div>
+                  <div className="text-sm text-muted-foreground line-through">€35</div>
                   <div className="text-xl font-bold text-primary">€24.99</div>
                 </div>
               </div>

@@ -19,7 +19,7 @@ const plans = [
     btnTestid: "button-select-loyalty",
     icon: Award,
     title: "Loyalty Cards",
-    price: "€10",
+    price: "€15",
     features: ["Digital stamp cards", "Apple & Google Wallet", "Unlimited customers", "QR code scanning", "Built-in scanner"],
   },
   {
@@ -28,7 +28,7 @@ const plans = [
     btnTestid: "button-select-spin",
     icon: Gift,
     title: "Spin Wheel",
-    price: "€8",
+    price: "€5",
     features: ["Customizable wheels", "Set win probabilities", "Unlimited campaigns", "Prize tracking", "Social sharing"],
   },
   {
@@ -178,7 +178,7 @@ export default function Pricing() {
                   style={{ backgroundColor: GOLD_DIM, color: GOLD }}
                   data-testid="badge-best-value"
                 >
-                  Best Value — Save €8
+                  Best Value — Save €10
                 </div>
                 <h3 className="text-3xl font-light text-white mb-3">Complete Bundle</h3>
                 <div className="mb-2">

@@ -153,9 +153,9 @@ export default function TermsOfService() {
                 <div className="grid md:grid-cols-2 gap-3">
                   {[
                     { label: "Loyalty Cards Only", price: "€15" },
-                    { label: "Spin Wheel Only", price: "€10" },
+                    { label: "Spin Wheel Only", price: "€5" },
                     { label: "Menu Builder Only", price: "€5" },
-                    { label: "Complete Bundle", price: "€23", note: "All features included" },
+                    { label: "Complete Bundle", price: "€24.99", note: "All features included" },
                   ].map(item => (
                     <div key={item.label} className="rounded-md p-3" style={{ backgroundColor: "rgba(255,255,255,0.04)" }}>
                       <p className="text-xs font-medium text-white mb-1">{item.label}</p>
