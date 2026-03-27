@@ -2,8 +2,8 @@ import { db } from "./db";
 import { hashPassword } from "./auth";
 import {
   users, customers, loyaltyCards, loyaltyTransactions,
-  rewards, spinTokens, spins,
-  menuCategories, menuItems,
+  rewards, spinTokens, spins, menuItems,
+  menuCategories,
   crewMembers, shifts, timeframePresets,
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
@@ -88,13 +88,20 @@ export async function reseedDemoAccount(): Promise<{ success: boolean; message: 
     selectedProducts: ["loyalty", "spin", "menu", "shift"],
   }).where(eq(users.id, uid));
 
-  // Wipe existing feature data (cascades handle child rows)
-  await db.delete(customers).where(eq(customers.userId, uid));
-  await db.delete(rewards).where(eq(rewards.userId, uid));
+  // Wipe existing feature data — child tables before parents to respect FK constraints
+  // spins.rewardId references rewards WITHOUT cascade, so spins must go first
+  await db.delete(spins).where(eq(spins.userId, uid));
   await db.delete(spinTokens).where(eq(spinTokens.userId, uid));
+  await db.delete(rewards).where(eq(rewards.userId, uid));
+  // loyaltyTransactions cascade from loyaltyCards; delete cards first, then customers
+  await db.delete(loyaltyCards).where(eq(loyaltyCards.userId, uid));
+  await db.delete(customers).where(eq(customers.userId, uid));
+  // menuItems → menuCategories (cascade, but explicit)
+  await db.delete(menuItems).where(eq(menuItems.userId, uid));
   await db.delete(menuCategories).where(eq(menuCategories.userId, uid));
-  await db.delete(crewMembers).where(eq(crewMembers.userId, uid));
+  // shifts / crew
   await db.delete(shifts).where(eq(shifts.userId, uid));
+  await db.delete(crewMembers).where(eq(crewMembers.userId, uid));
   await db.delete(timeframePresets).where(eq(timeframePresets.userId, uid));
 
   await populateDemoData(uid);
