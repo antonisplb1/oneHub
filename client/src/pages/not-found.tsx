@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 
 const GOLD = "#c9a84c";
 const MUTED = "rgba(255,255,255,0.45)";

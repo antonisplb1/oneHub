@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { ArrowLeft, Mail } from "lucide-react";
-import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 
 const GOLD = "#c9a84c";
 const GOLD_DIM = "rgba(201,168,76,0.18)";

@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Ticket, Gift, Loader2, UtensilsCrossed, Calendar } from "lucide-react";
-import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 import { Link } from "wouter";
 
 const GOLD = "#c9a84c";

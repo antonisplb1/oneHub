@@ -4,7 +4,7 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
-import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 import { Link } from "wouter";
 
 const GOLD = "#c9a84c";

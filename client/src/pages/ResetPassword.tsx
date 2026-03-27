@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 
 const GOLD = "#c9a84c";
 const SURFACE = "#111111";

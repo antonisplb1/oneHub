@@ -5,7 +5,7 @@ import { AlertCircle, Ticket, Gift, UtensilsCrossed, Calendar, Loader2 } from "l
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 import { Link } from "wouter";
 import { Checkbox } from "@/components/ui/checkbox";
 

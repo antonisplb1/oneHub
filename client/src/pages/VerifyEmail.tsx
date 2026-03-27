@@ -3,7 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 import { Link } from "wouter";
 
 const GOLD = "#c9a84c";

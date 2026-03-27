@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowUp, Cookie } from "lucide-react";
-import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 import CookiePreferences from "@/components/CookiePreferences";
 
 const GOLD = "#c9a84c";

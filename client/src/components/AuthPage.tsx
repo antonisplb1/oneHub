@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { useEffect } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
-import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 import { Loader2 } from "lucide-react";
 
 const GOLD = "#c9a84c";

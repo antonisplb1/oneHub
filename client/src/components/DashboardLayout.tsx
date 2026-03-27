@@ -34,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import logoImage from "@assets/uniHub Icon Logo_1760616426501.png";
+import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", products: [], permission: 'dashboard' as string | null, ownerOnly: false },
