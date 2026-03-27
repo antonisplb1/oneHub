@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
-import { seedDemoAccount } from "./demoSeed";
+import { seedDemoAccount, reseedDemoAccount } from "./demoSeed";
 import { 
   users, 
   customers, 
@@ -801,6 +801,16 @@ export function registerRoutes(app: Express) {
       }
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Demo seed failed" });
+    }
+  });
+
+  // Admin: Re-seed demo account (wipe + repopulate with fresh data)
+  app.post("/api/admin/reseed-demo", requireAdminAuth, async (req, res) => {
+    try {
+      const result = await reseedDemoAccount();
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Demo reseed failed" });
     }
   });
 

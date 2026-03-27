@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { ShieldCheck, UserPlus, LogOut } from "lucide-react";
+import { ShieldCheck, UserPlus, LogOut, RefreshCw } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -51,6 +51,29 @@ export default function AdminDashboard() {
       toast({
         title: "User Creation Failed",
         description: errorData.error || "Failed to create user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reseedMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('/api/admin/reseed-demo', {
+        method: 'POST',
+      });
+      return response;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Demo Reseeded",
+        description: data.message || "Demo account refreshed with fresh data",
+      });
+    },
+    onError: (error: any) => {
+      const errorData = error.data || {};
+      toast({
+        title: "Reseed Failed",
+        description: errorData.error || "Failed to reseed demo account",
         variant: "destructive",
       });
     },
@@ -223,6 +246,33 @@ export default function AdminDashboard() {
                   {createUserMutation.isPending ? "Creating User..." : "Create User"}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <RefreshCw className="h-6 w-6 text-primary" />
+                <div>
+                  <CardTitle className="text-2xl">Reseed Demo Account</CardTitle>
+                  <CardDescription className="mt-1">
+                    Wipe and repopulate demo@unihub.live with fresh customers, spins, menu, and current-week shifts
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full"
+                data-testid="button-reseed-demo"
+                onClick={() => reseedMutation.mutate()}
+                disabled={reseedMutation.isPending}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${reseedMutation.isPending ? "animate-spin" : ""}`} />
+                {reseedMutation.isPending ? "Reseeding..." : "Reseed Demo Data"}
+              </Button>
             </CardContent>
           </Card>
         </div>
