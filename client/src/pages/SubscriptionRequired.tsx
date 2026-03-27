@@ -17,8 +17,8 @@ const BORDER = "rgba(255,255,255,0.07)";
 const MUTED = "rgba(255,255,255,0.45)";
 
 const PRODUCTS = [
-  { id: "loyalty", name: "Loyalty Cards", description: "Digital loyalty card program with stamp collection and rewards", price: 10, icon: Ticket },
-  { id: "spin", name: "Spin Wheel", description: "Interactive prize wheel campaigns for customer engagement", price: 8, icon: Gift },
+  { id: "loyalty", name: "Loyalty Cards", description: "Digital loyalty card program with stamp collection and rewards", price: 15, icon: Ticket },
+  { id: "spin", name: "Spin Wheel", description: "Interactive prize wheel campaigns for customer engagement", price: 5, icon: Gift },
   { id: "menu", name: "Menu Builder", description: "Create and manage your digital menu for customers", price: 5, icon: UtensilsCrossed },
   { id: "shift", name: "Shift Manager", description: "Employee shift scheduling with weekly calendar and crew management", price: 10, icon: Calendar },
 ];
@@ -35,7 +35,7 @@ function calculatePrice(selected: string[]) {
   ) {
     return 24.99;
   }
-  const prices: Record<string, number> = { loyalty: 10, spin: 8, menu: 5, shift: 10 };
+  const prices: Record<string, number> = { loyalty: 15, spin: 5, menu: 5, shift: 10 };
   return selected.reduce((t, id) => t + (prices[id] || 0), 0);
 }
 
@@ -182,10 +182,10 @@ export default function SubscriptionRequired() {
               >
                 <div>
                   <p className="text-sm font-medium" style={{ color: GOLD }}>Complete Bundle Discount</p>
-                  <p className="text-xs" style={{ color: MUTED }}>Save €8/month with all four features</p>
+                  <p className="text-xs" style={{ color: MUTED }}>Save €10/month with all four features</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs line-through" style={{ color: MUTED }}>€33</div>
+                  <div className="text-xs line-through" style={{ color: MUTED }}>€35</div>
                   <div className="text-lg font-light text-white">€24.99</div>
                 </div>
               </div>

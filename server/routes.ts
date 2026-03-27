@@ -68,8 +68,8 @@ const stripe = new Stripe(stripeSecretKey, {
 
 // Product pricing configuration
 const PRODUCT_PRICES = {
-  'loyalty': 1000, // €10 in cents
-  'spin': 800,     // €8 in cents
+  'loyalty': 1500, // €15 in cents
+  'spin': 500,     // €5 in cents
   'menu': 500,     // €5 in cents
   'shift': 1000,   // €10 in cents
 };
