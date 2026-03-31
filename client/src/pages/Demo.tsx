@@ -317,101 +317,138 @@ function MenuDemo() {
 }
 
 // ─── Shift Demo ───────────────────────────────────────────────────────────────
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const SHIFT_DATA = [
-  { name: "Alex T.",  color: "#c9a84c", shifts: [0, 1, null, 0, null, 1, null] },
-  { name: "Maria R.", color: "#a87530", shifts: [1, null, 1, null, 0, null, 1] },
-  { name: "Sarah K.", color: "#7a8050", shifts: [null, 0, null, 1, 1, 0, null] },
-  { name: "Tom A.",   color: "#507a5e", shifts: [null, null, 0, 1, null, null, 0] },
-  { name: "Elena P.", color: "#507050", shifts: [0, null, null, 0, 1, null, null] },
+const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const SAMPLE_SHIFTS = [
+  { day: 0, name: "Alex T.",  role: "Barista",  start: "07:00", end: "15:00" },
+  { day: 0, name: "Maria R.", role: "Manager",  start: "09:00", end: "17:00" },
+  { day: 1, name: "Maria R.", role: "Manager",  start: "07:00", end: "15:00" },
+  { day: 1, name: "Tom A.",   role: "Barista",  start: "15:00", end: "23:00" },
+  { day: 2, name: "Sarah K.", role: "Barista",  start: "07:00", end: "15:00" },
+  { day: 2, name: "Alex T.",  role: "Barista",  start: "12:00", end: "20:00" },
+  { day: 3, name: "Tom A.",   role: "Barista",  start: "07:00", end: "15:00" },
+  { day: 3, name: "Maria R.", role: "Manager",  start: "15:00", end: "23:00" },
+  { day: 4, name: "Alex T.",  role: "Barista",  start: "07:00", end: "15:00" },
+  { day: 4, name: "Sarah K.", role: "Barista",  start: "12:00", end: "20:00" },
+  { day: 5, name: "Tom A.",   role: "Barista",  start: "10:00", end: "18:00" },
+  { day: 6, name: "Sarah K.", role: "Barista",  start: "10:00", end: "18:00" },
 ];
-const SHIFT_LABELS = ["07:00–15:00", "12:00–20:00"];
-const SHIFT_COLORS = [GOLD_DIM, "rgba(255,255,255,0.06)"];
-const SHIFT_BORDERS = [GOLD_BORDER, BORDER];
+
+function getMonday(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function formatShortDate(date: Date): string {
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
 
 function ShiftDemo() {
-  const [hoveredCell, setHoveredCell] = useState<string | null>(null);
+  const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
+
+  const prevWeek = () => setWeekStart(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
+  const nextWeek = () => setWeekStart(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
+  const thisWeek = () => setWeekStart(getMonday(new Date()));
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekLabel = `${formatShortDate(weekStart)} – ${formatShortDate(weekEnd)}`;
 
   return (
     <div className="flex flex-col gap-4 py-2 w-full">
-      <div className="text-center">
-        <p className="text-xs tracking-[0.2em] uppercase mb-0.5" style={{ color: GOLD }}>The Golden Cup</p>
-        <p className="text-sm font-light" style={{ color: MUTED }}>This week's roster</p>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <p className="text-xs tracking-[0.2em] uppercase" style={{ color: GOLD }}>The Golden Cup</p>
+          <p className="text-sm font-light" style={{ color: MUTED }}>Weekly Schedule</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={thisWeek}
+            className="text-xs px-2 py-1 rounded border transition-colors"
+            style={{ borderColor: BORDER, color: MUTED, backgroundColor: "transparent" }}
+            data-testid="button-demo-this-week"
+          >
+            This Week
+          </button>
+          <button
+            onClick={prevWeek}
+            className="px-2 py-1 rounded border transition-colors"
+            style={{ borderColor: BORDER, color: MUTED }}
+            data-testid="button-demo-prev-week"
+          >
+            ‹
+          </button>
+          <span className="text-xs px-1" style={{ color: MUTED }}>{weekLabel}</span>
+          <button
+            onClick={nextWeek}
+            className="px-2 py-1 rounded border transition-colors"
+            style={{ borderColor: BORDER, color: MUTED }}
+            data-testid="button-demo-next-week"
+          >
+            ›
+          </button>
+        </div>
       </div>
 
-      {/* Schedule grid */}
+      {/* 7-column day grid */}
       <div className="overflow-x-auto">
-        <table className="w-full text-xs border-collapse" style={{ minWidth: 360 }}>
-          <thead>
-            <tr>
-              <th className="py-2 pr-3 text-left font-medium w-20" style={{ color: MUTED }}>Crew</th>
-              {DAYS.map(d => (
-                <th key={d} className="py-2 text-center font-medium" style={{ color: MUTED }}>{d}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {SHIFT_DATA.map(({ name, color, shifts }) => (
-              <tr key={name}>
-                <td className="py-1.5 pr-3">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                    <span className="text-white font-medium">{name}</span>
+        <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, minmax(88px, 1fr))", minWidth: 560 }}>
+          {WEEK_DAYS.map((day, i) => {
+            const date = new Date(weekStart);
+            date.setDate(date.getDate() + i);
+            const shifts = SAMPLE_SHIFTS.filter(s => s.day === i);
+            const isToday = formatShortDate(date) === formatShortDate(new Date());
+
+            return (
+              <div key={day} className="flex flex-col gap-1.5" data-testid={`demo-day-${i}`}>
+                {/* Day header */}
+                <div className="mb-1">
+                  <div
+                    className="text-xs font-semibold"
+                    style={{ color: isToday ? GOLD : "white" }}
+                  >
+                    {day}
                   </div>
-                </td>
-                {shifts.map((shift, dayIdx) => {
-                  const cellKey = `${name}-${dayIdx}`;
-                  return (
-                    <td key={dayIdx} className="py-1.5 text-center px-0.5">
-                      {shift !== null ? (
-                        <div
-                          className="relative rounded mx-auto cursor-default"
-                          style={{
-                            backgroundColor: SHIFT_COLORS[shift],
-                            border: `1px solid ${SHIFT_BORDERS[shift]}`,
-                            height: 28,
-                            minWidth: 36,
-                          }}
-                          onMouseEnter={() => setHoveredCell(cellKey)}
-                          onMouseLeave={() => setHoveredCell(null)}
-                        >
-                          {hoveredCell === cellKey && (
-                            <div
-                              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded text-xs whitespace-nowrap z-20"
-                              style={{ backgroundColor: "#222", border: `1px solid ${BORDER}`, color: "white" }}
-                            >
-                              {SHIFT_LABELS[shift]}
-                            </div>
-                          )}
-                          <span style={{ color: shift === 0 ? GOLD : MUTED, fontSize: "9px", lineHeight: "28px" }}>
-                            {shift === 0 ? "AM" : "PM"}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="h-7 mx-auto" />
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <div className="text-xs" style={{ color: MUTED }}>
+                    {formatShortDate(date)}
+                  </div>
+                </div>
+
+                {/* Shift cards */}
+                {shifts.length === 0 ? (
+                  <div className="text-xs py-3 text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
+                    —
+                  </div>
+                ) : (
+                  shifts.map((shift, si) => (
+                    <div
+                      key={si}
+                      className="rounded p-2 flex flex-col gap-0.5"
+                      style={{ backgroundColor: SURFACE, border: `1px solid ${BORDER}` }}
+                      data-testid={`demo-shift-${i}-${si}`}
+                    >
+                      <div className="text-xs font-semibold text-white truncate">{shift.name}</div>
+                      <div className="text-xs truncate" style={{ color: MUTED }}>{shift.role}</div>
+                      <div className="text-xs font-medium mt-0.5" style={{ color: GOLD }}>
+                        {shift.start} – {shift.end}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-5 justify-center flex-wrap">
-        {[
-          { label: "07:00–15:00", color: GOLD_DIM, border: GOLD_BORDER, text: GOLD },
-          { label: "12:00–20:00", color: "rgba(255,255,255,0.06)", border: BORDER, text: MUTED },
-        ].map(item => (
-          <div key={item.label} className="flex items-center gap-1.5">
-            <div className="w-4 h-3 rounded" style={{ backgroundColor: item.color, border: `1px solid ${item.border}` }} />
-            <span className="text-xs" style={{ color: MUTED }}>{item.label}</span>
-          </div>
-        ))}
-        <p className="text-xs w-full text-center" style={{ color: "rgba(255,255,255,0.2)" }}>Hover a shift to see times</p>
-      </div>
+      <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
+        Read-only view — staff access the schedule via a PIN-protected link
+      </p>
     </div>
   );
 }
