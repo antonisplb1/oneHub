@@ -10,6 +10,7 @@ import {
   Zap,
   CheckCircle,
   Minus,
+  Layers,
 } from "lucide-react";
 import { SiStripe } from "react-icons/si";
 import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
@@ -129,9 +130,10 @@ export default function LandingPage() {
               variant="outline"
               className="text-sm px-8 font-medium tracking-wide bg-transparent"
               style={{ borderColor: GOLD_BORDER, color: "white" }}
-              data-testid="button-watch-demo"
+              data-testid="button-try-demo"
             >
-              Watch Demo
+              <Layers className="mr-2 w-4 h-4" />
+              Try Live Demo
             </Button>
           </Link>
         </div>
