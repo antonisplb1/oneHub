@@ -9,7 +9,7 @@ import {
 import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
-const DEMO_EMAIL = "demo@unihub.live";
+const DEMO_EMAIL = "antonispleipell@gmail.com";
 const DEMO_SHOP_NAME = "The Golden Cup";
 const DEMO_PASSWORD = "DemoDemo";
 const DEMO_SHIFT_PIN = "1234";
@@ -79,13 +79,16 @@ export async function reseedDemoAccount(): Promise<{ success: boolean; message: 
 
   const uid = existing[0].id;
 
-  // Update shop name and settings
+  // Update shop name, settings and reset password
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
   await db.update(users).set({
     shopName: DEMO_SHOP_NAME,
     cardBackgroundColor: "#c9a84c",
     shiftAccessPin: DEMO_SHIFT_PIN,
     subscriptionStatus: "active",
     selectedProducts: ["loyalty", "spin", "menu", "shift"],
+    passwordHash,
+    emailVerified: true,
   }).where(eq(users.id, uid));
 
   // Wipe existing feature data — child tables before parents to respect FK constraints
