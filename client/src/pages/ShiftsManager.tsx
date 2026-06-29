@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, ChevronLeft, ChevronRight, Users, Calendar, Copy, Clock, Pencil, CopyPlus } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -53,7 +54,12 @@ export default function ShiftsManager() {
   const [deletingPreset, setDeletingPreset] = useState<TimeframePreset | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<string>("");
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
-  const [copyDialogData, setCopyDialogData] = useState<{ count: number; nextWeekHasShifts: boolean } | null>(null);
+  const [copyDialogData, setCopyDialogData] = useState<{
+    totalCount: number;
+    nextWeekHasShifts: boolean;
+    days: Array<{ date: string; dayLabel: string; count: number }>;
+  } | null>(null);
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -224,10 +230,10 @@ export default function ShiftsManager() {
   });
 
   const copyToNextWeekMutation = useMutation({
-    mutationFn: async (weekStart: string) => {
+    mutationFn: async ({ weekStart, dates }: { weekStart: string; dates: string[] }) => {
       return apiRequest<{ copied: number; nextWeekHadShifts: boolean }>("/api/shifts/copy-to-next-week", {
         method: "POST",
-        body: JSON.stringify({ weekStart }),
+        body: JSON.stringify({ weekStart, dates }),
       });
     },
     onSuccess: (data) => {
@@ -495,14 +501,39 @@ export default function ShiftsManager() {
       const d = new Date(shift.shiftDate + "T00:00:00");
       return d >= nextWeekStart && d <= nextWeekEnd;
     }).length;
-    setCopyDialogData({ count: currentWeekShifts.length, nextWeekHasShifts: nextWeekShiftCount > 0 });
+
+    const dayGroups = new Map<string, number>();
+    currentWeekShifts.forEach(s => {
+      dayGroups.set(s.shiftDate, (dayGroups.get(s.shiftDate) || 0) + 1);
+    });
+    const days = Array.from(dayGroups.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({
+        date,
+        dayLabel: format(new Date(date + "T00:00:00"), "EEE, MMM d"),
+        count,
+      }));
+
+    const allDates = days.map(d => d.date);
+    setSelectedDays(allDates);
+    setCopyDialogData({ totalCount: currentWeekShifts.length, nextWeekHasShifts: nextWeekShiftCount > 0, days });
     setIsCopyDialogOpen(true);
   };
 
   const handleConfirmCopy = () => {
     const weekStartStr = format(weekRange.start, "yyyy-MM-dd");
-    copyToNextWeekMutation.mutate(weekStartStr);
+    copyToNextWeekMutation.mutate({ weekStart: weekStartStr, dates: selectedDays });
   };
+
+  const toggleDay = (date: string) => {
+    setSelectedDays(prev =>
+      prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
+    );
+  };
+
+  const selectedShiftCount = copyDialogData?.days
+    .filter(d => selectedDays.includes(d.date))
+    .reduce((sum, d) => sum + d.count, 0) ?? 0;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -1186,26 +1217,71 @@ export default function ShiftsManager() {
           <AlertDialogHeader>
             <AlertDialogTitle>Copy Shifts to Next Week</AlertDialogTitle>
             <AlertDialogDescription>
-              {copyDialogData && (
-                <>
-                  Copy all {copyDialogData.count} shift{copyDialogData.count !== 1 ? "s" : ""} from this week to next week?
-                  {copyDialogData.nextWeekHasShifts && (
-                    <span className="block mt-2">
-                      Next week already has shifts — the copied shifts will be added alongside them.
-                    </span>
-                  )}
-                </>
+              {copyDialogData?.nextWeekHasShifts && (
+                <span className="block mb-3 text-amber-600 dark:text-amber-400">
+                  Next week already has shifts — copied shifts will be added alongside them.
+                </span>
               )}
+              Select which days to copy to next week:
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {copyDialogData && (
+            <div className="space-y-3 py-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {selectedDays.length === copyDialogData.days.length ? "All days selected" : `${selectedDays.length} of ${copyDialogData.days.length} days selected`}
+                </span>
+                <button
+                  type="button"
+                  className="text-sm text-primary underline-offset-4 hover:underline"
+                  onClick={() => {
+                    if (selectedDays.length === copyDialogData.days.length) {
+                      setSelectedDays([]);
+                    } else {
+                      setSelectedDays(copyDialogData.days.map(d => d.date));
+                    }
+                  }}
+                  data-testid="button-toggle-all-days"
+                >
+                  {selectedDays.length === copyDialogData.days.length ? "Deselect all" : "Select all"}
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {copyDialogData.days.map(day => (
+                  <div
+                    key={day.date}
+                    className="flex items-center gap-3 rounded-md border px-3 py-2 hover-elevate cursor-pointer"
+                    onClick={() => toggleDay(day.date)}
+                    data-testid={`checkbox-day-${day.date}`}
+                  >
+                    <Checkbox
+                      checked={selectedDays.includes(day.date)}
+                      onCheckedChange={() => toggleDay(day.date)}
+                    />
+                    <span className="flex-1 text-sm font-medium">{day.dayLabel}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {day.count} shift{day.count !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-copy">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmCopy}
-              disabled={copyToNextWeekMutation.isPending}
+              disabled={copyToNextWeekMutation.isPending || selectedDays.length === 0}
               data-testid="button-confirm-copy"
             >
-              {copyToNextWeekMutation.isPending ? "Copying..." : "Copy Shifts"}
+              {copyToNextWeekMutation.isPending
+                ? "Copying..."
+                : selectedDays.length === 0
+                  ? "Select days to copy"
+                  : `Copy ${selectedShiftCount} shift${selectedShiftCount !== 1 ? "s" : ""}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

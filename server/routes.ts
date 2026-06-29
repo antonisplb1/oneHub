@@ -3085,7 +3085,10 @@ export function registerRoutes(app: Express) {
 
   app.post("/api/shifts/copy-to-next-week", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
-      const { weekStart } = z.object({ weekStart: z.string() }).parse(req.body);
+      const { weekStart, dates } = z.object({
+        weekStart: z.string(),
+        dates: z.array(z.string()).optional(),
+      }).parse(req.body);
 
       const weekStartDate = new Date(weekStart + "T00:00:00");
       const weekEndDate = new Date(weekStartDate);
@@ -3112,7 +3115,11 @@ export function registerRoutes(app: Express) {
           )
         );
 
-      if (weekShifts.length === 0) {
+      const shiftsToCopy = (dates && dates.length > 0)
+        ? weekShifts.filter(s => dates.includes(s.shiftDate))
+        : weekShifts;
+
+      if (shiftsToCopy.length === 0) {
         return res.json({ copied: 0, nextWeekHadShifts: false });
       }
 
@@ -3129,7 +3136,7 @@ export function registerRoutes(app: Express) {
 
       const nextWeekHadShifts = nextWeekExisting.length > 0;
 
-      const newShifts = weekShifts.map(shift => {
+      const newShifts = shiftsToCopy.map(shift => {
         const d = new Date(shift.shiftDate + "T00:00:00");
         d.setDate(d.getDate() + 7);
         return {
