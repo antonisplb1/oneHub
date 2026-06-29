@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { adminUsers } from "@shared/schema";
+import { adminUsers, adminSecurity } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "./auth";
 
@@ -11,18 +11,28 @@ export async function seedAdminPassword() {
 
   try {
     const hashed = await hashPassword(seedPassword);
-    const result = await db
-      .update(adminUsers)
-      .set({ passwordHash: hashed, resetPasswordToken: null, resetPasswordExpiry: null })
-      .where(eq(adminUsers.email, seedEmail))
-      .returning({ email: adminUsers.email });
 
-    if (result.length > 0) {
+    const existing = await db
+      .select({ id: adminUsers.id })
+      .from(adminUsers)
+      .where(eq(adminUsers.email, seedEmail));
+
+    if (existing.length > 0) {
+      await db
+        .update(adminUsers)
+        .set({ passwordHash: hashed, resetPasswordToken: null, resetPasswordExpiry: null })
+        .where(eq(adminUsers.email, seedEmail));
       console.log(`[AdminSeed] Password updated for ${seedEmail}`);
     } else {
-      console.log(`[AdminSeed] No admin found with email ${seedEmail}`);
+      const [newAdmin] = await db
+        .insert(adminUsers)
+        .values({ email: seedEmail, passwordHash: hashed })
+        .returning({ id: adminUsers.id });
+
+      await db.insert(adminSecurity).values({ adminId: newAdmin.id });
+      console.log(`[AdminSeed] New admin created for ${seedEmail}`);
     }
   } catch (err: any) {
-    console.error(`[AdminSeed] Failed to seed admin password:`, err.message);
+    console.error(`[AdminSeed] Failed to seed admin:`, err.message);
   }
 }
