@@ -19,7 +19,7 @@ const plans = [
     btnTestid: "button-select-loyalty",
     icon: Award,
     title: "Loyalty Cards",
-    price: "€15",
+    price: "€19",
     features: ["Digital stamp cards", "Apple & Google Wallet", "Unlimited customers", "QR code scanning", "Built-in scanner"],
   },
   {
@@ -37,7 +37,7 @@ const plans = [
     btnTestid: "button-select-menu",
     icon: UtensilsCrossed,
     title: "Menu Builder",
-    price: "€5",
+    price: "€8",
     features: ["Create categories & items", "Add photos & descriptions", "QR code generation", "Real-time updates", "Public menu page"],
   },
   {
@@ -46,7 +46,7 @@ const plans = [
     btnTestid: "button-select-shift",
     icon: Calendar,
     title: "Shift Manager",
-    price: "€10",
+    price: "€18",
     features: ["Weekly calendar view", "Crew management", "PIN-protected access", "Branded crew view", "Public shift URL"],
   },
 ];
@@ -178,11 +178,11 @@ export default function Pricing() {
                   style={{ backgroundColor: GOLD_DIM, color: GOLD }}
                   data-testid="badge-best-value"
                 >
-                  Best Value — Save €10
+                  Best Value — Save €13
                 </div>
                 <h3 className="text-3xl font-light text-white mb-3">Complete Bundle</h3>
                 <div className="mb-2">
-                  <span className="text-6xl font-light text-white">€24.99</span>
+                  <span className="text-6xl font-light text-white">€36.99</span>
                   <span className="text-sm ml-1" style={{ color: MUTED }}>/month</span>
                 </div>
                 <p className="text-sm mb-8" style={{ color: MUTED }}>

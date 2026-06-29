@@ -26,10 +26,10 @@ interface Product {
 }
 
 const products: Product[] = [
-  { id: 'loyalty', name: 'Loyalty Cards', description: 'Digital loyalty card program with stamp collection and rewards', price: 15, icon: Ticket },
+  { id: 'loyalty', name: 'Loyalty Cards', description: 'Digital loyalty card program with stamp collection and rewards', price: 19, icon: Ticket },
   { id: 'spin', name: 'Spin Wheel', description: 'Interactive prize wheel campaigns for customer engagement', price: 5, icon: Gift },
-  { id: 'menu', name: 'Menu Builder', description: 'Create and manage your digital menu for customers', price: 5, icon: UtensilsCrossed },
-  { id: 'shift', name: 'Shift Manager', description: 'Employee shift scheduling with weekly calendar and crew management', price: 10, icon: Calendar },
+  { id: 'menu', name: 'Menu Builder', description: 'Create and manage your digital menu for customers', price: 8, icon: UtensilsCrossed },
+  { id: 'shift', name: 'Shift Manager', description: 'Employee shift scheduling with weekly calendar and crew management', price: 18, icon: Calendar },
 ];
 
 export default function SelectProducts() {
@@ -193,11 +193,11 @@ export default function SelectProducts() {
                 <p className="text-sm font-medium" style={{ color: GOLD }} data-testid="text-bundle-discount">
                   Complete Bundle Discount
                 </p>
-                <p className="text-xs" style={{ color: MUTED }}>Save €10/month with all four products</p>
+                <p className="text-xs" style={{ color: MUTED }}>Save €13/month with all four products</p>
               </div>
               <div className="text-right">
-                <div className="text-xs line-through" style={{ color: MUTED }}>€35</div>
-                <div className="text-xl font-light text-white">€24.99</div>
+                <div className="text-xs line-through" style={{ color: MUTED }}>€50</div>
+                <div className="text-xl font-light text-white">€36.99</div>
               </div>
             </div>
           </div>

@@ -15,7 +15,7 @@ const PRODUCT_INFO = [
     id: 'loyalty',
     name: 'Loyalty Cards',
     description: 'Digital loyalty card program with stamp collection',
-    price: 15,
+    price: 19,
     icon: Ticket,
   },
   {
@@ -29,14 +29,14 @@ const PRODUCT_INFO = [
     id: 'menu',
     name: 'Menu Builder',
     description: 'Create and manage your digital menu',
-    price: 5,
+    price: 8,
     icon: UtensilsCrossed,
   },
   {
     id: 'shift',
     name: 'Shift Manager',
     description: 'Employee shift scheduling',
-    price: 10,
+    price: 18,
     icon: Calendar,
   },
 ];
@@ -276,17 +276,17 @@ export default function SettingsPage() {
   const calculatePrice = (products: string[]) => {
     const sorted = [...products].sort();
     
-    // All four products - Bundle discount (€24.99 instead of €35)
+    // All four products - Bundle discount (€36.99 instead of €50)
     if (sorted.length === 4 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu') && sorted.includes('shift')) {
-      return 24.99;
+      return 36.99;
     }
     // Individual prices for all other combinations
     else {
       let total = 0;
-      if (products.includes('loyalty')) total += 15;
+      if (products.includes('loyalty')) total += 19;
       if (products.includes('spin')) total += 5;
-      if (products.includes('menu')) total += 5;
-      if (products.includes('shift')) total += 10;
+      if (products.includes('menu')) total += 8;
+      if (products.includes('shift')) total += 18;
       return total;
     }
   };
@@ -542,12 +542,12 @@ export default function SettingsPage() {
                     Complete Bundle Discount!
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Save €10/month with all four products
+                    Save €13/month with all four products
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-muted-foreground line-through">€35</div>
-                  <div className="text-xl font-bold text-primary">€24.99</div>
+                  <div className="text-sm text-muted-foreground line-through">€50</div>
+                  <div className="text-xl font-bold text-primary">€36.99</div>
                 </div>
               </div>
             </div>

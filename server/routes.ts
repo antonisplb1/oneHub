@@ -68,19 +68,19 @@ const stripe = new Stripe(stripeSecretKey, {
 
 // Product pricing configuration
 const PRODUCT_PRICES = {
-  'loyalty': 1500, // €15 in cents
+  'loyalty': 1900, // €19 in cents
   'spin': 500,     // €5 in cents
-  'menu': 500,     // €5 in cents
-  'shift': 1000,   // €10 in cents
+  'menu': 800,     // €8 in cents
+  'shift': 1800,   // €18 in cents
 };
 
 // Calculate price based on selected products
 function calculateProductPrice(products: string[]): number {
   const sortedProducts = [...products].sort();
   
-  // All four products - Bundle discount (€24.99 instead of €33)
+  // All four products - Bundle discount (€36.99 instead of €50)
   if (sortedProducts.length === 4 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu') && sortedProducts.includes('shift')) {
-    return 2499;
+    return 3699;
   }
   // Individual prices for all other combinations
   else {
