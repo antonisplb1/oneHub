@@ -10,12 +10,24 @@ import { ShieldCheck, UserPlus, LogOut, RefreshCw } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import MerchantsManager from "@/components/MerchantsManager";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminDashboard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [shopName, setShopName] = useState("");
   const [selectedProducts, setSelectedProducts] = useState<string[]>(['loyalty', 'spin']);
+  const [confirmCreateOpen, setConfirmCreateOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -46,6 +58,7 @@ export default function AdminDashboard() {
       setPassword("");
       setShopName("");
       setSelectedProducts(['loyalty', 'spin']);
+      setConfirmCreateOpen(false);
     },
     onError: (error: any) => {
       const errorData = error.data || {};
@@ -54,6 +67,7 @@ export default function AdminDashboard() {
         description: errorData.error || "Failed to create user",
         variant: "destructive",
       });
+      setConfirmCreateOpen(false);
     },
   });
 
@@ -95,7 +109,7 @@ export default function AdminDashboard() {
 
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
-    createUserMutation.mutate({ email, password, shopName, selectedProducts });
+    setConfirmCreateOpen(true);
   };
 
   const handleProductToggle = (product: string) => {
@@ -277,6 +291,32 @@ export default function AdminDashboard() {
                   {createUserMutation.isPending ? "Creating User..." : "Create User"}
                 </Button>
               </form>
+
+              <AlertDialog open={confirmCreateOpen} onOpenChange={setConfirmCreateOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Create this user?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will create a fully-activated account for {email || "this user"}
+                      {shopName ? ` (${shopName})` : ""} with access to{" "}
+                      {selectedProducts.length} product{selectedProducts.length === 1 ? "" : "s"}.
+                      Email verification and subscription are bypassed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel data-testid="button-cancel-create-user">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() =>
+                        createUserMutation.mutate({ email, password, shopName, selectedProducts })
+                      }
+                      disabled={createUserMutation.isPending}
+                      data-testid="button-confirm-create-user"
+                    >
+                      Create User
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </CardContent>
           </Card>
 
@@ -293,17 +333,39 @@ export default function AdminDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full"
-                data-testid="button-reseed-demo"
-                onClick={() => reseedMutation.mutate()}
-                disabled={reseedMutation.isPending}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${reseedMutation.isPending ? "animate-spin" : ""}`} />
-                {reseedMutation.isPending ? "Reseeding..." : "Reseed Demo Data"}
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full"
+                    data-testid="button-reseed-demo"
+                    disabled={reseedMutation.isPending}
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${reseedMutation.isPending ? "animate-spin" : ""}`} />
+                    {reseedMutation.isPending ? "Reseeding..." : "Reseed Demo Data"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reseed the demo account?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will wipe ALL current data on the demo account and repopulate it
+                      with fresh customers, spins, menu, and current-week shifts. This cannot
+                      be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel data-testid="button-cancel-reseed">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => reseedMutation.mutate()}
+                      data-testid="button-confirm-reseed"
+                    >
+                      Reseed Data
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </CardContent>
           </Card>
 
