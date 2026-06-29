@@ -230,6 +230,36 @@ export default function AdminDashboard() {
                         Spin Wheel
                       </Label>
                     </div>
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="product-menu"
+                        checked={selectedProducts.includes('menu')}
+                        onCheckedChange={() => handleProductToggle('menu')}
+                        data-testid="checkbox-product-menu"
+                        disabled={createUserMutation.isPending}
+                      />
+                      <Label
+                        htmlFor="product-menu"
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        Menu Builder
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="product-shift"
+                        checked={selectedProducts.includes('shift')}
+                        onCheckedChange={() => handleProductToggle('shift')}
+                        data-testid="checkbox-product-shift"
+                        disabled={createUserMutation.isPending}
+                      />
+                      <Label
+                        htmlFor="product-shift"
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        Shift Manager
+                      </Label>
+                    </div>
                   </div>
                   {selectedProducts.length === 0 && (
                     <p className="text-sm text-destructive">Please select at least one product</p>
