@@ -24,6 +24,7 @@ export const users = pgTable("users", {
   trialEndsAt: timestamp("trial_ends_at"),
   selectedProducts: text("selected_products").array().default(sql`ARRAY[]::text[]`),
   shiftAccessPin: text("shift_access_pin"),
+  customPrice: integer("custom_price"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

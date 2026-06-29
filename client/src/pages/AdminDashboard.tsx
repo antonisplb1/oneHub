@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ShieldCheck, UserPlus, LogOut, RefreshCw } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import MerchantsManager from "@/components/MerchantsManager";
 
 export default function AdminDashboard() {
   const [email, setEmail] = useState("");
@@ -138,7 +139,7 @@ export default function AdminDashboard() {
       </header>
 
       <div className="container mx-auto px-6 py-10">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -305,6 +306,10 @@ export default function AdminDashboard() {
               </Button>
             </CardContent>
           </Card>
+
+          <div className="mt-6">
+            <MerchantsManager />
+          </div>
         </div>
       </div>
     </div>

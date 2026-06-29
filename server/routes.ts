@@ -814,6 +814,208 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Admin: List all merchants with customer counts
+  app.get("/api/admin/merchants", requireAdminAuth, async (req, res) => {
+    try {
+      const allUsers = await db
+        .select()
+        .from(users)
+        .orderBy(desc(users.createdAt));
+
+      const merchants = await Promise.all(
+        allUsers.map(async (u) => {
+          const customerRows = await db
+            .select({ id: customers.id })
+            .from(customers)
+            .where(eq(customers.userId, u.id));
+          return {
+            id: u.id,
+            email: u.email,
+            shopName: u.shopName,
+            subscriptionStatus: u.subscriptionStatus,
+            selectedProducts: u.selectedProducts || [],
+            customPrice: u.customPrice,
+            customerCount: customerRows.length,
+            createdAt: u.createdAt,
+          };
+        })
+      );
+
+      res.json({ merchants });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to load merchants" });
+    }
+  });
+
+  // Admin: Delete a merchant and all their data
+  app.delete("/api/admin/merchants/:id", requireAdminAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "Merchant not found" });
+      }
+
+      // Delete feature data — child tables before parents to respect FK constraints.
+      // spins.rewardId references rewards WITHOUT cascade, so spins must go first.
+      await db.delete(spins).where(eq(spins.userId, id));
+      await db.delete(spinTokens).where(eq(spinTokens.userId, id));
+      await db.delete(rewards).where(eq(rewards.userId, id));
+      // loyaltyTransactions cascade from loyaltyCards; appleWalletDevices cascade from customers
+      await db.delete(loyaltyCards).where(eq(loyaltyCards.userId, id));
+      await db.delete(customers).where(eq(customers.userId, id));
+      await db.delete(menuItems).where(eq(menuItems.userId, id));
+      await db.delete(menuCategories).where(eq(menuCategories.userId, id));
+      await db.delete(shifts).where(eq(shifts.userId, id));
+      await db.delete(crewMembers).where(eq(crewMembers.userId, id));
+      await db.delete(timeframePresets).where(eq(timeframePresets.userId, id));
+      await db.delete(messages).where(eq(messages.userId, id));
+      await db.delete(subusers).where(eq(subusers.ownerId, id));
+      // Finally delete the merchant
+      await db.delete(users).where(eq(users.id, id));
+
+      res.json({ success: true, message: `Merchant ${user.email} deleted` });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to delete merchant" });
+    }
+  });
+
+  // Admin: Set or clear a merchant's custom price (cents)
+  app.patch("/api/admin/merchants/:id/price", requireAdminAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const priceSchema = z.object({
+        customPrice: z.number().int().min(0).nullable(),
+      });
+      const parsed = priceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "customPrice must be a non-negative integer (cents) or null" });
+      }
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "Merchant not found" });
+      }
+
+      await db
+        .update(users)
+        .set({ customPrice: parsed.data.customPrice })
+        .where(eq(users.id, id));
+
+      res.json({ success: true, message: "Custom price updated" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to update custom price" });
+    }
+  });
+
+  // Admin: Send a password reset email on behalf of a merchant
+  app.post("/api/admin/merchants/:id/password-reset", requireAdminAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "Merchant not found" });
+      }
+
+      const resetPasswordToken = generateToken();
+      const resetPasswordExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await db
+        .update(users)
+        .set({ resetPasswordToken, resetPasswordExpiry })
+        .where(eq(users.id, id));
+
+      await sendPasswordResetEmail(user.email, user.shopName, resetPasswordToken);
+
+      res.json({ success: true, message: `Password reset email sent to ${user.email}` });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to send password reset email" });
+    }
+  });
+
+  // Admin: Set a merchant's subscription status directly
+  app.patch("/api/admin/merchants/:id/status", requireAdminAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { subscriptionStatus } = req.body;
+
+      const allowedStatuses = ["active", "inactive", "trialing"];
+      if (!allowedStatuses.includes(subscriptionStatus)) {
+        return res.status(400).json({ error: "Invalid subscription status" });
+      }
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "Merchant not found" });
+      }
+
+      await db
+        .update(users)
+        .set({ subscriptionStatus })
+        .where(eq(users.id, id));
+
+      res.json({ success: true, message: `Status set to ${subscriptionStatus}` });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to update status" });
+    }
+  });
+
+  // Admin: Set a merchant's product access
+  app.patch("/api/admin/merchants/:id/products", requireAdminAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { selectedProducts } = req.body;
+
+      const productSchema = z.array(z.enum(["loyalty", "spin", "menu", "shift"]));
+      const parsed = productSchema.safeParse(selectedProducts);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid products selection" });
+      }
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "Merchant not found" });
+      }
+
+      await db
+        .update(users)
+        .set({ selectedProducts: parsed.data })
+        .where(eq(users.id, id));
+
+      res.json({ success: true, message: "Product access updated" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to update products" });
+    }
+  });
+
   // Save selected products (must be authenticated and email verified)
   app.post("/api/user/select-products", requireEmailVerification, async (req, res) => {
     try {
@@ -1771,7 +1973,7 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "Please select products before subscribing" });
       }
 
-      const price = calculateProductPrice(selectedProducts);
+      const price = req.user!.customPrice ?? calculateProductPrice(selectedProducts);
       const description = getProductDescription(selectedProducts);
 
       // Create Stripe customer if one doesn't exist
