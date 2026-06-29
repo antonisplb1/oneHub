@@ -836,6 +836,7 @@ export function registerRoutes(app: Express) {
             selectedProducts: u.selectedProducts || [],
             customPrice: u.customPrice,
             customerCount: customerRows.length,
+            hasShiftPin: !!u.shiftAccessPin,
             createdAt: u.createdAt,
           };
         })
@@ -1013,6 +1014,51 @@ export function registerRoutes(app: Express) {
       res.json({ success: true, message: "Product access updated" });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to update products" });
+    }
+  });
+
+  // Admin: Set or clear a merchant's shift access PIN
+  app.patch("/api/admin/merchants/:id/shift-pin", requireAdminAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const schema = z.object({
+        pin: z.union([
+          z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
+          z.null(),
+        ]),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "PIN must be exactly 4 digits, or null to clear" });
+      }
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "Merchant not found" });
+      }
+
+      const { pin } = parsed.data;
+      const hashedPin = pin === null ? null : await hashPassword(pin);
+
+      await db
+        .update(users)
+        .set({ shiftAccessPin: hashedPin })
+        .where(eq(users.id, id));
+
+      res.json({
+        success: true,
+        message: pin === null
+          ? `Shift access PIN cleared for ${user.shopName}`
+          : `Shift access PIN updated for ${user.shopName}`,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to update shift access PIN" });
     }
   });
 

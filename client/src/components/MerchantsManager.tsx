@@ -29,6 +29,7 @@ import {
   Package,
   ChevronDown,
   ChevronUp,
+  KeyRound,
 } from "lucide-react";
 
 interface Merchant {
@@ -39,6 +40,7 @@ interface Merchant {
   selectedProducts: string[];
   customPrice: number | null;
   customerCount: number;
+  hasShiftPin: boolean;
   createdAt: string | null;
 }
 
@@ -165,6 +167,24 @@ export default function MerchantsManager() {
       }),
   });
 
+  const shiftPinMutation = useMutation({
+    mutationFn: async ({ id, pin }: { id: string; pin: string | null }) =>
+      apiRequest(`/api/admin/merchants/${id}/shift-pin`, {
+        method: "PATCH",
+        body: JSON.stringify({ pin }),
+      }),
+    onSuccess: (res: any) => {
+      toast({ title: "Shift PIN updated", description: res.message });
+      invalidate();
+    },
+    onError: (error: any) =>
+      toast({
+        title: "Update failed",
+        description: error.data?.error || "Failed to update shift access PIN",
+        variant: "destructive",
+      }),
+  });
+
   return (
     <Card data-testid="card-merchants">
       <CardHeader>
@@ -209,6 +229,7 @@ export default function MerchantsManager() {
                 resetMutation={resetMutation}
                 statusMutation={statusMutation}
                 productsMutation={productsMutation}
+                shiftPinMutation={shiftPinMutation}
               />
             ))}
           </div>
@@ -227,6 +248,7 @@ interface RowProps {
   resetMutation: any;
   statusMutation: any;
   productsMutation: any;
+  shiftPinMutation: any;
 }
 
 function MerchantRow({
@@ -238,6 +260,7 @@ function MerchantRow({
   resetMutation,
   statusMutation,
   productsMutation,
+  shiftPinMutation,
 }: RowProps) {
   const m = merchant;
   const [priceInput, setPriceInput] = useState(
@@ -245,6 +268,9 @@ function MerchantRow({
   );
   const [pendingStatus, setPendingStatus] = useState(m.subscriptionStatus || "inactive");
   const [productSel, setProductSel] = useState<string[]>(m.selectedProducts);
+  const [pinInput, setPinInput] = useState("");
+
+  const pinValid = /^\d{4}$/.test(pinInput);
 
   const toggleProduct = (key: string) =>
     setProductSel((prev) =>
@@ -450,6 +476,95 @@ function MerchantRow({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+          </div>
+
+          {/* Shift access PIN */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <KeyRound className="h-4 w-4" /> Shift Access PIN
+            </Label>
+            <p className="text-xs text-muted-foreground" data-testid={`text-pin-status-${m.id}`}>
+              {m.hasShiftPin
+                ? "A PIN is currently set for the public shift schedule."
+                : "No PIN is set for the public shift schedule."}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="4-digit PIN"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                className="max-w-[220px]"
+                data-testid={`input-pin-${m.id}`}
+              />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="default"
+                    disabled={!pinValid || shiftPinMutation.isPending}
+                    data-testid={`button-save-pin-${m.id}`}
+                  >
+                    Set PIN
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Set shift access PIN?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will set {m.shopName}'s public shift schedule PIN to "{pinInput}". They can use this PIN immediately.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel data-testid={`button-cancel-pin-${m.id}`}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        shiftPinMutation.mutate({ id: m.id, pin: pinInput });
+                        setPinInput("");
+                      }}
+                      data-testid={`button-confirm-pin-${m.id}`}
+                    >
+                      Confirm
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              {m.hasShiftPin && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="default"
+                      disabled={shiftPinMutation.isPending}
+                      data-testid={`button-clear-pin-${m.id}`}
+                    >
+                      Clear PIN
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear shift access PIN?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove {m.shopName}'s public shift schedule PIN. The schedule will be inaccessible until a new PIN is set.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel data-testid={`button-cancel-clear-pin-${m.id}`}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          shiftPinMutation.mutate({ id: m.id, pin: null });
+                          setPinInput("");
+                        }}
+                        data-testid={`button-confirm-clear-pin-${m.id}`}
+                      >
+                        Clear PIN
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
 
           {/* Send reset & Delete */}
