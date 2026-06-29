@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Users, Calendar, Copy, Clock, Pencil } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Users, Calendar, Copy, Clock, Pencil, CopyPlus } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +52,8 @@ export default function ShiftsManager() {
   const [editingPreset, setEditingPreset] = useState<TimeframePreset | null>(null);
   const [deletingPreset, setDeletingPreset] = useState<TimeframePreset | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<string>("");
+  const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
+  const [copyDialogData, setCopyDialogData] = useState<{ count: number; nextWeekHasShifts: boolean } | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -216,6 +218,31 @@ export default function ShiftsManager() {
       toast({
         title: "Error",
         description: error.message || "Failed to delete shift",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const copyToNextWeekMutation = useMutation({
+    mutationFn: async (weekStart: string) => {
+      return apiRequest<{ copied: number; nextWeekHadShifts: boolean }>("/api/shifts/copy-to-next-week", {
+        method: "POST",
+        body: JSON.stringify({ weekStart }),
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      setCurrentWeek(prev => dateAddWeeks(prev, 1));
+      setIsCopyDialogOpen(false);
+      toast({
+        title: "Shifts Copied",
+        description: `${data.copied} shift${data.copied !== 1 ? "s" : ""} copied to next week.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to copy shifts",
         variant: "destructive",
       });
     },
@@ -456,6 +483,27 @@ export default function ShiftsManager() {
 
   const weekRange = getWeekRange(currentWeek);
 
+  const currentWeekShifts = shifts.filter(shift => {
+    const d = new Date(shift.shiftDate + "T00:00:00");
+    return d >= weekRange.start && d <= weekRange.end;
+  });
+
+  const handleCopyToNextWeek = () => {
+    const nextWeekStart = dateAddWeeks(weekRange.start, 1);
+    const nextWeekEnd = dateAddWeeks(weekRange.end, 1);
+    const nextWeekShiftCount = shifts.filter(shift => {
+      const d = new Date(shift.shiftDate + "T00:00:00");
+      return d >= nextWeekStart && d <= nextWeekEnd;
+    }).length;
+    setCopyDialogData({ count: currentWeekShifts.length, nextWeekHasShifts: nextWeekShiftCount > 0 });
+    setIsCopyDialogOpen(true);
+  };
+
+  const handleConfirmCopy = () => {
+    const weekStartStr = format(weekRange.start, "yyyy-MM-dd");
+    copyToNextWeekMutation.mutate(weekStartStr);
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -645,7 +693,18 @@ export default function ShiftsManager() {
               <Calendar className="h-5 w-5" />
               Weekly Schedule
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={handleCopyToNextWeek}
+                variant="outline"
+                size="sm"
+                disabled={currentWeekShifts.length === 0}
+                data-testid="button-copy-to-next-week"
+                title={currentWeekShifts.length === 0 ? "No shifts this week to copy" : "Copy all shifts to next week"}
+              >
+                <CopyPlus className="h-4 w-4 mr-1" />
+                Copy to Next Week
+              </Button>
               <Button
                 onClick={handleThisWeek}
                 variant="outline"
@@ -1117,6 +1176,36 @@ export default function ShiftsManager() {
               data-testid="button-confirm-delete-preset"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isCopyDialogOpen} onOpenChange={setIsCopyDialogOpen}>
+        <AlertDialogContent data-testid="dialog-copy-to-next-week">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Copy Shifts to Next Week</AlertDialogTitle>
+            <AlertDialogDescription>
+              {copyDialogData && (
+                <>
+                  Copy all {copyDialogData.count} shift{copyDialogData.count !== 1 ? "s" : ""} from this week to next week?
+                  {copyDialogData.nextWeekHasShifts && (
+                    <span className="block mt-2">
+                      Next week already has shifts — the copied shifts will be added alongside them.
+                    </span>
+                  )}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-copy">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmCopy}
+              disabled={copyToNextWeekMutation.isPending}
+              data-testid="button-confirm-copy"
+            >
+              {copyToNextWeekMutation.isPending ? "Copying..." : "Copy Shifts"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -33,7 +33,7 @@ import {
   insertSubuserSchema,
   appleWalletDevices,
 } from "@shared/schema";
-import { eq, and, desc, asc, gt } from "drizzle-orm";
+import { eq, and, desc, asc, gt, gte, lte } from "drizzle-orm";
 import { hashPassword, generateToken, comparePasswords } from "./auth";
 import passport from "passport";
 import { nanoid } from "nanoid";
@@ -3078,6 +3078,74 @@ export function registerRoutes(app: Express) {
         .returning();
 
       res.json(shift);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/shifts/copy-to-next-week", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
+    try {
+      const { weekStart } = z.object({ weekStart: z.string() }).parse(req.body);
+
+      const weekStartDate = new Date(weekStart + "T00:00:00");
+      const weekEndDate = new Date(weekStartDate);
+      weekEndDate.setDate(weekEndDate.getDate() + 6);
+
+      const startStr = weekStart.substring(0, 10);
+      const endStr = weekEndDate.toISOString().substring(0, 10);
+
+      const nextWeekStartDate = new Date(weekStartDate);
+      nextWeekStartDate.setDate(nextWeekStartDate.getDate() + 7);
+      const nextWeekEndDate = new Date(nextWeekStartDate);
+      nextWeekEndDate.setDate(nextWeekEndDate.getDate() + 6);
+      const nextWeekStartStr = nextWeekStartDate.toISOString().substring(0, 10);
+      const nextWeekEndStr = nextWeekEndDate.toISOString().substring(0, 10);
+
+      const weekShifts = await db
+        .select()
+        .from(shifts)
+        .where(
+          and(
+            eq(shifts.userId, req.user!.id),
+            gte(shifts.shiftDate, startStr),
+            lte(shifts.shiftDate, endStr)
+          )
+        );
+
+      if (weekShifts.length === 0) {
+        return res.json({ copied: 0, nextWeekHadShifts: false });
+      }
+
+      const nextWeekExisting = await db
+        .select()
+        .from(shifts)
+        .where(
+          and(
+            eq(shifts.userId, req.user!.id),
+            gte(shifts.shiftDate, nextWeekStartStr),
+            lte(shifts.shiftDate, nextWeekEndStr)
+          )
+        );
+
+      const nextWeekHadShifts = nextWeekExisting.length > 0;
+
+      const newShifts = weekShifts.map(shift => {
+        const d = new Date(shift.shiftDate + "T00:00:00");
+        d.setDate(d.getDate() + 7);
+        return {
+          userId: req.user!.id,
+          employeeName: shift.employeeName,
+          employeeRole: shift.employeeRole,
+          shiftDate: d.toISOString().substring(0, 10),
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          notes: shift.notes,
+        };
+      });
+
+      await db.insert(shifts).values(newShifts);
+
+      res.json({ copied: newShifts.length, nextWeekHadShifts });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
