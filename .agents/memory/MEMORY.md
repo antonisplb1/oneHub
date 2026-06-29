@@ -1,0 +1,1 @@
+- [Admin vs merchant session collision](admin-merchant-session.md) — admin `req.session.adminId` gets wiped by Passport `req.login()` regeneration; fix with `{ keepSessionInfo: true }`.

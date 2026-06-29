@@ -312,7 +312,7 @@ export function registerRoutes(app: Express) {
       // Clean the user object (remove temporary flags)
       const { __isOwner, __isSubuser, __subuserId, __permissions, ...cleanUser } = authUser;
 
-      req.login(cleanUser, (err) => {
+      req.login(cleanUser, { keepSessionInfo: true }, (err) => {
         if (err) {
           return res.status(500).json({ error: "Login failed" });
         }
@@ -403,7 +403,7 @@ export function registerRoutes(app: Express) {
         .returning();
 
       // Automatically log the user in after verification
-      req.login(updatedUser, (err) => {
+      req.login(updatedUser, { keepSessionInfo: true }, (err) => {
         if (err) {
           return res.status(500).json({ error: "Verification successful but login failed" });
         }
