@@ -864,22 +864,26 @@ export function registerRoutes(app: Express) {
       }
 
       // Delete feature data — child tables before parents to respect FK constraints.
-      // spins.rewardId references rewards WITHOUT cascade, so spins must go first.
-      await db.delete(spins).where(eq(spins.userId, id));
-      await db.delete(spinTokens).where(eq(spinTokens.userId, id));
-      await db.delete(rewards).where(eq(rewards.userId, id));
-      // loyaltyTransactions cascade from loyaltyCards; appleWalletDevices cascade from customers
-      await db.delete(loyaltyCards).where(eq(loyaltyCards.userId, id));
-      await db.delete(customers).where(eq(customers.userId, id));
-      await db.delete(menuItems).where(eq(menuItems.userId, id));
-      await db.delete(menuCategories).where(eq(menuCategories.userId, id));
-      await db.delete(shifts).where(eq(shifts.userId, id));
-      await db.delete(crewMembers).where(eq(crewMembers.userId, id));
-      await db.delete(timeframePresets).where(eq(timeframePresets.userId, id));
-      await db.delete(messages).where(eq(messages.userId, id));
-      await db.delete(subusers).where(eq(subusers.ownerId, id));
-      // Finally delete the merchant
-      await db.delete(users).where(eq(users.id, id));
+      // Wrapped in a single transaction so a failure at any step rolls back the
+      // entire deletion, preventing a half-deleted merchant.
+      await db.transaction(async (tx) => {
+        // spins.rewardId references rewards WITHOUT cascade, so spins must go first.
+        await tx.delete(spins).where(eq(spins.userId, id));
+        await tx.delete(spinTokens).where(eq(spinTokens.userId, id));
+        await tx.delete(rewards).where(eq(rewards.userId, id));
+        // loyaltyTransactions cascade from loyaltyCards; appleWalletDevices cascade from customers
+        await tx.delete(loyaltyCards).where(eq(loyaltyCards.userId, id));
+        await tx.delete(customers).where(eq(customers.userId, id));
+        await tx.delete(menuItems).where(eq(menuItems.userId, id));
+        await tx.delete(menuCategories).where(eq(menuCategories.userId, id));
+        await tx.delete(shifts).where(eq(shifts.userId, id));
+        await tx.delete(crewMembers).where(eq(crewMembers.userId, id));
+        await tx.delete(timeframePresets).where(eq(timeframePresets.userId, id));
+        await tx.delete(messages).where(eq(messages.userId, id));
+        await tx.delete(subusers).where(eq(subusers.ownerId, id));
+        // Finally delete the merchant
+        await tx.delete(users).where(eq(users.id, id));
+      });
 
       res.json({ success: true, message: `Merchant ${user.email} deleted` });
     } catch (error: any) {
