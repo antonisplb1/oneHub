@@ -287,6 +287,16 @@ function MerchantRow({
           </div>
           <p className="text-xs text-muted-foreground pt-1" data-testid={`text-customer-count-${m.id}`}>
             {m.customerCount} customer{m.customerCount === 1 ? "" : "s"}
+            {m.createdAt && (
+              <span data-testid={`text-merchant-joined-${m.id}`}>
+                {" · Joined "}
+                {new Date(m.createdAt).toLocaleDateString(undefined, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            )}
           </p>
         </div>
         <Button
