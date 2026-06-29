@@ -222,6 +222,36 @@ export class ObjectStorageService {
     return normalizedPath;
   }
 
+  // Deletes an object entity given its normalized path (e.g. "/objects/uploads/<id>").
+  // Returns true if the object existed and was deleted, false if it was already gone.
+  async deleteObjectEntity(objectPath: string): Promise<boolean> {
+    if (!objectPath || !objectPath.startsWith("/objects/")) {
+      return false;
+    }
+
+    const entityId = objectPath.slice("/objects/".length);
+    if (!entityId) {
+      return false;
+    }
+
+    let entityDir = this.getPrivateObjectDir();
+    if (!entityDir.endsWith("/")) {
+      entityDir = `${entityDir}/`;
+    }
+    const objectEntityPath = `${entityDir}${entityId}`;
+    const { bucketName, objectName } = parseObjectPath(objectEntityPath);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const objectFile = bucket.file(objectName);
+
+    const [exists] = await objectFile.exists();
+    if (!exists) {
+      return false;
+    }
+
+    await objectFile.delete();
+    return true;
+  }
+
   // Checks if the user can access the object entity.
   async canAccessObjectEntity({
     userId,

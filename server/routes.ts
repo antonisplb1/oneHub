@@ -865,6 +865,16 @@ export function registerRoutes(app: Express) {
         return res.status(404).json({ error: "Merchant not found" });
       }
 
+      // Collect object-storage keys for the merchant's menu images BEFORE deleting
+      // the rows, so we can clean up the orphaned files after the DB deletion.
+      const menuImageRows = await db
+        .select({ imageStorageKey: menuItems.imageStorageKey })
+        .from(menuItems)
+        .where(eq(menuItems.userId, id));
+      const imageStorageKeys = menuImageRows
+        .map((row) => row.imageStorageKey)
+        .filter((key): key is string => !!key);
+
       // Delete feature data — child tables before parents to respect FK constraints.
       // Wrapped in a single transaction so a failure at any step rolls back the
       // entire deletion, preventing a half-deleted merchant.
@@ -886,6 +896,54 @@ export function registerRoutes(app: Express) {
         // Finally delete the merchant
         await tx.delete(users).where(eq(users.id, id));
       });
+
+      // External resource cleanup runs AFTER the DB transaction commits. These
+      // calls cannot live inside the transaction, and a failure here must not
+      // resurrect the merchant — so each is wrapped to log and continue.
+
+      // 1. Cancel the merchant's Stripe subscription so they stop being billed.
+      if (user.stripeSubscriptionId) {
+        try {
+          await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+        } catch (stripeError: any) {
+          // `resource_missing` means it was already canceled/deleted — fine.
+          if (stripeError?.code !== "resource_missing") {
+            console.error(
+              `[DeleteMerchant] Failed to cancel subscription ${user.stripeSubscriptionId} for ${user.email}:`,
+              stripeError?.message || stripeError
+            );
+          }
+        }
+      }
+
+      // 2. Delete the Stripe customer so no further invoices/charges accrue.
+      if (user.stripeCustomerId) {
+        try {
+          await stripe.customers.del(user.stripeCustomerId);
+        } catch (stripeError: any) {
+          if (stripeError?.code !== "resource_missing") {
+            console.error(
+              `[DeleteMerchant] Failed to delete customer ${user.stripeCustomerId} for ${user.email}:`,
+              stripeError?.message || stripeError
+            );
+          }
+        }
+      }
+
+      // 3. Remove orphaned menu images from object storage.
+      if (imageStorageKeys.length > 0) {
+        const objectStorageService = new ObjectStorageService();
+        for (const key of imageStorageKeys) {
+          try {
+            await objectStorageService.deleteObjectEntity(key);
+          } catch (storageError: any) {
+            console.error(
+              `[DeleteMerchant] Failed to delete object ${key} for ${user.email}:`,
+              storageError?.message || storageError
+            );
+          }
+        }
+      }
 
       res.json({ success: true, message: `Merchant ${user.email} deleted` });
     } catch (error: any) {
