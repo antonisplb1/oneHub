@@ -82,3 +82,7 @@ APPLE_WWDR_CERT_PEM = """
   pU8RBWk6z/Kf
   -----END CERTIFICATE-----"""
 ADMIN_SEED_EMAIL = "antonispleipell@gmail.com"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
