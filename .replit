@@ -81,4 +81,4 @@ APPLE_WWDR_CERT_PEM = """
   A1iZQT0xWmJArzmoUUOSqwSonMJNsUvSq3xKX+udO7xPiEAGE/+QF4oIRynoYpgp
   pU8RBWk6z/Kf
   -----END CERTIFICATE-----"""
-ADMIN_SEED_EMAIL = "admin@unihub.live"
+ADMIN_SEED_EMAIL = "admin@unihub.com"
