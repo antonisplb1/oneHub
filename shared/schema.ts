@@ -25,6 +25,7 @@ export const users = pgTable("users", {
   selectedProducts: text("selected_products").array().default(sql`ARRAY[]::text[]`),
   shiftAccessPin: text("shift_access_pin"),
   customPrice: integer("custom_price"),
+  chargeFree: boolean("charge_free").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -211,6 +212,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   stripeSubscriptionId: true,
   subscriptionStatus: true,
   subscriptionEndsAt: true,
+  chargeFree: true,
   createdAt: true,
 });
 

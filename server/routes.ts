@@ -135,10 +135,11 @@ function requireSubscription(req: Request, res: Response, next: Function) {
     return res.status(403).json({ error: "Authentication required" });
   }
 
+  const isChargeFree = req.user!.chargeFree === true;
   const hasActiveSubscription = req.user!.subscriptionStatus === "active";
   const hasActiveTrial = req.user!.trialEndsAt && new Date(req.user!.trialEndsAt) > new Date();
 
-  if (hasActiveSubscription || hasActiveTrial) {
+  if (isChargeFree || hasActiveSubscription || hasActiveTrial) {
     return next();
   }
 
@@ -835,6 +836,7 @@ export function registerRoutes(app: Express) {
             subscriptionStatus: u.subscriptionStatus,
             selectedProducts: u.selectedProducts || [],
             customPrice: u.customPrice,
+            chargeFree: !!u.chargeFree,
             customerCount: customerRows.length,
             hasShiftPin: !!u.shiftAccessPin,
             createdAt: u.createdAt,
@@ -985,6 +987,85 @@ export function registerRoutes(app: Express) {
       res.json({ success: true, message: `Status set to ${subscriptionStatus}` });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to update status" });
+    }
+  });
+
+  // Admin: Enable or disable charge-free status for a merchant
+  app.patch("/api/admin/merchants/:id/charge-free", requireAdminAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const chargeFreeSchema = z.object({ chargeFree: z.boolean() });
+      const parsed = chargeFreeSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "chargeFree must be a boolean" });
+      }
+      const { chargeFree } = parsed.data;
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "Merchant not found" });
+      }
+
+      if (chargeFree) {
+        // Cancel any active Stripe subscription so the merchant is no longer billed.
+        // We MUST confirm cancellation before clearing billing fields — otherwise a
+        // transient Stripe failure could leave a live subscription billing a merchant
+        // we report as "charge-free". Only treat an already-gone subscription as success.
+        if (user.stripeSubscriptionId) {
+          try {
+            await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+          } catch (stripeError: any) {
+            // Stripe returns `resource_missing` when the subscription is already
+            // canceled/deleted — that's the desired end state, so proceed.
+            const alreadyGone = stripeError?.code === "resource_missing";
+            if (!alreadyGone) {
+              console.error(
+                `[ChargeFree] Failed to cancel subscription ${user.stripeSubscriptionId}:`,
+                stripeError?.message || stripeError
+              );
+              return res.status(502).json({
+                error:
+                  "Could not cancel the merchant's Stripe subscription. No changes were made — please try again.",
+              });
+            }
+          }
+        }
+
+        // Only reaches here once Stripe billing is confirmed canceled (or never existed).
+        await db
+          .update(users)
+          .set({
+            chargeFree: true,
+            stripeSubscriptionId: null,
+            subscriptionStatus: "inactive",
+            subscriptionEndsAt: null,
+          })
+          .where(eq(users.id, id));
+
+        return res.json({
+          success: true,
+          message: `${user.shopName} is now charge-free`,
+        });
+      }
+
+      // Disabling charge-free returns the merchant to normal billing rules.
+      await db
+        .update(users)
+        .set({ chargeFree: false })
+        .where(eq(users.id, id));
+
+      return res.json({
+        success: true,
+        message: `${user.shopName} returned to normal billing`,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to update charge-free status" });
     }
   });
 

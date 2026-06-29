@@ -583,18 +583,27 @@ export default function SettingsPage() {
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
                   Status: <span className="font-semibold text-lg text-foreground">
-                    {user?.subscriptionStatus === "active" ? "Active" : "Inactive"}
+                    {user?.chargeFree
+                      ? "Charge-Free"
+                      : user?.subscriptionStatus === "active"
+                        ? "Active"
+                        : "Inactive"}
                   </span>
                 </p>
-                {user?.selectedProducts && user.selectedProducts.length > 0 && (
+                {!user?.chargeFree && user?.selectedProducts && user.selectedProducts.length > 0 && (
                   <p className="text-sm text-muted-foreground">
                     Current Plan: <span className="font-semibold text-foreground">
                       €{calculatePrice(user.selectedProducts)}/month
                     </span>
                   </p>
                 )}
+                {user?.chargeFree && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-charge-free-note">
+                    Your account has full access at no cost. No subscription is required.
+                  </p>
+                )}
               </div>
-              {user?.subscriptionStatus !== "active" && user?.selectedProducts && user.selectedProducts.length > 0 && (
+              {!user?.chargeFree && user?.subscriptionStatus !== "active" && user?.selectedProducts && user.selectedProducts.length > 0 && (
                 <Button 
                   size="lg" 
                   onClick={() => subscribeMutation.mutate()}
@@ -607,7 +616,7 @@ export default function SettingsPage() {
                   }
                 </Button>
               )}
-              {user?.subscriptionStatus === "active" && (
+              {!user?.chargeFree && user?.subscriptionStatus === "active" && (
                 <Button 
                   size="lg" 
                   variant="outline" 

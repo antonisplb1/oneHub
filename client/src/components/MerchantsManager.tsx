@@ -30,6 +30,7 @@ import {
   ChevronDown,
   ChevronUp,
   KeyRound,
+  Gift,
 } from "lucide-react";
 
 interface Merchant {
@@ -39,6 +40,7 @@ interface Merchant {
   subscriptionStatus: string | null;
   selectedProducts: string[];
   customPrice: number | null;
+  chargeFree: boolean;
   customerCount: number;
   hasShiftPin: boolean;
   createdAt: string | null;
@@ -185,6 +187,24 @@ export default function MerchantsManager() {
       }),
   });
 
+  const chargeFreeMutation = useMutation({
+    mutationFn: async ({ id, chargeFree }: { id: string; chargeFree: boolean }) =>
+      apiRequest(`/api/admin/merchants/${id}/charge-free`, {
+        method: "PATCH",
+        body: JSON.stringify({ chargeFree }),
+      }),
+    onSuccess: (res: any) => {
+      toast({ title: "Charge-free updated", description: res.message });
+      invalidate();
+    },
+    onError: (error: any) =>
+      toast({
+        title: "Update failed",
+        description: error.data?.error || "Failed to update charge-free status",
+        variant: "destructive",
+      }),
+  });
+
   return (
     <Card data-testid="card-merchants">
       <CardHeader>
@@ -230,6 +250,7 @@ export default function MerchantsManager() {
                 statusMutation={statusMutation}
                 productsMutation={productsMutation}
                 shiftPinMutation={shiftPinMutation}
+                chargeFreeMutation={chargeFreeMutation}
               />
             ))}
           </div>
@@ -249,6 +270,7 @@ interface RowProps {
   statusMutation: any;
   productsMutation: any;
   shiftPinMutation: any;
+  chargeFreeMutation: any;
 }
 
 function MerchantRow({
@@ -261,6 +283,7 @@ function MerchantRow({
   statusMutation,
   productsMutation,
   shiftPinMutation,
+  chargeFreeMutation,
 }: RowProps) {
   const m = merchant;
   const [priceInput, setPriceInput] = useState(
@@ -294,6 +317,11 @@ function MerchantRow({
             {m.customPrice != null && (
               <Badge variant="outline" data-testid={`badge-price-${m.id}`}>
                 {formatPrice(m.customPrice)}/mo
+              </Badge>
+            )}
+            {m.chargeFree && (
+              <Badge variant="secondary" data-testid={`badge-charge-free-${m.id}`}>
+                <Gift className="h-3 w-3 mr-1" /> Charge Free
               </Badge>
             )}
           </div>
@@ -426,6 +454,51 @@ function MerchantRow({
                 </AlertDialog>
               ))}
             </div>
+          </div>
+
+          {/* Charge-free */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <Gift className="h-4 w-4" /> Charge Free
+            </Label>
+            <p className="text-xs text-muted-foreground" data-testid={`text-charge-free-status-${m.id}`}>
+              {m.chargeFree
+                ? "This merchant has full access at no cost. Billing is bypassed."
+                : "This merchant follows normal billing (active subscription or trial)."}
+            </p>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant={m.chargeFree ? "outline" : "default"}
+                  size="sm"
+                  disabled={chargeFreeMutation.isPending}
+                  data-testid={`button-charge-free-toggle-${m.id}`}
+                >
+                  {m.chargeFree ? "Turn Off Charge Free" : "Make Charge Free"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {m.chargeFree ? "Turn off charge-free?" : "Make this merchant charge-free?"}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {m.chargeFree
+                      ? `This returns ${m.shopName} to normal billing. Access will again depend on an active subscription or trial.`
+                      : `This cancels ${m.shopName}'s active Stripe subscription (if any) and gives them full access to their products at no cost. They won't be billed or prompted to pay.`}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid={`button-cancel-charge-free-${m.id}`}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => chargeFreeMutation.mutate({ id: m.id, chargeFree: !m.chargeFree })}
+                    data-testid={`button-confirm-charge-free-${m.id}`}
+                  >
+                    Confirm
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
 
           {/* Product access */}

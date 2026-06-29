@@ -30,11 +30,12 @@ export function useAuth() {
         return;
       }
       
-      // Check if user has active subscription OR active trial
+      // Check if user has active subscription OR active trial (charge-free bypasses billing)
+      const isChargeFree = user.chargeFree === true;
       const hasActiveTrial = user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
       const hasActiveSubscription = user.subscriptionStatus === "active";
       
-      if (!hasActiveSubscription && !hasActiveTrial) {
+      if (!isChargeFree && !hasActiveSubscription && !hasActiveTrial) {
         setLocation("/subscription-required");
         return;
       }

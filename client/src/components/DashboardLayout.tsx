@@ -163,10 +163,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
 
-  // Check if user has active subscription OR active trial
+  // Check if user has active subscription OR active trial (charge-free bypasses billing)
+  const isChargeFree = user && user.chargeFree === true;
   const hasActiveTrial = user && user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
   const hasActiveSubscription = user && user.subscriptionStatus === "active";
-  const hasAccess = hasActiveSubscription || hasActiveTrial;
+  const hasAccess = isChargeFree || hasActiveSubscription || hasActiveTrial;
 
   // Upgrade mutation - creates checkout session with existing products
   const upgradeMutation = useMutation({
@@ -274,7 +275,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </header>
           
           {/* Trial Status Banner */}
-          {hasActiveTrial && !hasActiveSubscription && user.trialEndsAt && (
+          {!isChargeFree && hasActiveTrial && !hasActiveSubscription && user.trialEndsAt && (
             <Alert className="mx-4 mt-4 border-primary/50 bg-primary/5" data-testid="alert-trial-status">
               <Clock className="h-4 w-4 text-primary" />
               <AlertDescription className="flex items-center justify-between gap-4">
