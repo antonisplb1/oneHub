@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Users, Mail, Shield, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Mail, Shield, CheckCircle2, XCircle, Store } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Subuser } from "@shared/schema";
+import type { Store } from "@/contexts/StoreContext";
 
 const PERMISSION_OPTIONS = [
   { value: 'dashboard', label: 'Dashboard', description: 'Access to overview and home page' },
@@ -32,11 +33,17 @@ export default function TeamManagement() {
   const [editingSubuser, setEditingSubuser] = useState<Subuser | null>(null);
   const [email, setEmail] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  // null = all stores; array = restricted list
+  const [selectedStoreIds, setSelectedStoreIds] = useState<string[] | null>(null);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   const { data: subusersData, isLoading, error } = useQuery<{ subusers: Subuser[] }>({
     queryKey: ["/api/subusers"],
+  });
+
+  const { data: storesData = [] } = useQuery<Store[]>({
+    queryKey: ["/api/stores"],
   });
 
   // Handle 403 errors - redirect subusers who try to access owner-only features
@@ -55,7 +62,7 @@ export default function TeamManagement() {
   }, [error, toast, setLocation]);
 
   const createMutation = useMutation({
-    mutationFn: async (data: { email: string; permissions: string[] }) => {
+    mutationFn: async (data: { email: string; permissions: string[]; storeIds: string[] | null }) => {
       return await apiRequest("/api/subusers", {
         method: "POST",
         body: JSON.stringify(data),
@@ -66,6 +73,7 @@ export default function TeamManagement() {
       setIsAddDialogOpen(false);
       setEmail("");
       setSelectedPermissions([]);
+      setSelectedStoreIds(null);
       toast({
         title: "Success",
         description: "Team member invited successfully. They will receive an email to set up their account.",
@@ -81,10 +89,10 @@ export default function TeamManagement() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, permissions }: { id: string; permissions: string[] }) => {
+    mutationFn: async ({ id, permissions, storeIds }: { id: string; permissions: string[]; storeIds: string[] | null }) => {
       return await apiRequest(`/api/subusers/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ permissions }),
+        body: JSON.stringify({ permissions, storeIds }),
       });
     },
     onSuccess: () => {
@@ -137,8 +145,8 @@ export default function TeamManagement() {
       });
       return;
     }
-
-    createMutation.mutate({ email, permissions: selectedPermissions });
+    // null selectedStoreIds = all stores; send null to backend
+    createMutation.mutate({ email, permissions: selectedPermissions, storeIds: selectedStoreIds });
   };
 
   const handleUpdatePermissions = () => {
@@ -146,12 +154,14 @@ export default function TeamManagement() {
     updateMutation.mutate({
       id: editingSubuser.id,
       permissions: selectedPermissions,
+      storeIds: selectedStoreIds,
     });
   };
 
   const handleEditClick = (subuser: Subuser) => {
     setEditingSubuser(subuser);
     setSelectedPermissions(subuser.permissions || []);
+    setSelectedStoreIds(subuser.storeIds ?? null);
     setIsEditDialogOpen(true);
   };
 
@@ -167,21 +177,56 @@ export default function TeamManagement() {
     );
   };
 
+  const handleStoreToggle = (storeId: string) => {
+    setSelectedStoreIds((prev) => {
+      // null = all stores; convert to explicit list when toggling
+      const current = prev ?? storesData.map(s => s.id);
+      if (current.includes(storeId)) {
+        const next = current.filter(id => id !== storeId);
+        // Prevent deselecting the last store — must have at least one
+        if (next.length === 0) return current;
+        // If all stores are now selected → revert to null (unrestricted)
+        return next.length === storesData.length ? null : next;
+      } else {
+        const next = [...current, storeId];
+        return next.length === storesData.length ? null : next;
+      }
+    });
+  };
+
+  const isStoreSelected = (storeId: string): boolean => {
+    if (selectedStoreIds === null) return true; // all stores
+    return selectedStoreIds.includes(storeId);
+  };
+
+  const getStoreLabel = (subuser: Subuser): string => {
+    const ids: string[] | null = subuser.storeIds ?? null;
+    if (ids === null || ids.length === storesData.length) return "All stores";
+    const names = ids
+      .map(id => storesData.find(s => s.id === id)?.displayName || id)
+      .join(", ");
+    return names || "All stores";
+  };
+
   const resetAddDialog = () => {
     setEmail("");
     setSelectedPermissions([]);
+    setSelectedStoreIds(null);
     setIsAddDialogOpen(false);
   };
 
   const resetEditDialog = () => {
     setEditingSubuser(null);
     setSelectedPermissions([]);
+    setSelectedStoreIds(null);
     setIsEditDialogOpen(false);
   };
 
+  const multipleStores = storesData.length > 1;
+
   return (
     <div className="container mx-auto p-8 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-1">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Team Management</h1>
           <p className="text-muted-foreground">Invite team members and manage their permissions</p>
@@ -226,6 +271,7 @@ export default function TeamManagement() {
                   <TableHead>Email</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Permissions</TableHead>
+                  {multipleStores && <TableHead>Store Access</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -267,6 +313,11 @@ export default function TeamManagement() {
                         )}
                       </div>
                     </TableCell>
+                    {multipleStores && (
+                      <TableCell data-testid={`text-stores-${subuser.id}`}>
+                        <span className="text-sm text-muted-foreground">{getStoreLabel(subuser)}</span>
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
                         <Button
@@ -304,7 +355,7 @@ export default function TeamManagement() {
               Send an invitation to a team member. They'll receive an email to set up their account.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <Input
@@ -345,6 +396,35 @@ export default function TeamManagement() {
                 ))}
               </div>
             </div>
+            {multipleStores && (
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Store className="w-4 h-4" />
+                  Store Access
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Which stores can this person access? Leave all checked for unrestricted access.
+                </p>
+                <div className="space-y-3">
+                  {storesData.map((store) => (
+                    <div key={store.id} className="flex items-center space-x-3" data-testid={`store-checkbox-container-${store.id}`}>
+                      <Checkbox
+                        id={`add-store-${store.id}`}
+                        checked={isStoreSelected(store.id)}
+                        onCheckedChange={() => handleStoreToggle(store.id)}
+                        data-testid={`store-checkbox-${store.id}`}
+                      />
+                      <Label
+                        htmlFor={`add-store-${store.id}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {store.displayName || store.shopName}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -374,7 +454,7 @@ export default function TeamManagement() {
               Update permissions for {editingSubuser?.email}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-4">
+          <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto pr-1">
             <Label className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
               Permissions
@@ -402,6 +482,35 @@ export default function TeamManagement() {
                 </div>
               ))}
             </div>
+            {multipleStores && (
+              <div className="space-y-3 pt-2">
+                <Label className="flex items-center gap-2">
+                  <Store className="w-4 h-4" />
+                  Store Access
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Which stores can this person access? Leave all checked for unrestricted access.
+                </p>
+                <div className="space-y-3">
+                  {storesData.map((store) => (
+                    <div key={store.id} className="flex items-center space-x-3" data-testid={`edit-store-checkbox-container-${store.id}`}>
+                      <Checkbox
+                        id={`edit-store-${store.id}`}
+                        checked={isStoreSelected(store.id)}
+                        onCheckedChange={() => handleStoreToggle(store.id)}
+                        data-testid={`edit-store-checkbox-${store.id}`}
+                      />
+                      <Label
+                        htmlFor={`edit-store-${store.id}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {store.displayName || store.shopName}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

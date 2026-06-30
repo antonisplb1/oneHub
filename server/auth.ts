@@ -30,6 +30,7 @@ declare module 'express-session' {
     isSubuser?: boolean;
     subuserId?: string;
     permissions?: string[];
+    subuserStoreIds?: string[] | null; // null = access to all stores
   }
 }
 
@@ -139,6 +140,7 @@ export function setupAuth(app: Express) {
             __isSubuser: true,
             __subuserId: subuser.id,
             __permissions: subuser.permissions || [],
+            __storeIds: subuser.storeIds ?? null, // null = all stores
           });
         } catch (err) {
           return done(err);

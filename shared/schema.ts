@@ -50,6 +50,7 @@ export const subusers = pgTable("subusers", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash"),
   permissions: text("permissions").array().default(sql`ARRAY[]::text[]`),
+  storeIds: text("store_ids").array(), // null = access to all stores; array = restricted to listed stores
   emailVerified: boolean("email_verified").default(false),
   verificationToken: text("verification_token"),
   verificationTokenExpiry: timestamp("verification_token_expiry"),

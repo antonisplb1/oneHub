@@ -179,6 +179,10 @@ function requireSubscription(req: Request, res: Response, next: Function) {
 async function resolveActiveStore(req: Request, res: Response, next: Function) {
   if (req.storeId) return next();
   try {
+    const isSubuser = req.session?.isSubuser === true;
+    // storeIds null means access to all stores; an array restricts access
+    const subuserStoreIds: string[] | null = req.session?.subuserStoreIds ?? null;
+
     const storeIdHeader = req.headers['x-store-id'] as string | undefined;
     if (storeIdHeader) {
       const [store] = await db
@@ -187,21 +191,46 @@ async function resolveActiveStore(req: Request, res: Response, next: Function) {
         .where(and(eq(stores.id, storeIdHeader), eq(stores.userId, req.user!.id)))
         .limit(1);
       if (store) {
+        // For subusers with restricted store access, validate the store is in their list
+        if (isSubuser && subuserStoreIds !== null && !subuserStoreIds.includes(store.id)) {
+          return res.status(403).json({ error: "You do not have access to this store" });
+        }
         req.storeId = store.id;
         return next();
       }
       return res.status(403).json({ error: "Store not found or access denied" });
     }
+    // For subusers with restricted access, only pick from their allowed stores
+    const baseCondition = eq(stores.userId, req.user!.id);
     const [store] = await db
       .select({ id: stores.id })
       .from(stores)
-      .where(eq(stores.userId, req.user!.id))
+      .where(baseCondition)
       .orderBy(asc(stores.createdAt))
       .limit(1);
-    if (store) {
-      req.storeId = store.id;
+    // Pick the first allowed store for subusers (filter client-side since we already fetched)
+    let resolvedStoreId: string | undefined;
+    if (isSubuser && subuserStoreIds !== null) {
+      if (store && subuserStoreIds.includes(store.id)) {
+        resolvedStoreId = store.id;
+      } else {
+        // Fetch all stores and find first accessible one
+        const allStores = await db
+          .select({ id: stores.id })
+          .from(stores)
+          .where(baseCondition)
+          .orderBy(asc(stores.createdAt));
+        const accessible = allStores.find(s => subuserStoreIds.includes(s.id));
+        resolvedStoreId = accessible?.id;
+      }
     } else {
-      // Auto-provision a default store for users who went through without one
+      resolvedStoreId = store?.id;
+    }
+
+    if (resolvedStoreId) {
+      req.storeId = resolvedStoreId;
+    } else if (!isSubuser) {
+      // Auto-provision a default store for owners who went through without one
       // (handles migration edge cases and new-account flows)
       const user = req.user as any;
       const [newStore] = await db.insert(stores).values({
@@ -211,6 +240,10 @@ async function resolveActiveStore(req: Request, res: Response, next: Function) {
       }).returning();
       req.storeId = newStore.id;
       console.log(`[resolveActiveStore] Auto-provisioned store ${newStore.id} for user ${user.id}`);
+    } else {
+      // Subuser has no accessible stores — let the request proceed without a storeId;
+      // individual routes will fail gracefully when they require one.
+      console.warn(`[resolveActiveStore] Subuser ${req.session.subuserId} has no accessible stores`);
     }
   } catch (err) {
     console.error('[resolveActiveStore] DB error resolving store:', err);
@@ -390,9 +423,10 @@ export function registerRoutes(app: Express) {
       const isSubuser = authUser.__isSubuser || false;
       const subuserId = authUser.__subuserId;
       const permissions = authUser.__permissions || [];
+      const storeIds = authUser.__storeIds ?? null; // null = all stores
 
       // Clean the user object (remove temporary flags)
-      const { __isOwner, __isSubuser, __subuserId, __permissions, ...cleanUser } = authUser;
+      const { __isOwner, __isSubuser, __subuserId, __permissions, __storeIds, ...cleanUser } = authUser;
 
       req.login(cleanUser, { keepSessionInfo: true }, (err) => {
         if (err) {
@@ -404,10 +438,12 @@ export function registerRoutes(app: Express) {
           req.session.isSubuser = true;
           req.session.subuserId = subuserId;
           req.session.permissions = permissions;
+          req.session.subuserStoreIds = storeIds; // null = all stores
         } else {
           req.session.isSubuser = false;
           req.session.subuserId = undefined;
           req.session.permissions = undefined;
+          req.session.subuserStoreIds = undefined;
         }
 
         // Explicitly save session to persist data
@@ -435,6 +471,7 @@ export function registerRoutes(app: Express) {
         isSubuser: req.session.isSubuser || false,
         subuserId: req.session.subuserId,
         permissions: req.session.permissions || [],
+        subuserStoreIds: req.session.subuserStoreIds ?? null,
       });
     } else {
       res.status(401).json({ error: "Not authenticated" });
@@ -1429,12 +1466,21 @@ export function registerRoutes(app: Express) {
   // Store Management Routes
   app.get("/api/stores", requireAuth, async (req, res) => {
     try {
-      const userStores = await db
+      const allUserStores = await db
         .select()
         .from(stores)
         .where(eq(stores.userId, req.user!.id))
         .orderBy(asc(stores.createdAt));
-      res.json(userStores);
+
+      // Subusers with a restricted store list only see their assigned stores
+      const isSubuser = req.session?.isSubuser === true;
+      const subuserStoreIds: string[] | null = req.session?.subuserStoreIds ?? null;
+      if (isSubuser && subuserStoreIds !== null) {
+        const filtered = allUserStores.filter(s => subuserStoreIds.includes(s.id));
+        return res.json(filtered);
+      }
+
+      res.json(allUserStores);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -3911,6 +3957,26 @@ export function registerRoutes(app: Express) {
         .pick({ email: true, permissions: true })
         .parse(req.body);
 
+      // Validate storeIds if provided (null = all stores; array must be non-empty)
+      let storeIds: string[] | null = null;
+      if (Array.isArray(req.body.storeIds)) {
+        const requestedIds: string[] = req.body.storeIds;
+        if (requestedIds.length === 0) {
+          return res.status(400).json({ error: "storeIds must not be empty; omit the field or set null to grant access to all stores" });
+        }
+        // Verify every ID belongs to this owner
+        const ownerStores = await db
+          .select({ id: stores.id })
+          .from(stores)
+          .where(eq(stores.userId, req.user.id));
+        const ownerStoreIds = new Set(ownerStores.map(s => s.id));
+        const invalid = requestedIds.filter(id => !ownerStoreIds.has(id));
+        if (invalid.length > 0) {
+          return res.status(400).json({ error: "One or more store IDs are invalid" });
+        }
+        storeIds = requestedIds;
+      }
+
       // Check if email already exists as user or subuser
       const existingUser = await db.query.users.findFirst({
         where: eq(users.email, email),
@@ -3936,6 +4002,7 @@ export function registerRoutes(app: Express) {
           ownerId: req.user.id,
           email,
           permissions: permissions || [],
+          storeIds,
           verificationToken: token,
           verificationTokenExpiry: tokenExpiry,
           emailVerified: false,
@@ -3982,12 +4049,35 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Update subuser permissions (owner only)
+  // Update subuser permissions and store access (owner only)
   app.patch("/api/subusers/:id", ownerOnly, async (req: Request, res: Response) => {
 
     try {
       const { id } = req.params;
       const { permissions } = req.body;
+
+      // Validate storeIds if provided (null = all stores; array must be non-empty)
+      let storeIds: string[] | null | undefined = undefined; // undefined = not changing
+      if ('storeIds' in req.body) {
+        if (req.body.storeIds === null) {
+          storeIds = null; // explicitly requesting all-stores access
+        } else if (Array.isArray(req.body.storeIds)) {
+          const requestedIds: string[] = req.body.storeIds;
+          if (requestedIds.length === 0) {
+            return res.status(400).json({ error: "storeIds must not be empty; omit the field or set null to grant access to all stores" });
+          }
+          const ownerStores = await db
+            .select({ id: stores.id })
+            .from(stores)
+            .where(eq(stores.userId, req.user.id));
+          const ownerStoreIds = new Set(ownerStores.map(s => s.id));
+          const invalid = requestedIds.filter(sid => !ownerStoreIds.has(sid));
+          if (invalid.length > 0) {
+            return res.status(400).json({ error: "One or more store IDs are invalid" });
+          }
+          storeIds = requestedIds;
+        }
+      }
 
       // Verify subuser belongs to this owner
       const subuser = await db.query.subusers.findFirst({
@@ -4001,10 +4091,14 @@ export function registerRoutes(app: Express) {
         return res.status(404).json({ error: "Subuser not found" });
       }
 
-      // Update permissions
+      // Update permissions and store access
+      const updatePayload: { permissions?: string[]; storeIds?: string[] | null } = {};
+      if (permissions !== undefined) updatePayload.permissions = permissions;
+      if (storeIds !== undefined) updatePayload.storeIds = storeIds;
+
       const [updated] = await db
         .update(subusers)
-        .set({ permissions })
+        .set(updatePayload)
         .where(eq(subusers.id, id))
         .returning();
 
