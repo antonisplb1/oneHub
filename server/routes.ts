@@ -1491,6 +1491,17 @@ export function registerRoutes(app: Express) {
     try {
       const validatedData = createStoreSchema.parse(req.body);
 
+      // The shop URL slug is globally unique (used in public URLs). Check up-front so
+      // we can return a clear, friendly message instead of a raw DB constraint error.
+      const [slugTaken] = await db
+        .select({ id: stores.id })
+        .from(stores)
+        .where(eq(stores.shopName, validatedData.shopName))
+        .limit(1);
+      if (slugTaken) {
+        return res.status(409).json({ error: "That store URL is already taken. Please choose a different one." });
+      }
+
       // Count existing stores to determine if this is an extra (billable) store.
       const existingStores = await db
         .select({ id: stores.id })
@@ -1500,14 +1511,28 @@ export function registerRoutes(app: Express) {
 
       // 1. Persist the store (DB write first — catches unique-constraint violations
       //    before any billing action is taken).
-      const [newStore] = await db
-        .insert(stores)
-        .values({
-          userId: req.user!.id,
-          shopName: validatedData.shopName,
-          displayName: validatedData.displayName || validatedData.shopName,
-        })
-        .returning();
+      let newStore: typeof stores.$inferSelect;
+      try {
+        [newStore] = await db
+          .insert(stores)
+          .values({
+            userId: req.user!.id,
+            shopName: validatedData.shopName,
+            displayName: validatedData.displayName || validatedData.shopName,
+          })
+          .returning();
+        if (!newStore) throw new Error("Store insert returned no row");
+      } catch (insertErr: any) {
+        // Fallback for a race between the check above and the insert.
+        // 23505 = Postgres unique_violation.
+        const isDuplicateSlug =
+          insertErr?.code === "23505" ||
+          (typeof insertErr?.message === "string" && insertErr.message.includes("stores_shop_name_unique"));
+        if (isDuplicateSlug) {
+          return res.status(409).json({ error: "That store URL is already taken. Please choose a different one." });
+        }
+        throw insertErr;
+      }
 
       if (isExtraStore) {
         // 2. Increment additionalStores in DB.
