@@ -45,6 +45,7 @@ const PRODUCT_INFO = [
 export default function SettingsPage() {
   const { user } = useAuth();
   const { activeStore, stores } = useStore();
+  const isPrimaryStore = !!activeStore && stores[0]?.id === activeStore.id;
   const { toast } = useToast();
   const [displayName, setDisplayName] = useState(activeStore?.displayName || "");
   const [logoUrl, setLogoUrl] = useState(activeStore?.logo || "");
@@ -52,7 +53,7 @@ export default function SettingsPage() {
   const [cardBackgroundColor, setCardBackgroundColor] = useState(activeStore?.cardBackgroundColor || "#4285F4");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<string[]>(user?.selectedProducts || []);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>(activeStore?.selectedProducts || []);
 
   useEffect(() => {
     if (activeStore) {
@@ -64,10 +65,10 @@ export default function SettingsPage() {
   }, [activeStore]);
 
   useEffect(() => {
-    if (user) {
-      setSelectedProducts(user.selectedProducts || []);
+    if (activeStore) {
+      setSelectedProducts(activeStore.selectedProducts || []);
     }
-  }, [user]);
+  }, [activeStore]);
 
   const updateMutation = useMutation({
     mutationFn: (data: { displayName: string; logo?: string | null; menuBannerImage?: string | null; cardBackgroundColor?: string }) => {
@@ -95,16 +96,20 @@ export default function SettingsPage() {
 
   const updateProductsMutation = useMutation({
     mutationFn: (products: string[]) => {
-      return apiRequest("/api/user/select-products", {
-        method: "POST",
-        body: JSON.stringify({ products }),
+      if (!activeStore) throw new Error("No active store selected");
+      return apiRequest(`/api/stores/${activeStore.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ selectedProducts: products }),
       });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stores"] });
       queryClient.invalidateQueries({ queryKey: ["/api", "auth", "me"] });
       toast({
         title: "Products updated!",
-        description: "Your subscription will be adjusted accordingly.",
+        description: isPrimaryStore
+          ? "Your subscription will be adjusted accordingly."
+          : "This store's features have been updated.",
       });
     },
     onError: (error: Error) => {
@@ -311,7 +316,7 @@ export default function SettingsPage() {
   };
 
   const hasProductChanges = () => {
-    const current = [...(user?.selectedProducts || [])].sort();
+    const current = [...(activeStore?.selectedProducts || [])].sort();
     const selected = [...selectedProducts].sort();
     return JSON.stringify(current) !== JSON.stringify(selected);
   };
@@ -506,10 +511,21 @@ export default function SettingsPage() {
 
       <Card className="border-card-border shadow-sm">
         <CardHeader className="pb-6">
-          <CardTitle className="text-xl font-semibold">Product Selection</CardTitle>
-          <CardDescription>
-            Choose which features you want to include in your subscription.
-            Subscription amount gets applied on next recurring payment. No additional actions required.
+          <div className="flex items-center gap-2">
+            <Store className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <CardTitle className="text-xl font-semibold">Product Selection</CardTitle>
+              {stores.length > 1 && activeStore && (
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Editing: <span className="font-medium text-foreground">{activeStore.displayName || activeStore.shopName}</span>
+                </p>
+              )}
+            </div>
+          </div>
+          <CardDescription className="mt-2">
+            {isPrimaryStore
+              ? "Choose which features this store includes. This is your main store, so its products set your base subscription price. Updating them adjusts your subscription automatically."
+              : "Choose which features this store includes. Extra stores are billed at a flat €5/month, so changing this store's products won't change your bill."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -542,17 +558,19 @@ export default function SettingsPage() {
                     {product.description}
                   </p>
                 </div>
-                <div className="text-right">
-                  <div className="text-xl font-bold" data-testid={`text-product-price-${product.id}`}>
-                    €{product.price}
+                {isPrimaryStore && (
+                  <div className="text-right">
+                    <div className="text-xl font-bold" data-testid={`text-product-price-${product.id}`}>
+                      €{product.price}
+                    </div>
+                    <div className="text-xs text-muted-foreground">per month</div>
                   </div>
-                  <div className="text-xs text-muted-foreground">per month</div>
-                </div>
+                )}
               </div>
             );
           })}
 
-          {selectedProducts.length === 4 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && selectedProducts.includes('shift') && (
+          {isPrimaryStore && selectedProducts.length === 4 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && selectedProducts.includes('shift') && (
             <div className="p-4 bg-primary/5 border border-primary rounded-md">
               <div className="flex items-center justify-between">
                 <div>
@@ -571,12 +589,21 @@ export default function SettingsPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-between p-4 bg-muted rounded-md">
-            <span className="font-semibold">New Total:</span>
-            <span className="text-xl font-bold" data-testid="text-total-price">
-              €{calculatePrice(selectedProducts, user?.additionalStores ?? 0).toFixed(2)}/month
-            </span>
-          </div>
+          {isPrimaryStore ? (
+            <div className="flex items-center justify-between p-4 bg-muted rounded-md">
+              <span className="font-semibold">New Total:</span>
+              <span className="text-xl font-bold" data-testid="text-total-price">
+                €{calculatePrice(selectedProducts, user?.additionalStores ?? 0).toFixed(2)}/month
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between p-4 bg-muted rounded-md">
+              <span className="font-semibold">This store:</span>
+              <span className="text-xl font-bold" data-testid="text-total-price">
+                €5.00/month (flat)
+              </span>
+            </div>
+          )}
 
           {hasProductChanges() && (
             <Button
