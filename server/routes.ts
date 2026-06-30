@@ -1656,6 +1656,32 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Per-store shop QR code — owner can fetch the join QR for any of their stores
+  app.get("/api/stores/:storeId/shop-qr-code", requireAuth, async (req, res) => {
+    try {
+      const { storeId } = req.params;
+      // Verify the store belongs to this user
+      const [store] = await db
+        .select({ id: stores.id, shopName: stores.shopName, userId: stores.userId })
+        .from(stores)
+        .where(eq(stores.id, storeId))
+        .limit(1);
+      if (!store) return res.status(404).json({ error: "Store not found" });
+      if (store.userId !== req.user!.id) return res.status(403).json({ error: "Forbidden" });
+
+      const protocol = req.protocol;
+      const host = req.get("host");
+      const shopUrl = `${protocol}://${host}/${store.shopName}/join`;
+      const qrCodeDataUrl = await QRCode.toDataURL(shopUrl, {
+        width: 300,
+        margin: 2,
+      });
+      res.json({ qrCode: qrCodeDataUrl, url: shopUrl });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/menu-qr-code", requireSubscription, requirePermission('menu'), async (req, res) => {
     try {
       const protocol = req.protocol;

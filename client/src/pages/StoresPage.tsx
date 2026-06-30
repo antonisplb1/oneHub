@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Store, Plus, Trash2, Check, Pencil, Upload, X, TriangleAlert } from "lucide-react";
+import { Store, Plus, Trash2, Check, Pencil, Upload, X, TriangleAlert, QrCode, Download } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 
 type StoreEntry = {
@@ -60,6 +60,23 @@ export default function StoresPage() {
   const [editPin, setEditPin] = useState("");
   const [editLogo, setEditLogo] = useState<string | null>(null);
   const [editBanner, setEditBanner] = useState<string | null>(null);
+
+  const [downloadingQrStoreId, setDownloadingQrStoreId] = useState<string | null>(null);
+
+  const handleDownloadQr = async (store: StoreEntry) => {
+    setDownloadingQrStoreId(store.id);
+    try {
+      const data = await apiRequest<{ qrCode: string; url: string }>(`/api/stores/${store.id}/shop-qr-code`);
+      const link = document.createElement("a");
+      link.href = data.qrCode;
+      link.download = `${store.shopName}-loyalty-qr.png`;
+      link.click();
+    } catch {
+      toast({ title: "Failed to download QR code", variant: "destructive" });
+    } finally {
+      setDownloadingQrStoreId(null);
+    }
+  };
 
   const isExtraStore = stores.length >= 1;
   const isChargeFree = user?.chargeFree === true;
@@ -246,6 +263,16 @@ export default function StoresPage() {
           </Dialog>
         </div>
 
+        {stores.length > 1 && (
+          <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300" data-testid="notice-qr-regenerate">
+            <QrCode className="w-4 h-4 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-medium">Regenerate your loyalty QR codes</p>
+              <p className="mt-0.5 text-amber-700 dark:text-amber-400">You now have multiple stores. Old printed QR codes may route customers to the wrong store. Download a fresh QR code for each store below and replace any printed copies.</p>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-3">
           {stores.map(store => (
             <Card key={store.id} className={activeStoreId === store.id ? "ring-2 ring-primary" : ""} data-testid={`card-store-${store.id}`}>
@@ -258,6 +285,20 @@ export default function StoresPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-testid={`button-download-qr-${store.id}`}
+                    onClick={() => handleDownloadQr(store as StoreEntry)}
+                    disabled={downloadingQrStoreId === store.id}
+                  >
+                    {downloadingQrStoreId === store.id ? (
+                      <Download className="w-3 h-3 mr-1 animate-bounce" />
+                    ) : (
+                      <QrCode className="w-3 h-3 mr-1" />
+                    )}
+                    {downloadingQrStoreId === store.id ? "Downloading..." : "QR Code"}
+                  </Button>
                   {activeStoreId === store.id ? (
                     <span className="text-xs text-primary font-medium flex items-center gap-1">
                       <Check className="w-3 h-3" /> Active
