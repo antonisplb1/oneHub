@@ -77,20 +77,47 @@ const PRODUCT_PRICES = {
   'shift': 1800,   // €18 in cents
 };
 
-// Calculate price based on selected products
-function calculateProductPrice(products: string[]): number {
+// Calculate price based on selected products and extra stores
+function calculateProductPrice(products: string[], additionalStores: number = 0): number {
   const sortedProducts = [...products].sort();
   
   // All four products - Bundle discount (€36.99 instead of €50)
+  let base: number;
   if (sortedProducts.length === 4 && sortedProducts.includes('loyalty') && sortedProducts.includes('spin') && sortedProducts.includes('menu') && sortedProducts.includes('shift')) {
-    return 3699;
-  }
-  // Individual prices for all other combinations
-  else {
-    return sortedProducts.reduce((sum, product) => {
+    base = 3699;
+  } else {
+    base = sortedProducts.reduce((sum, product) => {
       return sum + (PRODUCT_PRICES[product as keyof typeof PRODUCT_PRICES] || 0);
     }, 0);
   }
+  
+  return base + Math.max(0, additionalStores) * 500;
+}
+
+// Helper: update an existing Stripe subscription to reflect a new price
+async function updateStripeSubscriptionPrice(
+  subscriptionId: string,
+  newPriceCents: number,
+  description: string,
+  prorationBehavior: 'create_prorations' | 'none' = 'create_prorations',
+): Promise<void> {
+  const sub = await stripe.subscriptions.retrieve(subscriptionId);
+  const itemId = sub.items.data[0]?.id;
+  if (!itemId) throw new Error('Subscription has no items');
+  await stripe.subscriptions.update(subscriptionId, {
+    items: [
+      {
+        id: itemId,
+        price_data: {
+          currency: 'eur',
+          product_data: { name: 'uniHub Subscription', description },
+          unit_amount: newPriceCents,
+          recurring: { interval: 'month' },
+        },
+      },
+    ],
+    proration_behavior: prorationBehavior,
+  });
 }
 
 // Get product description based on selected products
@@ -910,12 +937,15 @@ export function registerRoutes(app: Express) {
             .from(stores)
             .where(eq(stores.userId, u.id))
             .orderBy(asc(stores.createdAt));
+          const additionalStores = u.additionalStores ?? 0;
+          const selectedProducts = u.selectedProducts || [];
+          const expectedPrice = u.customPrice ?? calculateProductPrice(selectedProducts, additionalStores);
           return {
             id: u.id,
             email: u.email,
             shopName: u.shopName,
             subscriptionStatus: u.subscriptionStatus,
-            selectedProducts: u.selectedProducts || [],
+            selectedProducts,
             customPrice: u.customPrice,
             chargeFree: !!u.chargeFree,
             customerCount: customerRows.length,
@@ -923,6 +953,8 @@ export function registerRoutes(app: Express) {
             storeNames: storeRows.map(s => s.displayName || s.shopName),
             hasShiftPin: !!u.shiftAccessPin,
             createdAt: u.createdAt,
+            additionalStores,
+            expectedPrice,
           };
         })
       );
@@ -1315,7 +1347,7 @@ export function registerRoutes(app: Express) {
       res.json({
         success: true,
         selectedProducts: updatedUser.selectedProducts,
-        price: calculateProductPrice(products),
+        price: calculateProductPrice(products, req.user!.additionalStores ?? 0),
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1411,6 +1443,16 @@ export function registerRoutes(app: Express) {
   app.post("/api/stores", requireAuth, async (req, res) => {
     try {
       const validatedData = createStoreSchema.parse(req.body);
+
+      // Count existing stores to determine if this is an extra (billable) store.
+      const existingStores = await db
+        .select({ id: stores.id })
+        .from(stores)
+        .where(eq(stores.userId, req.user!.id));
+      const isExtraStore = existingStores.length >= 1;
+
+      // 1. Persist the store (DB write first — catches unique-constraint violations
+      //    before any billing action is taken).
       const [newStore] = await db
         .insert(stores)
         .values({
@@ -1419,6 +1461,37 @@ export function registerRoutes(app: Express) {
           displayName: validatedData.displayName || validatedData.shopName,
         })
         .returning();
+
+      if (isExtraStore) {
+        // 2. Increment additionalStores in DB.
+        const newAdditionalStores = (req.user!.additionalStores ?? 0) + 1;
+        await db
+          .update(users)
+          .set({ additionalStores: newAdditionalStores })
+          .where(eq(users.id, req.user!.id));
+
+        // 3. Update Stripe subscription. If this fails, compensate by rolling
+        //    back the DB changes so billing stays in sync with store state.
+        const isChargeFree = req.user!.chargeFree === true;
+        const inTrial = req.user!.trialEndsAt && new Date(req.user!.trialEndsAt) > new Date();
+        const hasActiveSub = req.user!.subscriptionStatus === 'active' && req.user!.stripeSubscriptionId;
+
+        if (!isChargeFree && !inTrial && hasActiveSub) {
+          try {
+            const selectedProducts = req.user!.selectedProducts || [];
+            const newPrice = req.user!.customPrice ?? calculateProductPrice(selectedProducts, newAdditionalStores);
+            const description = getProductDescription(selectedProducts);
+            await updateStripeSubscriptionPrice(req.user!.stripeSubscriptionId!, newPrice, description, 'create_prorations');
+          } catch (stripeErr) {
+            // Compensate: roll back store creation and additionalStores increment.
+            console.error('[Stores] Stripe update failed after store creation — compensating:', stripeErr);
+            await db.delete(stores).where(eq(stores.id, newStore.id));
+            await db.update(users).set({ additionalStores: req.user!.additionalStores ?? 0 }).where(eq(users.id, req.user!.id));
+            return res.status(500).json({ error: "Failed to update your subscription billing. Your store was not created. Please try again." });
+          }
+        }
+      }
+
       res.json(newStore);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1449,11 +1522,55 @@ export function registerRoutes(app: Express) {
       if (allStores.length <= 1) {
         return res.status(400).json({ error: "Cannot delete your only store" });
       }
+
+      // 1. Delete the store from DB (DB write first). `.returning()` gives us the
+      //    full row so we can restore it if billing compensation is needed.
       const [deleted] = await db
         .delete(stores)
         .where(and(eq(stores.id, req.params.storeId), eq(stores.userId, req.user!.id)))
         .returning();
       if (!deleted) return res.status(404).json({ error: "Store not found" });
+
+      const currentAdditional = req.user!.additionalStores ?? 0;
+      if (currentAdditional > 0) {
+        // 2. Decrement additionalStores in DB.
+        await db
+          .update(users)
+          .set({ additionalStores: currentAdditional - 1 })
+          .where(eq(users.id, req.user!.id));
+
+        // 3. Update Stripe subscription. If this fails, compensate by restoring
+        //    the deleted store and re-incrementing additionalStores.
+        const isChargeFree = req.user!.chargeFree === true;
+        const inTrial = req.user!.trialEndsAt && new Date(req.user!.trialEndsAt) > new Date();
+        const hasActiveSub = req.user!.subscriptionStatus === 'active' && req.user!.stripeSubscriptionId;
+
+        if (!isChargeFree && !inTrial && hasActiveSub) {
+          try {
+            const selectedProducts = req.user!.selectedProducts || [];
+            const newPrice = req.user!.customPrice ?? calculateProductPrice(selectedProducts, currentAdditional - 1);
+            const description = getProductDescription(selectedProducts);
+            await updateStripeSubscriptionPrice(req.user!.stripeSubscriptionId!, newPrice, description, 'none');
+          } catch (stripeErr) {
+            // Compensate: restore deleted store and re-increment additionalStores.
+            console.error('[Stores] Stripe update failed after store deletion — compensating:', stripeErr);
+            await db.insert(stores).values({
+              id: deleted.id,
+              userId: deleted.userId,
+              shopName: deleted.shopName,
+              displayName: deleted.displayName,
+              logo: deleted.logo,
+              menuBannerImage: deleted.menuBannerImage,
+              cardBackgroundColor: deleted.cardBackgroundColor,
+              shiftAccessPin: deleted.shiftAccessPin,
+              createdAt: deleted.createdAt,
+            });
+            await db.update(users).set({ additionalStores: currentAdditional }).where(eq(users.id, req.user!.id));
+            return res.status(500).json({ error: "Failed to update your subscription billing. Your store was not deleted. Please try again." });
+          }
+        }
+      }
+
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -2452,7 +2569,7 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "Please select products before subscribing" });
       }
 
-      const price = req.user!.customPrice ?? calculateProductPrice(selectedProducts);
+      const price = req.user!.customPrice ?? calculateProductPrice(selectedProducts, req.user!.additionalStores ?? 0);
       const description = getProductDescription(selectedProducts);
 
       // Create Stripe customer if one doesn't exist

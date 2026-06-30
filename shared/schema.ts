@@ -26,6 +26,7 @@ export const users = pgTable("users", {
   shiftAccessPin: text("shift_access_pin"),
   customPrice: integer("custom_price"),
   chargeFree: boolean("charge_free").default(false),
+  additionalStores: integer("additional_stores").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

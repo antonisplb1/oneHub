@@ -42,6 +42,9 @@ interface Merchant {
   customPrice: number | null;
   chargeFree: boolean;
   customerCount: number;
+  storeCount: number;
+  additionalStores: number;
+  expectedPrice: number;
   hasShiftPin: boolean;
   createdAt: string | null;
 }
@@ -314,11 +317,16 @@ function MerchantRow({
             <Badge variant={statusVariant(m.subscriptionStatus)} data-testid={`badge-status-${m.id}`}>
               {m.subscriptionStatus || "inactive"}
             </Badge>
-            {m.customPrice != null && (
+            {m.customPrice != null ? (
               <Badge variant="outline" data-testid={`badge-price-${m.id}`}>
-                {formatPrice(m.customPrice)}/mo
+                {formatPrice(m.customPrice)}/mo (custom)
               </Badge>
-            )}
+            ) : m.expectedPrice > 0 ? (
+              <Badge variant="outline" data-testid={`badge-price-${m.id}`}>
+                {formatPrice(m.expectedPrice)}/mo
+                {m.additionalStores > 0 && ` (+${m.additionalStores} store${m.additionalStores !== 1 ? 's' : ''})`}
+              </Badge>
+            ) : null}
             {m.chargeFree && (
               <Badge variant="secondary" data-testid={`badge-charge-free-${m.id}`}>
                 <Gift className="h-3 w-3 mr-1" /> Charge Free

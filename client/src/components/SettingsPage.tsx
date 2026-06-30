@@ -273,22 +273,21 @@ export default function SettingsPage() {
     );
   };
 
-  const calculatePrice = (products: string[]) => {
+  const calculateBasePrice = (products: string[]) => {
     const sorted = [...products].sort();
-    
-    // All four products - Bundle discount (€36.99 instead of €50)
     if (sorted.length === 4 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu') && sorted.includes('shift')) {
       return 36.99;
     }
-    // Individual prices for all other combinations
-    else {
-      let total = 0;
-      if (products.includes('loyalty')) total += 19;
-      if (products.includes('spin')) total += 5;
-      if (products.includes('menu')) total += 8;
-      if (products.includes('shift')) total += 18;
-      return total;
-    }
+    let total = 0;
+    if (products.includes('loyalty')) total += 19;
+    if (products.includes('spin')) total += 5;
+    if (products.includes('menu')) total += 8;
+    if (products.includes('shift')) total += 18;
+    return total;
+  };
+
+  const calculatePrice = (products: string[], additionalStores: number = 0) => {
+    return calculateBasePrice(products) + Math.max(0, additionalStores) * 5;
   };
 
   const handleUpdateProducts = () => {
@@ -556,7 +555,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between p-4 bg-muted rounded-md">
             <span className="font-semibold">New Total:</span>
             <span className="text-xl font-bold" data-testid="text-total-price">
-              €{calculatePrice(selectedProducts)}/month
+              €{calculatePrice(selectedProducts, user?.additionalStores ?? 0).toFixed(2)}/month
             </span>
           </div>
 
@@ -591,11 +590,20 @@ export default function SettingsPage() {
                   </span>
                 </p>
                 {!user?.chargeFree && user?.selectedProducts && user.selectedProducts.length > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Current Plan: <span className="font-semibold text-foreground">
-                      €{calculatePrice(user.selectedProducts)}/month
-                    </span>
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">
+                      Current Plan: <span className="font-semibold text-foreground">
+                        €{calculatePrice(user.selectedProducts, user?.additionalStores ?? 0).toFixed(2)}/month
+                      </span>
+                    </p>
+                    {(user?.additionalStores ?? 0) > 0 && (
+                      <div className="text-xs text-muted-foreground space-y-0.5 pl-1 border-l-2 border-muted ml-1">
+                        <p>Base plan: €{calculateBasePrice(user.selectedProducts).toFixed(2)}/month</p>
+                        <p>{user.additionalStores ?? 0} extra store{(user.additionalStores ?? 0) !== 1 ? 's' : ''}: €{((user.additionalStores ?? 0) * 5).toFixed(2)}/month</p>
+                        <p className="font-medium text-foreground">Total: €{calculatePrice(user.selectedProducts, user.additionalStores ?? 0).toFixed(2)}/month</p>
+                      </div>
+                    )}
+                  </div>
                 )}
                 {user?.chargeFree && (
                   <p className="text-sm text-muted-foreground" data-testid="text-charge-free-note">
@@ -612,7 +620,7 @@ export default function SettingsPage() {
                 >
                   {subscribeMutation.isPending 
                     ? "Loading..." 
-                    : `Subscribe Now - €${calculatePrice(user.selectedProducts)}/month`
+                    : `Subscribe Now - €${calculatePrice(user.selectedProducts, user?.additionalStores ?? 0).toFixed(2)}/month`
                   }
                 </Button>
               )}
