@@ -8,12 +8,14 @@ import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function JoinLoyalty() {
-  const { userId } = useParams();
+  // Handles /join/:userId (legacy), /join/:storeId (new QR), and /:shopName/join (slug-based)
+  const params = useParams<{ userId?: string; shopName?: string }>();
+  const storeRef = params.userId || params.shopName;
   const [, setLocation] = useLocation();
   const [name, setName] = useState("");
 
   const joinMutation = useMutation({
-    mutationFn: async (data: { userId: string; name?: string }) => {
+    mutationFn: async (data: { storeId: string; userId: string; name?: string }) => {
       return apiRequest<{ customer: any; loyaltyCard: any }>("/api/customers/join", {
         method: "POST",
         body: JSON.stringify(data),
@@ -26,8 +28,10 @@ export default function JoinLoyalty() {
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
+    // Send storeRef as both storeId and userId — backend resolves by storeId, userId, or shopName slug.
     joinMutation.mutate({
-      userId: userId!,
+      storeId: storeRef!,
+      userId: storeRef!,
       name: name || undefined,
     });
   };

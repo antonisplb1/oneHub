@@ -19,6 +19,11 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+function getActiveStoreHeader(): Record<string, string> {
+  const storeId = localStorage.getItem("activeStoreId");
+  return storeId ? { "X-Store-Id": storeId } : {};
+}
+
 export async function apiRequest<T = any>(
   url: string,
   options?: RequestInit,
@@ -27,6 +32,7 @@ export async function apiRequest<T = any>(
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...getActiveStoreHeader(),
       ...options?.headers,
     },
     credentials: "include",
@@ -44,6 +50,9 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers: {
+        ...getActiveStoreHeader(),
+      },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

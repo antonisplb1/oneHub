@@ -7,7 +7,9 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Reward } from "@shared/schema";
 
 export default function CustomerSpinOnce() {
-  const { userId } = useParams();
+  // Works for both /customer-spin/:userId (legacy) and /customer-spin/:storeId (new)
+  const params = useParams<{ userId?: string; storeId?: string }>();
+  const storeRef = params.storeId || params.userId;
   const [hasSpun, setHasSpun] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [prizeWon, setPrizeWon] = useState<string | null>(null);
@@ -15,19 +17,19 @@ export default function CustomerSpinOnce() {
   const wheelRef = useRef<SVGSVGElement>(null);
 
   const { data: rewards = [] } = useQuery({
-    queryKey: ["/api", "rewards", "public", userId],
-    queryFn: () => apiRequest<Reward[]>(`/api/rewards/public/${userId}`),
+    queryKey: ["/api", "rewards", "public", storeRef],
+    queryFn: () => apiRequest<Reward[]>(`/api/rewards/public/${storeRef}`),
   });
 
   useEffect(() => {
-    const hasSpunBefore = sessionStorage.getItem(`spin-${userId}`);
+    const hasSpunBefore = sessionStorage.getItem(`spin-${storeRef}`);
     if (hasSpunBefore) {
       setHasSpun(true);
     }
-  }, [userId]);
+  }, [storeRef]);
 
   const spinMutation = useMutation({
-    mutationFn: () => apiRequest<{ reward: Reward }>(`/api/customer-spin/${userId}`, {
+    mutationFn: () => apiRequest<{ reward: Reward }>(`/api/customer-spin/${storeRef}`, {
       method: "POST",
     }),
     onSuccess: (data) => {
@@ -52,7 +54,7 @@ export default function CustomerSpinOnce() {
         setPrizeWon(winningReward.name);
         setIsSpinning(false);
         setHasSpun(true);
-        sessionStorage.setItem(`spin-${userId}`, 'true');
+        sessionStorage.setItem(`spin-${storeRef}`, 'true');
       }, 3000);
     },
   });

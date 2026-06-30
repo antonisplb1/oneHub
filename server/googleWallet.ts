@@ -62,8 +62,9 @@ export class GoogleWalletService {
     });
   }
 
-  async createLoyaltyClass(userId: string, shopName: string, logoUrl?: string | null, cardBackgroundColor?: string | null) {
-    const classId = `${this.issuerId}.loyalty_${userId}`;
+  async createLoyaltyClass(storeId: string, shopName: string, logoUrl?: string | null, cardBackgroundColor?: string | null) {
+    // Class is scoped per store — one Google Wallet class per store
+    const classId = `${this.issuerId}.loyalty_${storeId.replace(/[^a-zA-Z0-9_]/g, '_')}`;
 
     try {
       await this.client.loyaltyclass.get({ resourceId: classId });
@@ -83,7 +84,8 @@ export class GoogleWalletService {
       const domain = process.env.REPLIT_DOMAINS 
         ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}` 
         : 'http://localhost:5000';
-      validLogoUrl = `${domain}/api/logo/${userId}`;
+      // Use store-scoped logo endpoint for data-URI logos
+      validLogoUrl = `${domain}/api/logo/store/${storeId}`;
     }
 
     const validBackgroundColor = (cardBackgroundColor && /^#[0-9A-Fa-f]{6}$/.test(cardBackgroundColor)) 
@@ -129,8 +131,8 @@ export class GoogleWalletService {
     return classId;
   }
 
-  async createLoyaltyPass(passData: LoyaltyPassData, userId: string, logoUrl?: string | null, cardBackgroundColor?: string | null): Promise<string> {
-    const classId = await this.createLoyaltyClass(userId, passData.shopName, logoUrl, cardBackgroundColor);
+  async createLoyaltyPass(passData: LoyaltyPassData, storeId: string, logoUrl?: string | null, cardBackgroundColor?: string | null): Promise<string> {
+    const classId = await this.createLoyaltyClass(storeId, passData.shopName, logoUrl, cardBackgroundColor);
     const objectId = `${this.issuerId}.customer_${passData.customerId}`;
 
     try {

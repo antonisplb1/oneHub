@@ -79,7 +79,9 @@ function getContrastTextColor(brandColor: string): string {
 }
 
 export default function PublicMenu() {
-  const { merchantId } = useParams();
+  // Handles both /menu/:merchantId (legacy) and /:shopName/menu (slug-based)
+  const params = useParams<{ merchantId?: string; shopName?: string }>();
+  const merchantId = params.merchantId || params.shopName;
   const [activeCategory, setActiveCategory] = useState<string>("");
   const categoryRefs = useRef<{ [key: string]: HTMLElement | null }>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);

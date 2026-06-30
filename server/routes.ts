@@ -32,6 +32,9 @@ import {
   insertTimeframePresetSchema,
   insertSubuserSchema,
   appleWalletDevices,
+  stores,
+  createStoreSchema,
+  updateStoreSchema,
 } from "@shared/schema";
 import { eq, and, desc, asc, gt, gte, lte } from "drizzle-orm";
 import { hashPassword, generateToken, comparePasswords } from "./auth";
@@ -146,6 +149,49 @@ function requireSubscription(req: Request, res: Response, next: Function) {
   res.status(403).json({ error: "Active subscription or trial required" });
 }
 
+async function resolveActiveStore(req: Request, res: Response, next: Function) {
+  if (req.storeId) return next();
+  try {
+    const storeIdHeader = req.headers['x-store-id'] as string | undefined;
+    if (storeIdHeader) {
+      const [store] = await db
+        .select({ id: stores.id })
+        .from(stores)
+        .where(and(eq(stores.id, storeIdHeader), eq(stores.userId, req.user!.id)))
+        .limit(1);
+      if (store) {
+        req.storeId = store.id;
+        return next();
+      }
+      return res.status(403).json({ error: "Store not found or access denied" });
+    }
+    const [store] = await db
+      .select({ id: stores.id })
+      .from(stores)
+      .where(eq(stores.userId, req.user!.id))
+      .orderBy(asc(stores.createdAt))
+      .limit(1);
+    if (store) {
+      req.storeId = store.id;
+    } else {
+      // Auto-provision a default store for users who went through without one
+      // (handles migration edge cases and new-account flows)
+      const user = req.user as any;
+      const [newStore] = await db.insert(stores).values({
+        userId: user.id,
+        shopName: user.shopName || `store-${user.id.slice(0, 8)}`,
+        displayName: user.shopName || 'My Store',
+      }).returning();
+      req.storeId = newStore.id;
+      console.log(`[resolveActiveStore] Auto-provisioned store ${newStore.id} for user ${user.id}`);
+    }
+  } catch (err) {
+    console.error('[resolveActiveStore] DB error resolving store:', err);
+    return res.status(500).json({ error: "Failed to resolve active store" });
+  }
+  next();
+}
+
 // Rate limiter for signup endpoint - prevents spam registrations
 const signupLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -207,6 +253,15 @@ const sendMessageSchema = z.object({
 });
 
 export function registerRoutes(app: Express) {
+  // Resolve active store for authenticated API requests (runs before all API routes)
+  app.use('/api', (req: Request, res: Response, next: Function) => {
+    if (!req.isAuthenticated()) return next();
+    // Skip store resolution for store management endpoints so users can always
+    // create/view stores even before any store is resolved.
+    if (req.path === '/stores' || req.path.startsWith('/stores/')) return next();
+    resolveActiveStore(req, res, next);
+  });
+
   // Object Storage - Serve menu item images (public access for customers viewing menus)
   // Reference: blueprint:javascript_object_storage
   app.get("/objects/:objectPath(*)", async (req, res) => {
@@ -403,6 +458,20 @@ export function registerRoutes(app: Express) {
         .returning();
 
       // Automatically log the user in after verification
+      // Auto-create a store for the user if one doesn't exist yet
+      const existingStore = await db
+        .select({ id: stores.id })
+        .from(stores)
+        .where(eq(stores.userId, user.id))
+        .limit(1);
+      if (existingStore.length === 0) {
+        await db.insert(stores).values({
+          userId: user.id,
+          shopName: user.shopName,
+          displayName: user.shopName,
+        });
+      }
+
       req.login(updatedUser, { keepSessionInfo: true }, (err) => {
         if (err) {
           return res.status(500).json({ error: "Verification successful but login failed" });
@@ -776,6 +845,13 @@ export function registerRoutes(app: Express) {
         })
         .returning();
 
+      // Auto-create a default store for the admin-created user
+      await db.insert(stores).values({
+        userId: newUser.id,
+        shopName: newUser.shopName,
+        displayName: newUser.shopName,
+      }).onConflictDoNothing();
+
       res.json({ 
         success: true,
         message: "User created successfully",
@@ -829,6 +905,11 @@ export function registerRoutes(app: Express) {
             .select({ id: customers.id })
             .from(customers)
             .where(eq(customers.userId, u.id));
+          const storeRows = await db
+            .select({ id: stores.id, shopName: stores.shopName, displayName: stores.displayName })
+            .from(stores)
+            .where(eq(stores.userId, u.id))
+            .orderBy(asc(stores.createdAt));
           return {
             id: u.id,
             email: u.email,
@@ -838,6 +919,8 @@ export function registerRoutes(app: Express) {
             customPrice: u.customPrice,
             chargeFree: !!u.chargeFree,
             customerCount: customerRows.length,
+            storeCount: storeRows.length,
+            storeNames: storeRows.map(s => s.displayName || s.shopName),
             hasShiftPin: !!u.shiftAccessPin,
             createdAt: u.createdAt,
           };
@@ -1249,57 +1332,129 @@ export function registerRoutes(app: Express) {
       
       // Validate menuBannerImage if provided
       if (menuBannerImage !== undefined && menuBannerImage !== null && menuBannerImage !== "") {
-        // Check if it's a valid data URL format
         const dataUrlRegex = /^data:image\/(png|jpeg|jpg|gif|webp);base64,/;
         if (!dataUrlRegex.test(menuBannerImage)) {
           return res.status(400).json({ error: "Invalid banner image format. Must be a valid image data URL (PNG, JPG, GIF, or WebP)" });
         }
-        
-        // Extract base64 data
         const base64Data = menuBannerImage.split(',')[1];
-        if (!base64Data) {
-          return res.status(400).json({ error: "Invalid banner image data" });
-        }
-        
-        // Decode base64 to get actual byte size
+        if (!base64Data) return res.status(400).json({ error: "Invalid banner image data" });
         try {
           const buffer = Buffer.from(base64Data, 'base64');
-          const sizeInBytes = buffer.length;
-          const maxSizeBytes = 5 * 1024 * 1024; // 5MB
-          
-          if (sizeInBytes > maxSizeBytes) {
-            return res.status(400).json({ error: "Banner image too large. Maximum size is 5MB" });
-          }
-          
-          // Verify the buffer contains valid data
-          if (buffer.length === 0) {
-            return res.status(400).json({ error: "Invalid banner image: empty data" });
-          }
-        } catch (error) {
+          if (buffer.length === 0) return res.status(400).json({ error: "Invalid banner image: empty data" });
+          if (buffer.length > 5 * 1024 * 1024) return res.status(400).json({ error: "Banner image too large. Maximum size is 5MB" });
+        } catch {
           return res.status(400).json({ error: "Invalid banner image: failed to decode base64 data" });
         }
       }
-      
-      const updateData: any = {
-        shopName: shopName || req.user!.shopName,
-        logo: logo || req.user!.logo,
-      };
-      
+
+      // In multi-store mode: branding (logo/banner/color) is stored on the active store.
+      // shopName on users is kept in sync as the legacy fallback.
+      const storeUpdateData: any = {};
+      const userUpdateData: any = {};
+
+      if (shopName) {
+        userUpdateData.shopName = shopName;
+        // Don't rename store shopName slug (that's immutable); only update displayName
+        storeUpdateData.displayName = shopName;
+      }
+      if (logo !== undefined) {
+        storeUpdateData.logo = logo || null;
+        userUpdateData.logo = logo || null; // keep legacy field in sync
+      }
       if (menuBannerImage !== undefined) {
-        updateData.menuBannerImage = menuBannerImage || null;
+        storeUpdateData.menuBannerImage = menuBannerImage || null;
+        userUpdateData.menuBannerImage = menuBannerImage || null;
       }
-      
       if (cardBackgroundColor) {
-        updateData.cardBackgroundColor = cardBackgroundColor;
+        storeUpdateData.cardBackgroundColor = cardBackgroundColor;
+        userUpdateData.cardBackgroundColor = cardBackgroundColor;
       }
-      
+
+      // Update active store branding if storeId is resolved
+      let updatedStore = null;
+      if (req.storeId && Object.keys(storeUpdateData).length > 0) {
+        [updatedStore] = await db
+          .update(stores)
+          .set(storeUpdateData)
+          .where(and(eq(stores.id, req.storeId), eq(stores.userId, req.user!.id)))
+          .returning();
+      }
+
+      // Also update users table for backward compat
       const [updatedUser] = await db
         .update(users)
-        .set(updateData)
+        .set({ ...userUpdateData, shopName: userUpdateData.shopName || req.user!.shopName })
         .where(eq(users.id, req.user!.id))
         .returning();
 
-      res.json(updatedUser);
+      // Return merged view
+      res.json(updatedStore ? { ...updatedUser, ...updatedStore } : updatedUser);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Store Management Routes
+  app.get("/api/stores", requireAuth, async (req, res) => {
+    try {
+      const userStores = await db
+        .select()
+        .from(stores)
+        .where(eq(stores.userId, req.user!.id))
+        .orderBy(asc(stores.createdAt));
+      res.json(userStores);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/stores", requireAuth, async (req, res) => {
+    try {
+      const validatedData = createStoreSchema.parse(req.body);
+      const [newStore] = await db
+        .insert(stores)
+        .values({
+          userId: req.user!.id,
+          shopName: validatedData.shopName,
+          displayName: validatedData.displayName || validatedData.shopName,
+        })
+        .returning();
+      res.json(newStore);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/stores/:storeId", requireAuth, async (req, res) => {
+    try {
+      const validatedData = updateStoreSchema.parse(req.body);
+      const [updatedStore] = await db
+        .update(stores)
+        .set(validatedData)
+        .where(and(eq(stores.id, req.params.storeId), eq(stores.userId, req.user!.id)))
+        .returning();
+      if (!updatedStore) return res.status(404).json({ error: "Store not found" });
+      res.json(updatedStore);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/stores/:storeId", requireAuth, async (req, res) => {
+    try {
+      const allStores = await db
+        .select({ id: stores.id })
+        .from(stores)
+        .where(eq(stores.userId, req.user!.id));
+      if (allStores.length <= 1) {
+        return res.status(400).json({ error: "Cannot delete your only store" });
+      }
+      const [deleted] = await db
+        .delete(stores)
+        .where(and(eq(stores.id, req.params.storeId), eq(stores.userId, req.user!.id)))
+        .returning();
+      if (!deleted) return res.status(404).json({ error: "Store not found" });
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -1310,7 +1465,7 @@ export function registerRoutes(app: Express) {
       const customerList = await db
         .select()
         .from(customers)
-        .where(eq(customers.userId, req.user!.id))
+        .where(eq(customers.storeId, req.storeId!))
         .orderBy(desc(customers.createdAt));
       res.json(customerList);
     } catch (error: any) {
@@ -1322,7 +1477,12 @@ export function registerRoutes(app: Express) {
     try {
       const protocol = req.protocol;
       const host = req.get("host");
-      const shopUrl = `${protocol}://${host}/join/${req.user!.id}`;
+      // Look up store shopName for slug-based URL
+      const [activeStore] = await db.select({ shopName: stores.shopName })
+        .from(stores).where(eq(stores.id, req.storeId!)).limit(1);
+      const shopUrl = activeStore
+        ? `${protocol}://${host}/${activeStore.shopName}/join`
+        : `${protocol}://${host}/join/${req.storeId}`;
       const qrCodeDataUrl = await QRCode.toDataURL(shopUrl, {
         width: 300,
         margin: 2,
@@ -1337,7 +1497,12 @@ export function registerRoutes(app: Express) {
     try {
       const protocol = req.protocol;
       const host = req.get("host");
-      const menuUrl = `${protocol}://${host}/menu/${req.user!.id}`;
+      // Look up store shopName for slug-based URL
+      const [activeStore] = await db.select({ shopName: stores.shopName })
+        .from(stores).where(eq(stores.id, req.storeId!)).limit(1);
+      const menuUrl = activeStore
+        ? `${protocol}://${host}/${activeStore.shopName}/menu`
+        : `${protocol}://${host}/menu/${req.storeId}`;
       const qrCodeDataUrl = await QRCode.toDataURL(menuUrl, {
         width: 300,
         margin: 2,
@@ -1350,18 +1515,68 @@ export function registerRoutes(app: Express) {
 
   app.post("/api/customers/join", async (req, res) => {
     try {
-      const { userId, name, email, phone } = req.body;
-      
-      if (!userId) {
-        return res.status(400).json({ error: "User ID is required" });
+      const { userId, storeId: bodyStoreId, name, email, phone } = req.body;
+
+      if (!userId && !bodyStoreId) {
+        return res.status(400).json({ error: "User ID or Store ID is required" });
+      }
+
+      // Look up the store — prefer storeId, fall back to userId's first store
+      let targetStoreId: string;
+      let targetUserId: string;
+
+      if (bodyStoreId) {
+        // Try to look up as a storeId first (new QR codes)
+        const [storeById] = await db
+          .select()
+          .from(stores)
+          .where(eq(stores.id, bodyStoreId))
+          .limit(1);
+        if (storeById) {
+          targetStoreId = storeById.id;
+          targetUserId = storeById.userId;
+        } else {
+          // Second fallback: userId (legacy QR codes embedded userId)
+          const [storeByUser] = await db
+            .select()
+            .from(stores)
+            .where(eq(stores.userId, bodyStoreId))
+            .orderBy(asc(stores.createdAt))
+            .limit(1);
+          if (storeByUser) {
+            targetStoreId = storeByUser.id;
+            targetUserId = storeByUser.userId;
+          } else {
+            // Third fallback: shopName slug (e.g. /:shopName/join)
+            const [storeBySlug] = await db
+              .select()
+              .from(stores)
+              .where(eq(stores.shopName, bodyStoreId))
+              .limit(1);
+            if (!storeBySlug) return res.status(404).json({ error: "Store not found" });
+            targetStoreId = storeBySlug.id;
+            targetUserId = storeBySlug.userId;
+          }
+        }
+      } else {
+        const [store] = await db
+          .select()
+          .from(stores)
+          .where(eq(stores.userId, userId))
+          .orderBy(asc(stores.createdAt))
+          .limit(1);
+        if (!store) return res.status(404).json({ error: "Store not found" });
+        targetStoreId = store.id;
+        targetUserId = store.userId;
       }
 
       const customerQrCode = nanoid(12);
-      
+
       const [newCustomer] = await db
         .insert(customers)
         .values({
-          userId,
+          storeId: targetStoreId,
+          userId: targetUserId,
           name: name || null,
           email: email || null,
           phone: phone || null,
@@ -1372,7 +1587,8 @@ export function registerRoutes(app: Express) {
       const [loyaltyCard] = await db
         .insert(loyaltyCards)
         .values({
-          userId,
+          storeId: targetStoreId,
+          userId: targetUserId,
           customerId: newCustomer.id,
           stamps: 0,
           maxStamps: 10,
@@ -1393,6 +1609,7 @@ export function registerRoutes(app: Express) {
       const [newCustomer] = await db
         .insert(customers)
         .values({
+          storeId: req.storeId!,
           userId: req.user!.id,
           name: req.body.name || null,
           email: req.body.email || null,
@@ -1404,6 +1621,7 @@ export function registerRoutes(app: Express) {
       const [loyaltyCard] = await db
         .insert(loyaltyCards)
         .values({
+          storeId: req.storeId!,
           userId: req.user!.id,
           customerId: newCustomer.id,
           stamps: 0,
@@ -1427,7 +1645,7 @@ export function registerRoutes(app: Express) {
         })
         .from(loyaltyCards)
         .leftJoin(customers, eq(loyaltyCards.customerId, customers.id))
-        .where(eq(loyaltyCards.userId, req.user!.id))
+        .where(eq(loyaltyCards.storeId, req.storeId!))
         .orderBy(desc(loyaltyCards.lastStampAt));
 
       res.json(cards);
@@ -1447,7 +1665,7 @@ export function registerRoutes(app: Express) {
         .from(loyaltyTransactions)
         .leftJoin(loyaltyCards, eq(loyaltyTransactions.loyaltyCardId, loyaltyCards.id))
         .leftJoin(customers, eq(loyaltyCards.customerId, customers.id))
-        .where(eq(loyaltyCards.userId, req.user!.id))
+        .where(eq(loyaltyCards.storeId, req.storeId!))
         .orderBy(desc(loyaltyTransactions.createdAt));
 
       res.json(transactions);
@@ -1503,6 +1721,39 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Store-scoped logo endpoint (used by Google Wallet for data-URI logos)
+  app.get("/api/logo/store/:storeId", async (req, res) => {
+    try {
+      const [store] = await db
+        .select()
+        .from(stores)
+        .where(eq(stores.id, req.params.storeId))
+        .limit(1);
+
+      if (!store || !store.logo) {
+        return res.status(404).send("Logo not found");
+      }
+
+      if (store.logo.startsWith('data:')) {
+        const matches = store.logo.match(/^data:(.+);base64,(.+)$/);
+        if (matches) {
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+          res.setHeader('Content-Type', mimeType);
+          res.setHeader('Cache-Control', 'public, max-age=31536000');
+          res.send(buffer);
+        } else {
+          res.status(400).send("Invalid logo format");
+        }
+      } else {
+        res.redirect(store.logo);
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/logo/:userId", async (req, res) => {
     try {
       const [user] = await db
@@ -1550,7 +1801,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(customers.customerQrCode, qrCode),
-            eq(customers.userId, req.user!.id)
+            eq(customers.storeId, req.storeId!)
           )
         )
         .limit(1);
@@ -1565,7 +1816,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(loyaltyCards.customerId, customer.id),
-            eq(loyaltyCards.userId, req.user!.id)
+            eq(loyaltyCards.storeId, req.storeId!)
           )
         )
         .limit(1);
@@ -1613,6 +1864,7 @@ export function registerRoutes(app: Express) {
       // Create transaction record
       await db.insert(loyaltyTransactions).values({
         loyaltyCardId: card.id,
+        storeId: card.storeId || undefined,
         type: rewardGranted ? "reward" : "stamp",
         amount: rewardGranted ? -card.maxStamps : 1,
         description: rewardGranted ? "Reward granted - auto reset" : "Stamp added via QR scan",
@@ -1666,7 +1918,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(loyaltyCards.id, req.params.cardId),
-            eq(loyaltyCards.userId, req.user!.id)
+            eq(loyaltyCards.storeId, req.storeId!)
           )
         )
         .limit(1);
@@ -1690,6 +1942,7 @@ export function registerRoutes(app: Express) {
 
       await db.insert(loyaltyTransactions).values({
         loyaltyCardId: card.id,
+        storeId: card.storeId || undefined,
         type: "stamp",
         amount: 1,
         description: "Stamp added",
@@ -1721,7 +1974,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(loyaltyCards.id, req.params.cardId),
-            eq(loyaltyCards.userId, req.user!.id)
+            eq(loyaltyCards.storeId, req.storeId!)
           )
         )
         .limit(1);
@@ -1746,6 +1999,7 @@ export function registerRoutes(app: Express) {
 
       await db.insert(loyaltyTransactions).values({
         loyaltyCardId: card.id,
+        storeId: card.storeId || undefined,
         type: "reward",
         description: "Reward redeemed",
       });
@@ -1773,7 +2027,7 @@ export function registerRoutes(app: Express) {
       const rewardList = await db
         .select()
         .from(rewards)
-        .where(eq(rewards.userId, req.user!.id))
+        .where(eq(rewards.storeId, req.storeId!))
         .orderBy(desc(rewards.createdAt));
       res.json(rewardList);
     } catch (error: any) {
@@ -1781,14 +2035,23 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/rewards/public/:userId", async (req, res) => {
+  app.get("/api/rewards/public/:storeRef", async (req, res) => {
     try {
+      const { storeRef } = req.params;
+      // Try direct storeId lookup first; fall back to userId's first store for legacy QR codes
+      let resolvedStoreId = storeRef;
+      const directMatch = await db.select({ id: rewards.id }).from(rewards).where(eq(rewards.storeId, storeRef)).limit(1);
+      if (directMatch.length === 0) {
+        // Try resolving as userId
+        const [store] = await db.select({ id: stores.id }).from(stores).where(eq(stores.userId, storeRef)).orderBy(asc(stores.createdAt)).limit(1);
+        if (store) resolvedStoreId = store.id;
+      }
       const rewardList = await db
         .select()
         .from(rewards)
         .where(
           and(
-            eq(rewards.userId, req.params.userId),
+            eq(rewards.storeId, resolvedStoreId),
             eq(rewards.isActive, true)
           )
         );
@@ -1805,6 +2068,7 @@ export function registerRoutes(app: Express) {
       const [newReward] = await db
         .insert(rewards)
         .values({
+          storeId: req.storeId!,
           userId: req.user!.id,
           name: validatedData.name,
           description: validatedData.description || null,
@@ -1832,7 +2096,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(rewards.id, req.params.rewardId),
-            eq(rewards.userId, req.user!.id)
+            eq(rewards.storeId, req.storeId!)
           )
         )
         .returning();
@@ -1854,7 +2118,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(rewards.id, req.params.rewardId),
-            eq(rewards.userId, req.user!.id)
+            eq(rewards.storeId, req.storeId!)
           )
         )
         .returning();
@@ -1880,7 +2144,7 @@ export function registerRoutes(app: Express) {
         .leftJoin(customers, eq(spins.customerId, customers.id))
         .where(
           and(
-            eq(spins.userId, req.user!.id),
+            eq(spins.storeId, req.storeId!),
             eq(spins.type, 'customer')
           )
         )
@@ -1896,7 +2160,7 @@ export function registerRoutes(app: Express) {
       const tokens = await db
         .select()
         .from(spinTokens)
-        .where(eq(spinTokens.userId, req.user!.id))
+        .where(eq(spinTokens.storeId, req.storeId!))
         .orderBy(desc(spinTokens.createdAt));
       res.json(tokens);
     } catch (error: any) {
@@ -1914,6 +2178,7 @@ export function registerRoutes(app: Express) {
       const [newToken] = await db
         .insert(spinTokens)
         .values({
+          storeId: req.storeId!,
           userId: req.user!.id,
           token,
           customerName: validatedData.customerName || null,
@@ -1954,15 +2219,21 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "Token expired" });
       }
 
+      // Resolve storeId from token — must scope rewards to the token's store
+      const tokenStoreId = token.storeId;
+      let rewardFilter;
+      if (tokenStoreId) {
+        // New tokens: filter strictly by storeId
+        rewardFilter = and(eq(rewards.storeId, tokenStoreId), eq(rewards.isActive, true));
+      } else {
+        // Legacy tokens without storeId: fall back to userId filter
+        rewardFilter = and(eq(rewards.userId, token.userId), eq(rewards.isActive, true));
+      }
+
       const activeRewards = await db
         .select()
         .from(rewards)
-        .where(
-          and(
-            eq(rewards.userId, token.userId),
-            eq(rewards.isActive, true)
-          )
-        );
+        .where(rewardFilter);
 
       if (activeRewards.length === 0) {
         return res.status(400).json({ error: "No active rewards configured" });
@@ -1996,6 +2267,7 @@ export function registerRoutes(app: Express) {
         .where(eq(rewards.id, selectedReward.id));
 
       await db.insert(spins).values({
+        storeId: tokenStoreId || selectedReward.storeId || undefined,
         tokenId: token.id,
         rewardId: selectedReward.id,
         userId: token.userId,
@@ -2009,16 +2281,23 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/spin-in-store/:userId", async (req, res) => {
+  app.post("/api/spin-in-store/:storeRef", async (req, res) => {
     try {
-      const { userId } = req.params;
+      const { storeRef } = req.params;
+      // Resolve storeRef to storeId — try direct storeId, then fall back to userId
+      let resolvedStoreId = storeRef;
+      const [storeCheck] = await db.select({ id: stores.id }).from(stores).where(eq(stores.id, storeRef)).limit(1);
+      if (!storeCheck) {
+        const [storeByUser] = await db.select({ id: stores.id }).from(stores).where(eq(stores.userId, storeRef)).orderBy(asc(stores.createdAt)).limit(1);
+        if (storeByUser) resolvedStoreId = storeByUser.id;
+      }
 
       const activeRewards = await db
         .select()
         .from(rewards)
         .where(
           and(
-            eq(rewards.userId, userId),
+            eq(rewards.storeId, resolvedStoreId),
             eq(rewards.isActive, true)
           )
         );
@@ -2052,16 +2331,30 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/customer-spin/:userId", async (req, res) => {
+  app.post("/api/customer-spin/:storeRef", async (req, res) => {
     try {
-      const { userId } = req.params;
+      const { storeRef } = req.params;
+      // Resolve storeRef to storeId — try direct storeId, then fall back to userId
+      let resolvedStoreId = storeRef;
+      let resolvedUserId: string | undefined;
+      const [storeCheck] = await db.select({ id: stores.id, userId: stores.userId }).from(stores).where(eq(stores.id, storeRef)).limit(1);
+      if (storeCheck) {
+        resolvedStoreId = storeCheck.id;
+        resolvedUserId = storeCheck.userId;
+      } else {
+        const [storeByUser] = await db.select({ id: stores.id, userId: stores.userId }).from(stores).where(eq(stores.userId, storeRef)).orderBy(asc(stores.createdAt)).limit(1);
+        if (storeByUser) {
+          resolvedStoreId = storeByUser.id;
+          resolvedUserId = storeByUser.userId;
+        }
+      }
 
       const activeRewards = await db
         .select()
         .from(rewards)
         .where(
           and(
-            eq(rewards.userId, userId),
+            eq(rewards.storeId, resolvedStoreId),
             eq(rewards.isActive, true)
           )
         );
@@ -2090,8 +2383,9 @@ export function registerRoutes(app: Express) {
         .where(eq(rewards.id, selectedReward.id));
 
       await db.insert(spins).values({
+        storeId: resolvedStoreId,
         rewardId: selectedReward.id,
-        userId: userId,
+        userId: resolvedUserId || selectedReward.userId,
         prizeWon: selectedReward.name,
         type: 'customer',
       });
@@ -2110,7 +2404,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(spinTokens.id, req.params.tokenId),
-            eq(spinTokens.userId, req.user!.id)
+            eq(spinTokens.storeId, req.storeId!)
           )
         )
         .limit(1);
@@ -2133,15 +2427,11 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/spin-in-store-qr/:userId", requireSubscription, requirePermission('spin'), async (req, res) => {
+  app.get("/api/spin-in-store-qr", requireSubscription, requirePermission('spin'), async (req, res) => {
     try {
-      if (req.params.userId !== req.user!.id) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
-
       const protocol = req.protocol;
       const host = req.get("host");
-      const spinUrl = `${protocol}://${host}/spin-in-store/${req.user!.id}`;
+      const spinUrl = `${protocol}://${host}/spin-in-store/${req.storeId}`;
       const qrCodeDataUrl = await QRCode.toDataURL(spinUrl, {
         width: 300,
         margin: 2,
@@ -2293,10 +2583,12 @@ export function registerRoutes(app: Express) {
         .select({
           card: loyaltyCards,
           customer: customers,
+          store: stores,
           user: users,
         })
         .from(loyaltyCards)
         .leftJoin(customers, eq(loyaltyCards.customerId, customers.id))
+        .leftJoin(stores, eq(customers.storeId, stores.id))
         .leftJoin(users, eq(loyaltyCards.userId, users.id))
         .where(eq(customers.id, req.params.customerId))
         .limit(1);
@@ -2308,7 +2600,7 @@ export function registerRoutes(app: Express) {
       const passData: LoyaltyPassData = {
         customerId: result.customer.id,
         customerName: result.customer.name!,
-        shopName: result.user.shopName,
+        shopName: result.store?.shopName || result.user.shopName,
         stamps: result.card.stamps,
         maxStamps: result.card.maxStamps,
         rewardText: result.card.rewardText || 'Loyalty Reward',
@@ -2317,9 +2609,9 @@ export function registerRoutes(app: Express) {
 
       const saveUrl = await googleWalletService.createLoyaltyPass(
         passData,
-        result.user.id,
-        result.user.logo,
-        result.user.cardBackgroundColor
+        result.store?.id || result.user.id,
+        result.store?.logo || result.user.logo,
+        result.store?.cardBackgroundColor || result.user.cardBackgroundColor
       );
 
       res.redirect(saveUrl);
@@ -2397,10 +2689,12 @@ export function registerRoutes(app: Express) {
         .select({
           card: loyaltyCards,
           customer: customers,
+          store: stores,
           user: users,
         })
         .from(loyaltyCards)
         .leftJoin(customers, eq(loyaltyCards.customerId, customers.id))
+        .leftJoin(stores, eq(customers.storeId, stores.id))
         .leftJoin(users, eq(loyaltyCards.userId, users.id))
         .where(eq(customers.id, req.params.customerId))
         .limit(1);
@@ -2409,21 +2703,22 @@ export function registerRoutes(app: Express) {
         return res.status(404).send("Loyalty card not found");
       }
 
+      const effectiveShopName = result.store?.shopName || result.user.shopName;
       const passData: AppleLoyaltyPassData = {
         customerId: result.customer.id,
         customerName: result.customer.name!,
-        shopName: result.user.shopName,
+        shopName: effectiveShopName,
         stamps: result.card.stamps,
         maxStamps: result.card.maxStamps,
         rewardText: result.card.rewardText || 'Loyalty Reward',
         customerQrCode: result.customer.customerQrCode || result.customer.id,
-        cardBackgroundColor: result.user.cardBackgroundColor,
+        cardBackgroundColor: result.store?.cardBackgroundColor || result.user.cardBackgroundColor,
       };
 
       const appleWalletService = new AppleWalletService();
       const passBuffer = await appleWalletService.generatePass(passData);
 
-      const filename = `${result.user.shopName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-loyalty.pkpass`;
+      const filename = `${effectiveShopName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-loyalty.pkpass`;
       res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Length', passBuffer.length.toString());
@@ -2487,7 +2782,8 @@ export function registerRoutes(app: Express) {
         return res.status(200).send();
       }
 
-      await db.insert(appleWalletDevices).values({ deviceLibraryIdentifier, pushToken, serialNumber, passTypeIdentifier, customerId });
+      const [customerRow] = await db.select({ storeId: customers.storeId }).from(customers).where(eq(customers.id, customerId)).limit(1);
+      await db.insert(appleWalletDevices).values({ deviceLibraryIdentifier, pushToken, serialNumber, passTypeIdentifier, customerId, storeId: customerRow?.storeId || undefined });
       console.log(`[PassKit] Device registered for serial ${serialNumber}`);
       return res.status(201).send();
     } catch (err) {
@@ -2566,9 +2862,10 @@ export function registerRoutes(app: Express) {
 
     try {
       const [result] = await db
-        .select({ card: loyaltyCards, customer: customers, user: users })
+        .select({ card: loyaltyCards, customer: customers, store: stores, user: users })
         .from(loyaltyCards)
         .leftJoin(customers, eq(loyaltyCards.customerId, customers.id))
+        .leftJoin(stores, eq(customers.storeId, stores.id))
         .leftJoin(users, eq(loyaltyCards.userId, users.id))
         .where(eq(customers.id, customerId))
         .limit(1);
@@ -2578,12 +2875,12 @@ export function registerRoutes(app: Express) {
       const passData: AppleLoyaltyPassData = {
         customerId: result.customer.id,
         customerName: result.customer.name!,
-        shopName: result.user.shopName,
+        shopName: result.store?.shopName || result.user.shopName,
         stamps: result.card.stamps,
         maxStamps: result.card.maxStamps,
         rewardText: result.card.rewardText || 'Loyalty Reward',
         customerQrCode: result.customer.customerQrCode || result.customer.id,
-        cardBackgroundColor: result.user.cardBackgroundColor,
+        cardBackgroundColor: result.store?.cardBackgroundColor || result.user.cardBackgroundColor,
       };
 
       const appleWalletService = new AppleWalletService();
@@ -2614,9 +2911,11 @@ export function registerRoutes(app: Express) {
       const customerList = await db
         .select()
         .from(customers)
-        .where(eq(customers.userId, user.id));
+        .where(req.storeId
+          ? eq(customers.storeId, req.storeId)
+          : eq(customers.userId, user.id));
 
-      const classId = `${process.env.GOOGLE_WALLET_ISSUER_ID}.loyalty_${user.id}`;
+      const classId = `${process.env.GOOGLE_WALLET_ISSUER_ID}.loyalty_${req.storeId || user.id}`;
 
       if (googleWalletService) {
         await googleWalletService.sendMessage(
@@ -2631,6 +2930,7 @@ export function registerRoutes(app: Express) {
       const [message] = await db
         .insert(messages)
         .values({
+          storeId: req.storeId || null,
           userId: user.id,
           header: validatedData.header || null,
           body: validatedData.body,
@@ -2653,7 +2953,7 @@ export function registerRoutes(app: Express) {
       const categories = await db
         .select()
         .from(menuCategories)
-        .where(eq(menuCategories.userId, req.user!.id))
+        .where(eq(menuCategories.storeId, req.storeId!))
         .orderBy(asc(menuCategories.displayOrder));
       res.json(categories);
     } catch (error: any) {
@@ -2668,6 +2968,7 @@ export function registerRoutes(app: Express) {
       const [newCategory] = await db
         .insert(menuCategories)
         .values({
+          storeId: req.storeId!,
           userId: req.user!.id,
           name: validatedData.name,
           displayOrder: validatedData.displayOrder ?? 0,
@@ -2698,7 +2999,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(menuCategories.id, req.params.id),
-            eq(menuCategories.userId, req.user!.id)
+            eq(menuCategories.storeId, req.storeId!)
           )
         )
         .returning();
@@ -2720,7 +3021,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(menuCategories.id, req.params.id),
-            eq(menuCategories.userId, req.user!.id)
+            eq(menuCategories.storeId, req.storeId!)
           )
         )
         .returning();
@@ -2741,7 +3042,7 @@ export function registerRoutes(app: Express) {
       const items = await db
         .select()
         .from(menuItems)
-        .where(eq(menuItems.userId, req.user!.id))
+        .where(eq(menuItems.storeId, req.storeId!))
         .orderBy(asc(menuItems.categoryId), asc(menuItems.displayOrder));
       res.json(items);
     } catch (error: any) {
@@ -2757,7 +3058,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(menuCategories.id, req.params.categoryId),
-            eq(menuCategories.userId, req.user!.id)
+            eq(menuCategories.storeId, req.storeId!)
           )
         )
         .limit(1);
@@ -2788,7 +3089,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(menuCategories.id, validatedData.categoryId),
-            eq(menuCategories.userId, req.user!.id)
+            eq(menuCategories.storeId, req.storeId!)
           )
         )
         .limit(1);
@@ -2800,6 +3101,7 @@ export function registerRoutes(app: Express) {
       const [newItem] = await db
         .insert(menuItems)
         .values({
+          storeId: req.storeId!,
           userId: req.user!.id,
           categoryId: validatedData.categoryId,
           name: validatedData.name,
@@ -2810,13 +3112,13 @@ export function registerRoutes(app: Express) {
         })
         .returning();
 
-      // Handle image upload ACL
+      // Handle image upload ACL — scope by storeId for store-level isolation
       if (validatedData.imageUrl && validatedData.imageUrl.startsWith("https://storage.googleapis.com/")) {
         const objectStorageService = new ObjectStorageService();
         const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
           validatedData.imageUrl,
           {
-            owner: req.user!.id,
+            owner: req.storeId || req.user!.id,
             visibility: "public", // Menu images are public for customers
           }
         );
@@ -2841,7 +3143,7 @@ export function registerRoutes(app: Express) {
           .where(
             and(
               eq(menuCategories.id, validatedData.categoryId),
-              eq(menuCategories.userId, req.user!.id)
+              eq(menuCategories.storeId, req.storeId!)
             )
           )
           .limit(1);
@@ -2869,7 +3171,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(menuItems.id, req.params.id),
-            eq(menuItems.userId, req.user!.id)
+            eq(menuItems.storeId, req.storeId!)
           )
         )
         .returning();
@@ -2878,13 +3180,13 @@ export function registerRoutes(app: Express) {
         return res.status(404).json({ error: "Menu item not found" });
       }
 
-      // Handle image upload ACL
+      // Handle image upload ACL — scope by storeId for store-level isolation
       if (validatedData.imageUrl && validatedData.imageUrl.startsWith("https://storage.googleapis.com/")) {
         const objectStorageService = new ObjectStorageService();
         const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
           validatedData.imageUrl,
           {
-            owner: req.user!.id,
+            owner: req.storeId || req.user!.id,
             visibility: "public", // Menu images are public for customers
           }
         );
@@ -2905,7 +3207,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(menuItems.id, req.params.id),
-            eq(menuItems.userId, req.user!.id)
+            eq(menuItems.storeId, req.storeId!)
           )
         )
         .returning();
@@ -2937,7 +3239,7 @@ export function registerRoutes(app: Express) {
           .where(
             and(
               eq(menuItems.id, update.id),
-              eq(menuItems.userId, req.user!.id)
+              eq(menuItems.storeId, req.storeId!)
             )
           );
       }
@@ -2957,33 +3259,78 @@ export function registerRoutes(app: Express) {
   });
 
   // Public Menu Route
-  app.get("/api/menu/:userId", async (req, res) => {
+  app.get("/api/menu/:storeId", async (req, res) => {
     try {
-      const [merchant] = await db
+      // Try storeId first, then fall back to userId for backward compatibility
+      let targetStoreId: string | null = null;
+      let merchant: { shopName: string; logo: string | null; cardBackgroundColor: string | null; menuBannerImage: string | null } | null = null;
+
+      const [storeResult] = await db
         .select({
-          shopName: users.shopName,
-          logo: users.logo,
-          cardBackgroundColor: users.cardBackgroundColor,
-          menuBannerImage: users.menuBannerImage,
+          id: stores.id,
+          shopName: stores.shopName,
+          logo: stores.logo,
+          cardBackgroundColor: stores.cardBackgroundColor,
+          menuBannerImage: stores.menuBannerImage,
         })
-        .from(users)
-        .where(eq(users.id, req.params.userId))
+        .from(stores)
+        .where(eq(stores.id, req.params.storeId))
         .limit(1);
 
-      if (!merchant) {
+      if (storeResult) {
+        targetStoreId = storeResult.id;
+        merchant = storeResult;
+      } else {
+        // Second fallback: look up by userId (legacy QR codes embedded userId)
+        const [userStore] = await db
+          .select({
+            id: stores.id,
+            shopName: stores.shopName,
+            logo: stores.logo,
+            cardBackgroundColor: stores.cardBackgroundColor,
+            menuBannerImage: stores.menuBannerImage,
+          })
+          .from(stores)
+          .where(eq(stores.userId, req.params.storeId))
+          .orderBy(asc(stores.createdAt))
+          .limit(1);
+        if (userStore) {
+          targetStoreId = userStore.id;
+          merchant = userStore;
+        } else {
+          // Third fallback: resolve by shopName slug (e.g. /:shopName/menu)
+          const [slugStore] = await db
+            .select({
+              id: stores.id,
+              shopName: stores.shopName,
+              logo: stores.logo,
+              cardBackgroundColor: stores.cardBackgroundColor,
+              menuBannerImage: stores.menuBannerImage,
+            })
+            .from(stores)
+            .where(eq(stores.shopName, req.params.storeId))
+            .limit(1);
+          if (slugStore) {
+            targetStoreId = slugStore.id;
+            merchant = slugStore;
+          }
+        }
+      }
+
+      if (!merchant || !targetStoreId) {
         return res.status(404).json({ error: "Merchant not found" });
       }
 
       const categories = await db
         .select()
         .from(menuCategories)
-        .where(eq(menuCategories.userId, req.params.userId))
+        .where(eq(menuCategories.storeId, targetStoreId))
         .orderBy(asc(menuCategories.displayOrder));
 
       const items = await db
         .select()
         .from(menuItems)
-        .where(eq(menuItems.userId, req.params.userId))
+        .where(eq(menuItems.storeId, targetStoreId))
         .orderBy(asc(menuItems.categoryId), asc(menuItems.displayOrder));
 
       const menu = categories.map(category => ({
@@ -3006,7 +3353,7 @@ export function registerRoutes(app: Express) {
       const members = await db
         .select()
         .from(crewMembers)
-        .where(eq(crewMembers.userId, req.user!.id))
+        .where(eq(crewMembers.storeId, req.storeId!))
         .orderBy(asc(crewMembers.name));
 
       res.json(members);
@@ -3023,6 +3370,7 @@ export function registerRoutes(app: Express) {
         .insert(crewMembers)
         .values({
           ...validatedData,
+          storeId: req.storeId!,
           userId: req.user!.id,
         })
         .returning();
@@ -3040,7 +3388,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(crewMembers.id, req.params.id),
-            eq(crewMembers.userId, req.user!.id)
+            eq(crewMembers.storeId, req.storeId!)
           )
         );
 
@@ -3056,7 +3404,7 @@ export function registerRoutes(app: Express) {
       const allShifts = await db
         .select()
         .from(shifts)
-        .where(eq(shifts.userId, req.user!.id))
+        .where(eq(shifts.storeId, req.storeId!))
         .orderBy(asc(shifts.shiftDate), asc(shifts.startTime));
 
       res.json(allShifts);
@@ -3073,6 +3421,7 @@ export function registerRoutes(app: Express) {
         .insert(shifts)
         .values({
           ...validatedData,
+          storeId: req.storeId!,
           userId: req.user!.id,
         })
         .returning();
@@ -3109,7 +3458,7 @@ export function registerRoutes(app: Express) {
         .from(shifts)
         .where(
           and(
-            eq(shifts.userId, req.user!.id),
+            eq(shifts.storeId, req.storeId!),
             gte(shifts.shiftDate, startStr),
             lte(shifts.shiftDate, endStr)
           )
@@ -3128,7 +3477,7 @@ export function registerRoutes(app: Express) {
         .from(shifts)
         .where(
           and(
-            eq(shifts.userId, req.user!.id),
+            eq(shifts.storeId, req.storeId!),
             gte(shifts.shiftDate, nextWeekStartStr),
             lte(shifts.shiftDate, nextWeekEndStr)
           )
@@ -3140,6 +3489,7 @@ export function registerRoutes(app: Express) {
         const d = new Date(shift.shiftDate + "T00:00:00");
         d.setDate(d.getDate() + 7);
         return {
+          storeId: req.storeId!,
           userId: req.user!.id,
           employeeName: shift.employeeName,
           employeeRole: shift.employeeRole,
@@ -3168,7 +3518,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(shifts.id, req.params.id),
-            eq(shifts.userId, req.user!.id)
+            eq(shifts.storeId, req.storeId!)
           )
         )
         .returning();
@@ -3190,7 +3540,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(shifts.id, req.params.id),
-            eq(shifts.userId, req.user!.id)
+            eq(shifts.storeId, req.storeId!)
           )
         );
 
@@ -3205,15 +3555,21 @@ export function registerRoutes(app: Express) {
     try {
       const { pin } = z.object({ pin: z.string().min(4).max(6) }).parse(req.body);
       
-      // Hash the PIN using the same secure hashing as passwords
       const hashedPin = await hashPassword(pin);
-      
+
+      if (req.storeId) {
+        // Update the active store's PIN
+        await db
+          .update(stores)
+          .set({ shiftAccessPin: hashedPin })
+          .where(and(eq(stores.id, req.storeId), eq(stores.userId, req.user!.id)));
+      }
+      // Also update on user for backward compatibility
       await db
         .update(users)
         .set({ shiftAccessPin: hashedPin })
         .where(eq(users.id, req.user!.id));
 
-      // Return the plaintext PIN once so the user can save it
       res.json({ success: true, pin });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -3222,14 +3578,15 @@ export function registerRoutes(app: Express) {
 
   app.get("/api/shift-pin", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
-      const [user] = await db
-        .select({ shiftAccessPin: users.shiftAccessPin })
-        .from(users)
-        .where(eq(users.id, req.user!.id))
-        .limit(1);
-
-      // Only return metadata indicating if a PIN exists, never the actual PIN
-      res.json({ hasPIN: !!user?.shiftAccessPin });
+      if (req.storeId) {
+        const [store] = await db
+          .select({ shiftAccessPin: stores.shiftAccessPin })
+          .from(stores)
+          .where(and(eq(stores.id, req.storeId), eq(stores.userId, req.user!.id)))
+          .limit(1);
+        return res.json({ hasPIN: !!(store?.shiftAccessPin || req.user!.shiftAccessPin) });
+      }
+      res.json({ hasPIN: !!req.user!.shiftAccessPin });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -3241,7 +3598,7 @@ export function registerRoutes(app: Express) {
       const presets = await db
         .select()
         .from(timeframePresets)
-        .where(eq(timeframePresets.userId, req.user!.id))
+        .where(eq(timeframePresets.storeId, req.storeId!))
         .orderBy(asc(timeframePresets.name));
 
       res.json(presets);
@@ -3258,6 +3615,7 @@ export function registerRoutes(app: Express) {
         .insert(timeframePresets)
         .values({
           ...validatedData,
+          storeId: req.storeId!,
           userId: req.user!.id,
         })
         .returning();
@@ -3278,7 +3636,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(timeframePresets.id, req.params.id),
-            eq(timeframePresets.userId, req.user!.id)
+            eq(timeframePresets.storeId, req.storeId!)
           )
         )
         .returning();
@@ -3300,7 +3658,7 @@ export function registerRoutes(app: Express) {
         .where(
           and(
             eq(timeframePresets.id, req.params.id),
-            eq(timeframePresets.userId, req.user!.id)
+            eq(timeframePresets.storeId, req.storeId!)
           )
         );
 
@@ -3314,39 +3672,39 @@ export function registerRoutes(app: Express) {
   app.post("/api/shifts/public/:username", pinValidationLimiter, async (req, res) => {
     try {
       const { pin } = z.object({ pin: z.string() }).parse(req.body);
-      
-      // Find user by shop name (username)
-      const [user] = await db
+
+      // Find store by shopName first, fall back to user shopName for backward compat
+      const [store] = await db
         .select()
-        .from(users)
-        .where(eq(users.shopName, req.params.username))
+        .from(stores)
+        .where(eq(stores.shopName, req.params.username))
         .limit(1);
 
-      if (!user) {
+      if (!store) {
         return res.status(404).json({ error: "Store not found" });
       }
 
-      if (!user.shiftAccessPin) {
+      // Get the PIN from store first, fall back to user
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, store.userId))
+        .limit(1);
+
+      const storedPin = store.shiftAccessPin || user?.shiftAccessPin;
+      if (!storedPin) {
         return res.status(401).json({ error: "No PIN configured" });
       }
 
-      // Verify PIN using secure comparison
-      // Check if PIN is hashed (contains ".") or plaintext (backward compatibility)
       let isPinValid = false;
-      if (user.shiftAccessPin.includes('.')) {
-        // Hashed PIN - use secure comparison with constant-time algorithm
-        isPinValid = await comparePasswords(pin, user.shiftAccessPin);
+      if (storedPin.includes('.')) {
+        isPinValid = await comparePasswords(pin, storedPin);
       } else {
-        // Legacy plaintext PIN - still compare but this shouldn't exist after migration
-        isPinValid = user.shiftAccessPin === pin;
-        
-        // Automatically upgrade to hashed PIN if valid
+        isPinValid = storedPin === pin;
         if (isPinValid) {
           const hashedPin = await hashPassword(pin);
-          await db
-            .update(users)
-            .set({ shiftAccessPin: hashedPin })
-            .where(eq(users.id, user.id));
+          await db.update(stores).set({ shiftAccessPin: hashedPin }).where(eq(stores.id, store.id));
+          if (user) await db.update(users).set({ shiftAccessPin: hashedPin }).where(eq(users.id, user.id));
         }
       }
 
@@ -3354,18 +3712,16 @@ export function registerRoutes(app: Express) {
         return res.status(401).json({ error: "Invalid PIN" });
       }
 
-      // Get shifts
       const allShifts = await db
         .select()
         .from(shifts)
-        .where(eq(shifts.userId, user.id))
+        .where(eq(shifts.storeId, store.id))
         .orderBy(asc(shifts.shiftDate), asc(shifts.startTime));
 
-      // Get merchant branding
       const merchant = {
-        shopName: user.shopName,
-        logo: user.logo,
-        cardBackgroundColor: user.cardBackgroundColor,
+        shopName: store.shopName,
+        logo: store.logo || user?.logo,
+        cardBackgroundColor: store.cardBackgroundColor || user?.cardBackgroundColor,
       };
 
       res.json({ shifts: allShifts, merchant });

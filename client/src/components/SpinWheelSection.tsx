@@ -12,6 +12,7 @@ import { getRewards, createReward, updateReward, deleteReward } from "@/lib/api"
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useStore } from "@/contexts/StoreContext";
 import type { Reward } from "@shared/schema";
 
 export default function SpinWheelSection() {
@@ -22,6 +23,7 @@ export default function SpinWheelSection() {
   const [winChance, setWinChance] = useState("25");
   const { toast } = useToast();
   const { user } = useAuth();
+  const { activeStoreId } = useStore();
 
   const { data: rewards = [], isLoading: isLoadingRewards } = useQuery({
     queryKey: ["/api", "rewards"],
@@ -235,11 +237,11 @@ export default function SpinWheelSection() {
                 <p className="text-muted-foreground">
                   Share this QR code with customers. When scanned, they get one spin only.
                 </p>
-                {user && (
+                {activeStoreId && (
                   <div className="space-y-3">
                     <div className="flex justify-center p-4 border rounded-md bg-background">
                       <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`${window.location.origin}/customer-spin/${user.id}`)}`}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`${window.location.origin}/customer-spin/${activeStoreId}`)}`}
                         alt="Spin QR code"
                         className="w-64 h-64"
                       />
@@ -250,7 +252,7 @@ export default function SpinWheelSection() {
                       className="w-full"
                       onClick={() => {
                         const link = document.createElement('a');
-                        link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`${window.location.origin}/customer-spin/${user.id}`)}`;
+                        link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`${window.location.origin}/customer-spin/${activeStoreId}`)}`;
                         link.download = `spin-qr.png`;
                         link.click();
                       }}
@@ -275,7 +277,7 @@ export default function SpinWheelSection() {
                   <Gauge className="w-32 h-32 text-chart-2" />
                   <Button 
                     size="lg"
-                    onClick={() => window.open(`/in-store-spin/${user?.id}`, '_blank')}
+                    onClick={() => window.open(`/spin-in-store/${activeStoreId}`, '_blank')}
                     data-testid="button-open-in-store-wheel"
                     className="w-full"
                   >

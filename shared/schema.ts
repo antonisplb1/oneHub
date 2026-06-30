@@ -29,6 +29,19 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Stores table - one user can have multiple stores
+export const stores = pgTable("stores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  shopName: text("shop_name").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  logo: text("logo"),
+  menuBannerImage: text("menu_banner_image"),
+  cardBackgroundColor: text("card_background_color").default("#4285F4"),
+  shiftAccessPin: text("shift_access_pin"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Subusers table - team members with limited permissions
 export const subusers = pgTable("subusers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -46,6 +59,7 @@ export const subusers = pgTable("subusers", {
 export const customers = pgTable("customers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }),
   email: varchar("email", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
@@ -56,6 +70,7 @@ export const customers = pgTable("customers", {
 export const loyaltyCards = pgTable("loyalty_cards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   customerId: varchar("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
   stamps: integer("stamps").notNull().default(0),
   maxStamps: integer("max_stamps").notNull().default(10),
@@ -71,6 +86,7 @@ export const loyaltyCards = pgTable("loyalty_cards", {
 export const loyaltyTransactions = pgTable("loyalty_transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   loyaltyCardId: varchar("loyalty_card_id").notNull().references(() => loyaltyCards.id, { onDelete: "cascade" }),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   type: varchar("type", { length: 20 }).notNull().$type<'stamp' | 'reward'>(),
   amount: integer("amount").default(1),
   description: text("description"),
@@ -81,6 +97,7 @@ export const loyaltyTransactions = pgTable("loyalty_transactions", {
 export const rewards = pgTable("rewards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   winChance: real("win_chance").notNull(),
@@ -92,6 +109,7 @@ export const rewards = pgTable("rewards", {
 export const spinTokens = pgTable("spin_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   token: text("token").notNull().unique(),
   customerName: text("customer_name"),
   isUsed: boolean("is_used").default(false),
@@ -105,6 +123,7 @@ export const spins = pgTable("spins", {
   tokenId: varchar("token_id").references(() => spinTokens.id, { onDelete: "cascade" }),
   rewardId: varchar("reward_id").references(() => rewards.id),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   prizeWon: text("prize_won"),
   customerId: varchar("customer_id").references(() => customers.id, { onDelete: "cascade" }),
   type: varchar("type", { length: 20 }).$type<'customer' | 'token'>(),
@@ -145,6 +164,7 @@ export const sessions = pgTable(
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   header: text("header"),
   body: text("body").notNull(),
   displayStartTime: timestamp("display_start_time").notNull(),
@@ -158,6 +178,7 @@ export const messages = pgTable("messages", {
 export const menuCategories = pgTable("menu_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   displayOrder: integer("display_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -166,6 +187,7 @@ export const menuCategories = pgTable("menu_categories", {
 export const menuItems = pgTable("menu_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   categoryId: varchar("category_id").references(() => menuCategories.id, { onDelete: "cascade" }).notNull(),
   name: text("name").notNull(),
   description: text("description"),
@@ -180,6 +202,7 @@ export const menuItems = pgTable("menu_items", {
 export const crewMembers = pgTable("crew_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -187,6 +210,7 @@ export const crewMembers = pgTable("crew_members", {
 export const shifts = pgTable("shifts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   employeeName: text("employee_name").notNull(),
   employeeRole: text("employee_role"),
   shiftDate: text("shift_date").notNull(),
@@ -199,6 +223,7 @@ export const shifts = pgTable("shifts", {
 export const timeframePresets = pgTable("timeframe_presets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   startTime: text("start_time").notNull(),
   endTime: text("end_time").notNull(),
@@ -213,6 +238,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
   subscriptionStatus: true,
   subscriptionEndsAt: true,
   chargeFree: true,
+  createdAt: true,
+});
+
+export const insertStoreSchema = createInsertSchema(stores).omit({
+  id: true,
   createdAt: true,
 });
 
@@ -234,6 +264,7 @@ export const insertLoyaltyCardSchema = createInsertSchema(loyaltyCards).omit({
 export const insertRewardSchema = createInsertSchema(rewards).omit({
   id: true,
   userId: true,
+  storeId: true,
   timesWon: true,
   createdAt: true,
 });
@@ -241,6 +272,7 @@ export const insertRewardSchema = createInsertSchema(rewards).omit({
 export const insertSpinTokenSchema = createInsertSchema(spinTokens).omit({
   id: true,
   userId: true,
+  storeId: true,
   isUsed: true,
   usedAt: true,
   createdAt: true,
@@ -254,36 +286,44 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
 export const insertMenuCategorySchema = createInsertSchema(menuCategories).omit({
   id: true,
   userId: true,
+  storeId: true,
   createdAt: true,
 });
 
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
   id: true,
   userId: true,
+  storeId: true,
   createdAt: true,
 });
 
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).omit({
   id: true,
   userId: true,
+  storeId: true,
   createdAt: true,
 });
 
 export const insertShiftSchema = createInsertSchema(shifts).omit({
   id: true,
   userId: true,
+  storeId: true,
   createdAt: true,
 });
 
 export const insertTimeframePresetSchema = createInsertSchema(timeframePresets).omit({
   id: true,
   userId: true,
+  storeId: true,
   createdAt: true,
 });
 
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Store = typeof stores.$inferSelect;
+export type InsertStore = z.infer<typeof insertStoreSchema>;
 
 export type Subuser = typeof subusers.$inferSelect;
 export type InsertSubuser = z.infer<typeof insertSubuserSchema>;
@@ -330,6 +370,7 @@ export const appleWalletDevices = pgTable('apple_wallet_devices', {
   serialNumber: text('serial_number').notNull(),
   passTypeIdentifier: text('pass_type_identifier').notNull(),
   customerId: varchar('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  storeId: varchar('store_id').references(() => stores.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => ({
   uniq: unique().on(table.deviceLibraryIdentifier, table.serialNumber, table.passTypeIdentifier),
@@ -360,6 +401,21 @@ export const createRewardSchema = insertRewardSchema.extend({
 export const createTokenSchema = z.object({
   customerName: z.string().optional(),
   expiryMinutes: z.number().min(1).max(1440).default(30),
+});
+
+export const createStoreSchema = z.object({
+  shopName: z.string().min(1, "Shop URL slug is required").max(60).regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and hyphens allowed"),
+  displayName: z.string().min(1, "Display name is required").max(100),
+  cardBackgroundColor: z.string().optional(),
+  shiftAccessPin: z.string().optional(),
+});
+
+export const updateStoreSchema = z.object({
+  displayName: z.string().min(1).max(100).optional(),
+  logo: z.string().optional().nullable(),
+  menuBannerImage: z.string().optional().nullable(),
+  cardBackgroundColor: z.string().optional(),
+  shiftAccessPin: z.string().optional().nullable(),
 });
 
 // Admin schemas

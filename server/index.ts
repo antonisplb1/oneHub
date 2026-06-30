@@ -5,6 +5,7 @@ import { setupAuth } from "./auth";
 import { startCleanupService } from "./cleanup";
 import { seedAdminPassword } from "./adminSeed";
 import { seedDemoAccount } from "./demoSeed";
+import { runStoreMigration } from "./storeMigration";
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -48,6 +49,8 @@ app.use((req, res, next) => {
 
 (async () => {
   await seedAdminPassword();
+  // Ensure every user has at least one store and all feature rows have a storeId
+  await runStoreMigration();
   if (process.env.DEMO_SEED === "true") {
     const result = await seedDemoAccount();
     console.log(`[DemoSeed] ${result.message}`);

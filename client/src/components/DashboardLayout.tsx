@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
   SidebarProvider,
@@ -29,11 +29,16 @@ import {
   Clock,
   ArrowRight,
   Loader2,
+  Store,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useStore } from "@/contexts/StoreContext";
 import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 
 const menuItems = [
@@ -49,11 +54,63 @@ const menuItems = [
 ];
 
 const secondaryItems = [
+  { title: "Stores", icon: Store, href: "/dashboard/stores", products: [] },
   { title: "Account", icon: Settings, href: "/dashboard/account", products: [] },
 ];
 
 interface DashboardLayoutProps {
   children: ReactNode;
+}
+
+function StoreSwitcher() {
+  const { stores, activeStore, setActiveStoreId } = useStore();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  if (stores.length <= 1) {
+    return (
+      <div className="flex items-center gap-2 px-1">
+        <Store className="w-4 h-4 text-muted-foreground shrink-0" />
+        <span className="text-sm font-medium truncate">{activeStore?.displayName || activeStore?.shopName || "My Store"}</span>
+      </div>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center gap-2 px-1 w-full text-left hover-elevate rounded-md py-1" data-testid="button-store-switcher">
+          <Store className="w-4 h-4 text-muted-foreground shrink-0" />
+          <span className="text-sm font-medium truncate flex-1">{activeStore?.displayName || activeStore?.shopName || "My Store"}</span>
+          <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        {stores.map(store => (
+          <DropdownMenuItem
+            key={store.id}
+            data-testid={`option-store-${store.id}`}
+            onClick={() => {
+              setActiveStoreId(store.id);
+              qc.clear();
+              toast({ title: "Switched store", description: `Now managing ${store.displayName || store.shopName}` });
+            }}
+            className={store.id === activeStore?.id ? "font-medium" : ""}
+          >
+            {store.displayName || store.shopName}
+            {store.id === activeStore?.id && <span className="ml-auto text-primary text-xs">Active</span>}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/dashboard/stores" className="cursor-pointer">
+            <Plus className="w-3 h-3 mr-2" />
+            Manage Stores
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 function SidebarMenuItems() {
@@ -246,19 +303,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   </h1>
                 </div>
               </Link>
-              <div className="flex items-center gap-3">
-                {user.logo && (
-                  <img 
-                    src={user.logo} 
-                    alt={`${user.shopName} logo`}
-                    className="h-11 w-11 object-contain rounded-md"
-                    data-testid="img-shop-logo"
-                  />
-                )}
-                <div>
-                  <p className="font-semibold">{user.shopName}</p>
-                </div>
-              </div>
+              <StoreSwitcher />
             </div>
           </SidebarHeader>
           <SidebarContent>

@@ -41,6 +41,8 @@ import TermsOfService from "@/pages/TermsOfService";
 import CookieBanner from "@/components/CookieBanner";
 import SubuserSetup from "@/pages/SubuserSetup";
 import TeamManagement from "@/pages/TeamManagement";
+import StoresPage from "@/pages/StoresPage";
+import { StoreProvider } from "@/contexts/StoreContext";
 
 function Router() {
   return (
@@ -129,12 +131,16 @@ function Router() {
           </DashboardLayout>
         )}
       </Route>
+      <Route path="/dashboard/stores" component={StoresPage} />
       <Route path="/join/:userId" component={JoinLoyalty} />
       <Route path="/spin/:token" component={CustomerSpinWheel} />
       <Route path="/customer-spin/:userId" component={CustomerSpinOnce} />
       <Route path="/in-store-spin/:userId" component={InStoreSpinWheel} />
+      <Route path="/spin-in-store/:storeId" component={InStoreSpinWheel} />
       <Route path="/card/:customerId" component={CustomerLoyaltyCard} />
       <Route path="/menu/:merchantId" component={PublicMenu} />
+      <Route path="/:shopName/menu" component={PublicMenu} />
+      <Route path="/:shopName/join" component={JoinLoyalty} />
       <Route path="/:username/shifts" component={PublicShifts} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/cookie-policy" component={CookiePolicy} />
@@ -149,9 +155,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <CookieBanner />
-        <Router />
+        <StoreProvider>
+          <Toaster />
+          <CookieBanner />
+          <Router />
+        </StoreProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

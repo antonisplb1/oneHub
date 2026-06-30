@@ -7,19 +7,21 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Reward } from "@shared/schema";
 
 export default function InStoreSpinWheel() {
-  const { userId } = useParams();
+  // Works for both /in-store-spin/:userId (legacy) and /spin-in-store/:storeId (new)
+  const params = useParams<{ userId?: string; storeId?: string }>();
+  const storeRef = params.storeId || params.userId;
   const [isSpinning, setIsSpinning] = useState(false);
   const [prizeWon, setPrizeWon] = useState<string | null>(null);
   const [rotation, setRotation] = useState(0);
   const wheelRef = useRef<SVGSVGElement>(null);
 
   const { data: rewards = [] } = useQuery({
-    queryKey: ["/api", "rewards", "public", userId],
-    queryFn: () => apiRequest<Reward[]>(`/api/rewards/public/${userId}`),
+    queryKey: ["/api", "rewards", "public", storeRef],
+    queryFn: () => apiRequest<Reward[]>(`/api/rewards/public/${storeRef}`),
   });
 
   const spinMutation = useMutation({
-    mutationFn: () => apiRequest<{ reward: Reward }>(`/api/spin-in-store/${userId}`, {
+    mutationFn: () => apiRequest<{ reward: Reward }>(`/api/spin-in-store/${storeRef}`, {
       method: "POST",
     }),
     onSuccess: (data) => {
