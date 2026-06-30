@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 
 // Permission types that match the product selections
-export type Permission = 'loyalty' | 'spin' | 'menu' | 'shift' | 'analytics';
+export type Permission = 'loyalty' | 'spin' | 'menu' | 'shift' | 'analytics' | 'customers' | 'dashboard';
 
 /**
  * Middleware to check if user has permission to access a feature

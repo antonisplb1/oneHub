@@ -54,8 +54,8 @@ const menuItems = [
 ];
 
 const secondaryItems = [
-  { title: "Stores", icon: Store, href: "/dashboard/stores", products: [] },
-  { title: "Account", icon: Settings, href: "/dashboard/account", products: [] },
+  { title: "Stores", icon: Store, href: "/dashboard/stores", products: [], permission: null as string | null, ownerOnly: true },
+  { title: "Account", icon: Settings, href: "/dashboard/account", products: [], permission: null as string | null, ownerOnly: true },
 ];
 
 interface DashboardLayoutProps {
@@ -119,7 +119,7 @@ function SidebarMenuItems() {
   const { setOpenMobile, isMobile } = useSidebar();
 
   // Fetch user info with permissions
-  const { data: userInfo } = useQuery({
+  const { data: userInfo } = useQuery<{ isSubuser?: boolean; permissions?: string[] }>({
     queryKey: ['/api/auth/me'],
   });
 

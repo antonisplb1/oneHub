@@ -108,12 +108,13 @@ async function updateStripeSubscriptionPrice(
     items: [
       {
         id: itemId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         price_data: {
           currency: 'eur',
           product_data: { name: 'uniHub Subscription', description },
           unit_amount: newPriceCents,
           recurring: { interval: 'month' },
-        },
+        } as any,
       },
     ],
     proration_behavior: prorationBehavior,
@@ -428,7 +429,7 @@ export function registerRoutes(app: Express) {
       // Clean the user object (remove temporary flags)
       const { __isOwner, __isSubuser, __subuserId, __permissions, __storeIds, ...cleanUser } = authUser;
 
-      req.login(cleanUser, { keepSessionInfo: true }, (err) => {
+      req.login(cleanUser, { keepSessionInfo: true, session: true }, (err) => {
         if (err) {
           return res.status(500).json({ error: "Login failed" });
         }
@@ -536,7 +537,7 @@ export function registerRoutes(app: Express) {
         });
       }
 
-      req.login(updatedUser, { keepSessionInfo: true }, (err) => {
+      req.login(updatedUser, { keepSessionInfo: true, session: true }, (err) => {
         if (err) {
           return res.status(500).json({ error: "Verification successful but login failed" });
         }
@@ -3994,7 +3995,7 @@ export function registerRoutes(app: Express) {
         const ownerStores = await db
           .select({ id: stores.id })
           .from(stores)
-          .where(eq(stores.userId, req.user.id));
+          .where(eq(stores.userId, req.user!.id));
         const ownerStoreIds = new Set(ownerStores.map(s => s.id));
         const invalid = requestedIds.filter(id => !ownerStoreIds.has(id));
         if (invalid.length > 0) {
@@ -4025,7 +4026,7 @@ export function registerRoutes(app: Express) {
       const [newSubuser] = await db
         .insert(subusers)
         .values({
-          ownerId: req.user.id,
+          ownerId: req.user!.id,
           email,
           permissions: permissions || [],
           storeIds,
@@ -4037,7 +4038,7 @@ export function registerRoutes(app: Express) {
 
       // Get shop name for email
       const owner = await db.query.users.findFirst({
-        where: eq(users.id, req.user.id),
+        where: eq(users.id, req.user!.id),
       });
 
       // Send invitation email
@@ -4062,7 +4063,7 @@ export function registerRoutes(app: Express) {
 
     try {
       const subusersList = await db.query.subusers.findMany({
-        where: eq(subusers.ownerId, req.user.id),
+        where: eq(subusers.ownerId, req.user!.id),
         orderBy: [desc(subusers.createdAt)],
       });
 
@@ -4095,7 +4096,7 @@ export function registerRoutes(app: Express) {
           const ownerStores = await db
             .select({ id: stores.id })
             .from(stores)
-            .where(eq(stores.userId, req.user.id));
+            .where(eq(stores.userId, req.user!.id));
           const ownerStoreIds = new Set(ownerStores.map(s => s.id));
           const invalid = requestedIds.filter(sid => !ownerStoreIds.has(sid));
           if (invalid.length > 0) {
@@ -4109,7 +4110,7 @@ export function registerRoutes(app: Express) {
       const subuser = await db.query.subusers.findFirst({
         where: and(
           eq(subusers.id, id),
-          eq(subusers.ownerId, req.user.id)
+          eq(subusers.ownerId, req.user!.id)
         ),
       });
 
@@ -4144,7 +4145,7 @@ export function registerRoutes(app: Express) {
       const subuser = await db.query.subusers.findFirst({
         where: and(
           eq(subusers.id, id),
-          eq(subusers.ownerId, req.user.id)
+          eq(subusers.ownerId, req.user!.id)
         ),
       });
 

@@ -20,7 +20,13 @@ export type User = SelectUser;
 
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    interface User extends SelectUser {
+      __isOwner?: boolean;
+      __isSubuser?: boolean;
+      __subuserId?: string;
+      __permissions?: string[];
+      __storeIds?: string[] | null;
+    }
   }
 }
 
@@ -34,11 +40,6 @@ declare module 'express-session' {
   }
 }
 
-declare module 'express' {
-  interface Request {
-    storeId?: string;
-  }
-}
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
