@@ -1699,23 +1699,37 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/stores/:storeId", requireAuth, async (req, res) => {
     try {
-      // Guard against billing drift: product access is NOT editable via this
-      // owner store-profile route (it would desync the users.selectedProducts
-      // billing mirror). Products change only through /select-products, store
-      // add/remove, or the admin per-store route — all of which call
-      // syncBillingFromStores. Reject rather than silently ignore.
-      if (req.body && "selectedProducts" in req.body) {
-        return res.status(400).json({
-          error: "Product access can't be changed here. Use product selection so billing stays in sync.",
-        });
-      }
       const validatedData = updateStoreSchema.parse(req.body);
+
+      // Identify the PRIMARY (oldest) store up-front: its products drive the
+      // account base price, so a primary-store product change must recompute the
+      // billing mirror. Non-primary product changes never affect the bill (only
+      // the flat €5/store applies).
+      const storeRows = await db
+        .select({ id: stores.id })
+        .from(stores)
+        .where(eq(stores.userId, req.user!.id))
+        .orderBy(asc(stores.createdAt));
+      if (!storeRows.some(s => s.id === req.params.storeId)) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+      const isPrimary = storeRows[0]?.id === req.params.storeId;
+
       const [updatedStore] = await db
         .update(stores)
         .set(validatedData)
         .where(and(eq(stores.id, req.params.storeId), eq(stores.userId, req.user!.id)))
         .returning();
       if (!updatedStore) return res.status(404).json({ error: "Store not found" });
+
+      // If the primary store's products changed, mirror them onto the account and
+      // reprice the active Stripe subscription so the base price follows the
+      // primary store's products (no-op for trial/charge-free accounts or those
+      // without an active subscription).
+      if (isPrimary && validatedData.selectedProducts !== undefined) {
+        await syncBillingFromStores(req.user!.id);
+      }
+
       res.json(updatedStore);
     } catch (error: any) {
       res.status(400).json({ error: error.message });

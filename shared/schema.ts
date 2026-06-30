@@ -415,19 +415,19 @@ export const createStoreSchema = z.object({
   selectedProducts: z.array(z.enum(["loyalty", "spin", "menu", "shift"])).optional(),
 });
 
-// NOTE: `selectedProducts` is intentionally NOT updatable here. This is the
-// owner-facing store-profile route. Product access drives billing (the primary
-// store's products set the account base price), so product changes must flow
-// through paths that recompute the billing mirror via syncBillingFromStores
-// (merchant /select-products, store add/remove, or the admin per-store route).
-// Allowing it here would let stores.selectedProducts drift from the
-// users.selectedProducts billing mirror.
+// NOTE: `selectedProducts` IS updatable here, but product changes must always
+// run through the owner store PATCH route so it can recompute the billing mirror
+// via syncBillingFromStores when the PRIMARY store's products change. The route
+// — not this schema — owns that billing-sync logic; never write
+// stores.selectedProducts on the primary store without calling
+// syncBillingFromStores afterwards or it will drift from users.selectedProducts.
 export const updateStoreSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
   logo: z.string().optional().nullable(),
   menuBannerImage: z.string().optional().nullable(),
   cardBackgroundColor: z.string().optional(),
   shiftAccessPin: z.string().optional().nullable(),
+  selectedProducts: z.array(z.enum(["loyalty", "spin", "menu", "shift"])).min(1, "Select at least one product").optional(),
 });
 
 // Admin schemas

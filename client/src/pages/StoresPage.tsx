@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Store, Plus, Trash2, Check, Pencil, Upload, X, TriangleAlert, QrCode, Download } from "lucide-react";
@@ -21,7 +22,15 @@ type StoreEntry = {
   cardBackgroundColor?: string | null;
   menuBannerImage?: string | null;
   shiftAccessPin?: string | null;
+  selectedProducts?: string[];
 };
+
+const PRODUCT_OPTIONS: { id: string; label: string; price: number; description: string }[] = [
+  { id: "loyalty", label: "Loyalty Cards", price: 19, description: "Digital stamp cards & rewards" },
+  { id: "spin", label: "Spin Wheel", price: 5, description: "Spin-to-win prize campaigns" },
+  { id: "menu", label: "Menu Builder", price: 8, description: "Digital menu with QR code" },
+  { id: "shift", label: "Shift Manager", price: 18, description: "Employee scheduling" },
+];
 
 function calculateBasePrice(products: string[]): number {
   const sorted = [...products].sort();
@@ -60,6 +69,7 @@ export default function StoresPage() {
   const [editPin, setEditPin] = useState("");
   const [editLogo, setEditLogo] = useState<string | null>(null);
   const [editBanner, setEditBanner] = useState<string | null>(null);
+  const [editProducts, setEditProducts] = useState<string[]>([]);
 
   const [downloadingQrStoreId, setDownloadingQrStoreId] = useState<string | null>(null);
 
@@ -85,6 +95,9 @@ export default function StoresPage() {
   const additionalStores = user?.additionalStores ?? 0;
   const currentPrice = calculateTotalPrice(selectedProducts, additionalStores);
   const newPrice = calculateTotalPrice(selectedProducts, additionalStores + 1);
+  // The primary store is the oldest; GET /api/stores returns them ordered by
+  // createdAt ascending, so stores[0] is the primary.
+  const isEditingPrimary = !!editingStore && stores[0]?.id === editingStore.id;
 
   const createMutation = useMutation({
     mutationFn: () => apiRequest("/api/stores", {
@@ -107,7 +120,7 @@ export default function StoresPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Record<string, string | null> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Record<string, string | string[] | null> }) =>
       apiRequest(`/api/stores/${id}`, {
         method: "PATCH",
         body: JSON.stringify(data),
@@ -116,6 +129,9 @@ export default function StoresPage() {
       setEditOpen(false);
       setEditingStore(null);
       queryClient.invalidateQueries({ queryKey: ["/api/stores"] });
+      // Editing the primary store's products updates the account billing mirror,
+      // so refresh the user/auth data too.
+      queryClient.invalidateQueries({ queryKey: ["/api", "auth", "me"] });
       toast({ title: "Store updated" });
     },
     onError: (err: Error) => {
@@ -146,7 +162,14 @@ export default function StoresPage() {
     setEditPin(store.shiftAccessPin || "");
     setEditLogo(store.logo || null);
     setEditBanner(store.menuBannerImage || null);
+    setEditProducts(store.selectedProducts || []);
     setEditOpen(true);
+  };
+
+  const toggleEditProduct = (productId: string) => {
+    setEditProducts(prev =>
+      prev.includes(productId) ? prev.filter(p => p !== productId) : [...prev, productId]
+    );
   };
 
   const handleImageFile = (file: File, setter: (v: string) => void) => {
@@ -165,6 +188,10 @@ export default function StoresPage() {
 
   const handleSave = () => {
     if (!editingStore) return;
+    if (editProducts.length === 0) {
+      toast({ title: "Select at least one product", description: "Each store needs at least one product enabled.", variant: "destructive" });
+      return;
+    }
     updateMutation.mutate({
       id: editingStore.id,
       data: {
@@ -173,6 +200,7 @@ export default function StoresPage() {
         shiftAccessPin: editPin || null,
         logo: editLogo,
         menuBannerImage: editBanner,
+        selectedProducts: editProducts,
       }
     });
   };
@@ -493,23 +521,70 @@ export default function StoresPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="editPin">Shift Access PIN</Label>
-                <Input
-                  id="editPin"
-                  data-testid="input-edit-store-pin"
-                  placeholder="e.g. 1234"
-                  maxLength={8}
-                  value={editPin}
-                  onChange={e => setEditPin(e.target.value.replace(/\D/g, ''))}
-                />
-                <p className="text-xs text-muted-foreground">Employees use this PIN to view the public shift schedule.</p>
+                <Label>Products</Label>
+                <p className="text-xs text-muted-foreground">Choose which features are enabled for this store.</p>
+                <div className="space-y-2 mt-1">
+                  {PRODUCT_OPTIONS.map(product => {
+                    const checked = editProducts.includes(product.id);
+                    return (
+                      <label
+                        key={product.id}
+                        htmlFor={`product-${product.id}`}
+                        className="flex items-center gap-3 rounded-md border p-3 cursor-pointer hover-elevate"
+                        data-testid={`row-product-${product.id}`}
+                      >
+                        <Checkbox
+                          id={`product-${product.id}`}
+                          checked={checked}
+                          onCheckedChange={() => toggleEditProduct(product.id)}
+                          data-testid={`checkbox-product-${product.id}`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{product.label}</p>
+                          <p className="text-xs text-muted-foreground">{product.description}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground font-mono shrink-0">€{product.price}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {isEditingPrimary ? (
+                  !isChargeFree && (
+                    <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300" data-testid="notice-primary-billing">
+                      <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <span>
+                        This is your primary store, so its products set your base plan price.
+                        {editProducts.length > 0 && (
+                          <> Saving will change your plan to €{calculateTotalPrice(editProducts, additionalStores).toFixed(2)}/month{inTrial ? " when your trial ends" : ""}.</>
+                        )}
+                      </span>
+                    </div>
+                  )
+                ) : (
+                  <p className="text-xs text-muted-foreground">Changing products for an additional store doesn't change your bill — extra stores are a flat €5/month each.</p>
+                )}
               </div>
+
+              {editProducts.includes('shift') && (
+                <div className="space-y-2">
+                  <Label htmlFor="editPin">Shift Access PIN</Label>
+                  <Input
+                    id="editPin"
+                    data-testid="input-edit-store-pin"
+                    placeholder="e.g. 1234"
+                    maxLength={8}
+                    value={editPin}
+                    onChange={e => setEditPin(e.target.value.replace(/\D/g, ''))}
+                  />
+                  <p className="text-xs text-muted-foreground">Employees use this PIN to view the public shift schedule.</p>
+                </div>
+              )}
 
               <Button
                 className="w-full"
                 data-testid="button-save-store-settings"
                 onClick={handleSave}
-                disabled={updateMutation.isPending || !editDisplayName}
+                disabled={updateMutation.isPending || !editDisplayName || editProducts.length === 0}
               >
                 {updateMutation.isPending ? "Saving..." : "Save Settings"}
               </Button>

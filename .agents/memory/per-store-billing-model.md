@@ -25,6 +25,12 @@ from ad-hoc code. Call `syncBillingFromStores(userId, opts)` in `server/routes.t
 after any store add/remove or primary-product change — it recomputes the mirror,
 recomputes additionalStores, and does a best-effort Stripe sync.
 
+Product-edit entry points that MUST call syncBillingFromStores on a primary
+change: merchant `/select-products`, store add/remove, the admin per-store route,
+AND the merchant-facing owner store PATCH (`PATCH /api/stores/:storeId`). The
+owner PATCH now accepts `selectedProducts` (min 1) and runs the sync only when the
+edited store is the primary; non-primary product edits skip the sync entirely.
+
 **Testability decision:** billing math + recompute are isolated in
 `server/billing.ts` with Stripe dependency-injected specifically so the money
 math can be exercised with a Stripe spy (`server/billing.test.ts`) — do not
