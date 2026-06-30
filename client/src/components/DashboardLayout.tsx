@@ -66,6 +66,10 @@ function StoreSwitcher() {
   const { stores, activeStore, setActiveStoreId } = useStore();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { data: userInfo } = useQuery<{ isSubuser?: boolean; permissions?: string[] }>({
+    queryKey: ['/api/auth/me'],
+  });
+  const isOwner = !userInfo?.isSubuser;
 
   if (stores.length <= 1) {
     return (
@@ -101,13 +105,17 @@ function StoreSwitcher() {
             {store.id === activeStore?.id && <span className="ml-auto text-primary text-xs">Active</span>}
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard/stores" className="cursor-pointer">
-            <Plus className="w-3 h-3 mr-2" />
-            Manage Stores
-          </Link>
-        </DropdownMenuItem>
+        {isOwner && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/stores" className="cursor-pointer">
+                <Plus className="w-3 h-3 mr-2" />
+                Manage Stores
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -14,6 +14,11 @@ export interface Store {
   createdAt: string;
 }
 
+interface AuthMeResponse {
+  isSubuser?: boolean;
+  subuserStoreIds?: string[] | null;
+}
+
 interface StoreContextValue {
   stores: Store[];
   activeStore: Store | null;
@@ -36,10 +41,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return localStorage.getItem("activeStoreId");
   });
 
-  const { data: stores = [], isLoading } = useQuery<Store[]>({
+  const { data: rawStores = [], isLoading } = useQuery<Store[]>({
     queryKey: ["/api/stores"],
     enabled: isAuthenticated && !authLoading,
   });
+
+  const { data: authInfo } = useQuery<AuthMeResponse>({
+    queryKey: ["/api/auth/me"],
+    enabled: isAuthenticated && !authLoading,
+  });
+
+  // Client-side defensive filter: if the session says this is a subuser with a
+  // restricted store list, only expose those stores — even if the API somehow
+  // returned extras. The backend at /api/stores already applies this filter;
+  // this is a belt-and-suspenders guard.
+  const stores: Store[] = (() => {
+    if (authInfo?.isSubuser && Array.isArray(authInfo.subuserStoreIds)) {
+      const allowed = authInfo.subuserStoreIds;
+      return rawStores.filter(s => allowed.includes(s.id));
+    }
+    return rawStores;
+  })();
 
   useEffect(() => {
     if (stores.length > 0) {
