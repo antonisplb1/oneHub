@@ -25,6 +25,11 @@ from ad-hoc code. Call `syncBillingFromStores(userId, opts)` in `server/routes.t
 after any store add/remove or primary-product change — it recomputes the mirror,
 recomputes additionalStores, and does a best-effort Stripe sync.
 
+**Testability decision:** billing math + recompute are isolated in
+`server/billing.ts` with Stripe dependency-injected specifically so the money
+math can be exercised with a Stripe spy (`server/billing.test.ts`) — do not
+re-inline this into `routes.ts` or the coverage loses its seam.
+
 ## Stripe repricing policy
 - Changing the PRIMARY store's products DOES reprice the active Stripe
   subscription (base price follows primary products). Both merchant
