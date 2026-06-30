@@ -68,6 +68,36 @@ export async function runStoreMigration() {
     const brandingCount = (brandingUpdated as any).rowCount || 0;
     if (brandingCount > 0) console.log(`[StoreMigration] Copied branding into ${brandingCount} stores`);
 
+    // Step 2b: Backfill per-store products from the account's products (only when
+    // the store has no products yet) so existing stores keep their features after
+    // the per-store-products migration. This preserves today's behavior.
+    const productsUpdated = await db.execute(sql`
+      UPDATE stores s
+      SET selected_products = u.selected_products
+      FROM users u
+      WHERE s.user_id = u.id
+        AND (s.selected_products IS NULL OR cardinality(s.selected_products) = 0)
+        AND u.selected_products IS NOT NULL
+        AND cardinality(u.selected_products) > 0
+    `);
+    const productsCount = (productsUpdated as any).rowCount || 0;
+    if (productsCount > 0) console.log(`[StoreMigration] Backfilled products into ${productsCount} stores`);
+
+    // Step 2c: Backfill per-store shift PIN from the account's legacy PIN (only
+    // when the store has no PIN yet). Shift PINs are per-store now; the public
+    // shift auth no longer falls back to the account-level PIN, so existing
+    // stores must inherit the legacy PIN to keep working.
+    const pinUpdated = await db.execute(sql`
+      UPDATE stores s
+      SET shift_access_pin = u.shift_access_pin
+      FROM users u
+      WHERE s.user_id = u.id
+        AND s.shift_access_pin IS NULL
+        AND u.shift_access_pin IS NOT NULL
+    `);
+    const pinCount = (pinUpdated as any).rowCount || 0;
+    if (pinCount > 0) console.log(`[StoreMigration] Backfilled shift PIN into ${pinCount} stores`);
+
     // Step 3: Backfill storeId on all feature tables
     const tableNames = [
       'customers',

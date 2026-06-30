@@ -27,6 +27,7 @@ export const users = pgTable("users", {
   customPrice: integer("custom_price"),
   chargeFree: boolean("charge_free").default(false),
   additionalStores: integer("additional_stores").default(0),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -40,6 +41,7 @@ export const stores = pgTable("stores", {
   menuBannerImage: text("menu_banner_image"),
   cardBackgroundColor: text("card_background_color").default("#4285F4"),
   shiftAccessPin: text("shift_access_pin"),
+  selectedProducts: text("selected_products").array().default(sql`ARRAY[]::text[]`),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -410,8 +412,16 @@ export const createStoreSchema = z.object({
   displayName: z.string().min(1, "Display name is required").max(100),
   cardBackgroundColor: z.string().optional(),
   shiftAccessPin: z.string().optional(),
+  selectedProducts: z.array(z.enum(["loyalty", "spin", "menu", "shift"])).optional(),
 });
 
+// NOTE: `selectedProducts` is intentionally NOT updatable here. This is the
+// owner-facing store-profile route. Product access drives billing (the primary
+// store's products set the account base price), so product changes must flow
+// through paths that recompute the billing mirror via syncBillingFromStores
+// (merchant /select-products, store add/remove, or the admin per-store route).
+// Allowing it here would let stores.selectedProducts drift from the
+// users.selectedProducts billing mirror.
 export const updateStoreSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
   logo: z.string().optional().nullable(),

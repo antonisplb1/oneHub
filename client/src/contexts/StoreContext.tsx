@@ -11,6 +11,7 @@ export interface Store {
   menuBannerImage: string | null;
   cardBackgroundColor: string | null;
   shiftAccessPin: string | null;
+  selectedProducts: string[];
   createdAt: string;
 }
 

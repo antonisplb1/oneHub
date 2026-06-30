@@ -60,6 +60,10 @@ const secondaryItems = [
 
 interface DashboardLayoutProps {
   children: ReactNode;
+  // When set, the page is gated to the active store having this product enabled.
+  // The backend enforces this too; this guard prevents direct-URL access from
+  // rendering a feature the selected store hasn't enabled.
+  requiredProduct?: 'loyalty' | 'spin' | 'menu' | 'shift';
 }
 
 function StoreSwitcher() {
@@ -123,7 +127,7 @@ function StoreSwitcher() {
 
 function SidebarMenuItems() {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { activeStore } = useStore();
   const { setOpenMobile, isMobile } = useSidebar();
 
   // Fetch user info with permissions
@@ -142,8 +146,9 @@ function SidebarMenuItems() {
 
   const filterMenuItems = (items: typeof menuItems) => {
     if (isOwner) {
-      // Owner: filter by selectedProducts and show owner-only items
-      const selectedProducts = user?.selectedProducts || [];
+      // Owner: filter by the CURRENTLY SELECTED store's products and show
+      // owner-only items. Switching stores changes which features appear.
+      const selectedProducts = activeStore?.selectedProducts || [];
       return items.filter(item => {
         // Always show owner-only items for owners
         if (item.ownerOnly) return true;
@@ -223,10 +228,19 @@ function SidebarMenuItems() {
   );
 }
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, requiredProduct }: DashboardLayoutProps) {
   const [location, setLocation] = useLocation();
   const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { activeStore } = useStore();
   const { toast } = useToast();
+
+  // Per-store product gate: block direct-URL access to a feature the active
+  // store hasn't enabled. Only block when we positively know the product is
+  // absent (activeStore loaded) to avoid flashing during load.
+  const productBlocked =
+    !!requiredProduct &&
+    !!activeStore &&
+    !(activeStore.selectedProducts || []).includes(requiredProduct);
 
   // Check if user has active subscription OR active trial (charge-free bypasses billing)
   const isChargeFree = user && user.chargeFree === true;
@@ -362,7 +376,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           )}
           
           <main className="flex-1 overflow-auto p-6">
-            {children}
+            {productBlocked ? (
+              <div className="flex items-center justify-center min-h-[60vh]">
+                <Alert className="max-w-md" data-testid="alert-product-not-enabled">
+                  <Store className="h-4 w-4" />
+                  <AlertDescription className="flex flex-col gap-3">
+                    <span>
+                      This feature isn't enabled for{" "}
+                      <span className="font-medium">
+                        {activeStore?.displayName || activeStore?.shopName || "this store"}
+                      </span>
+                      . Enable it from the store's product settings to use it here.
+                    </span>
+                    <Link href="/dashboard/stores" data-testid="link-manage-stores">
+                      <Button size="sm" variant="outline">
+                        Manage stores <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            ) : (
+              children
+            )}
           </main>
         </div>
       </div>

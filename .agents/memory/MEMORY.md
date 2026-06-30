@@ -1,1 +1,2 @@
 - [Admin vs merchant session collision](admin-merchant-session.md) — admin `req.session.adminId` gets wiped by Passport `req.login()` regeneration; fix with `{ keepSessionInfo: true }`.
+- [Per-store billing model](per-store-billing-model.md) — primary (oldest) store drives base price, +€5/extra store; `users.selectedProducts` is a mirror; call `syncBillingFromStores`.

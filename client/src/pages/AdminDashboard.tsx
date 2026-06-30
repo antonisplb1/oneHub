@@ -10,6 +10,7 @@ import { ShieldCheck, UserPlus, LogOut, RefreshCw } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import MerchantsManager from "@/components/MerchantsManager";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -154,19 +155,31 @@ export default function AdminDashboard() {
 
       <div className="container mx-auto px-6 py-10">
         <div className="max-w-4xl mx-auto">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <UserPlus className="h-6 w-6 text-primary" />
-                <div>
-                  <CardTitle className="text-2xl">Create User</CardTitle>
-                  <CardDescription className="mt-1">
-                    Manually create fully-activated users (bypasses email verification and subscription)
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
+          <Tabs defaultValue="accounts" className="space-y-6">
+            <TabsList data-testid="tabs-admin">
+              <TabsTrigger value="accounts" data-testid="tab-accounts">Accounts</TabsTrigger>
+              <TabsTrigger value="create" data-testid="tab-create">Create Account</TabsTrigger>
+              <TabsTrigger value="tools" data-testid="tab-tools">Tools</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="accounts">
+              <MerchantsManager />
+            </TabsContent>
+
+            <TabsContent value="create">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <UserPlus className="h-6 w-6 text-primary" />
+                    <div>
+                      <CardTitle className="text-2xl">Create Account</CardTitle>
+                      <CardDescription className="mt-1">
+                        Manually create fully-activated accounts (bypasses email verification and subscription)
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
               <form onSubmit={handleCreateUser} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="user-email" className="text-sm font-medium">Email</Label>
@@ -317,61 +330,61 @@ export default function AdminDashboard() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <Card className="mt-6">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <RefreshCw className="h-6 w-6 text-primary" />
-                <div>
-                  <CardTitle className="text-2xl">Reseed Demo Account</CardTitle>
-                  <CardDescription className="mt-1">
-                    Wipe and repopulate demo@unihub.live with fresh customers, spins, menu, and current-week shifts
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full"
-                    data-testid="button-reseed-demo"
-                    disabled={reseedMutation.isPending}
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${reseedMutation.isPending ? "animate-spin" : ""}`} />
-                    {reseedMutation.isPending ? "Reseeding..." : "Reseed Demo Data"}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Reseed the demo account?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will wipe ALL current data on the demo account and repopulate it
-                      with fresh customers, spins, menu, and current-week shifts. This cannot
-                      be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel data-testid="button-cancel-reseed">Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => reseedMutation.mutate()}
-                      data-testid="button-confirm-reseed"
-                    >
-                      Reseed Data
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </CardContent>
-          </Card>
-
-          <div className="mt-6">
-            <MerchantsManager />
-          </div>
+            <TabsContent value="tools">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <RefreshCw className="h-6 w-6 text-primary" />
+                    <div>
+                      <CardTitle className="text-2xl">Reseed Demo Account</CardTitle>
+                      <CardDescription className="mt-1">
+                        Wipe and repopulate demo@unihub.live with fresh customers, spins, menu, and current-week shifts
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="w-full"
+                        data-testid="button-reseed-demo"
+                        disabled={reseedMutation.isPending}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${reseedMutation.isPending ? "animate-spin" : ""}`} />
+                        {reseedMutation.isPending ? "Reseeding..." : "Reseed Demo Data"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reseed the demo account?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will wipe ALL current data on the demo account and repopulate it
+                          with fresh customers, spins, menu, and current-week shifts. This cannot
+                          be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel data-testid="button-cancel-reseed">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => reseedMutation.mutate()}
+                          data-testid="button-confirm-reseed"
+                        >
+                          Reseed Data
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

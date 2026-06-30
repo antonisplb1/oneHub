@@ -31,7 +31,21 @@ import {
   ChevronUp,
   KeyRound,
   Gift,
+  Store as StoreIcon,
+  Plus,
+  Star,
 } from "lucide-react";
+
+interface StoreDetail {
+  id: string;
+  shopName: string;
+  displayName: string | null;
+  selectedProducts: string[];
+  hasPin: boolean;
+  isPrimary: boolean;
+  customerCount: number;
+  createdAt: string | null;
+}
 
 interface Merchant {
   id: string;
@@ -43,10 +57,12 @@ interface Merchant {
   chargeFree: boolean;
   customerCount: number;
   storeCount: number;
+  storeNames: string[];
+  stores: StoreDetail[];
   additionalStores: number;
   expectedPrice: number;
-  hasShiftPin: boolean;
   createdAt: string | null;
+  lastLoginAt: string | null;
 }
 
 const PRODUCTS: { key: string; label: string }[] = [
@@ -68,6 +84,15 @@ function formatPrice(cents: number): string {
   return `€${(cents / 100).toFixed(2)}`;
 }
 
+function formatDate(value: string | null): string {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export default function MerchantsManager() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -83,7 +108,8 @@ export default function MerchantsManager() {
     if (!q) return true;
     return (
       m.email.toLowerCase().includes(q) ||
-      m.shopName.toLowerCase().includes(q)
+      m.shopName.toLowerCase().includes(q) ||
+      m.storeNames.some((n) => n.toLowerCase().includes(q))
     );
   });
 
@@ -94,13 +120,13 @@ export default function MerchantsManager() {
     mutationFn: async (id: string) =>
       apiRequest(`/api/admin/merchants/${id}`, { method: "DELETE" }),
     onSuccess: (res: any) => {
-      toast({ title: "Merchant deleted", description: res.message });
+      toast({ title: "Account deleted", description: res.message });
       invalidate();
     },
     onError: (error: any) =>
       toast({
         title: "Delete failed",
-        description: error.data?.error || "Failed to delete merchant",
+        description: error.data?.error || "Failed to delete account",
         variant: "destructive",
       }),
   });
@@ -154,42 +180,6 @@ export default function MerchantsManager() {
       }),
   });
 
-  const productsMutation = useMutation({
-    mutationFn: async ({ id, selectedProducts }: { id: string; selectedProducts: string[] }) =>
-      apiRequest(`/api/admin/merchants/${id}/products`, {
-        method: "PATCH",
-        body: JSON.stringify({ selectedProducts }),
-      }),
-    onSuccess: (res: any) => {
-      toast({ title: "Products updated", description: res.message });
-      invalidate();
-    },
-    onError: (error: any) =>
-      toast({
-        title: "Update failed",
-        description: error.data?.error || "Failed to update products",
-        variant: "destructive",
-      }),
-  });
-
-  const shiftPinMutation = useMutation({
-    mutationFn: async ({ id, pin }: { id: string; pin: string | null }) =>
-      apiRequest(`/api/admin/merchants/${id}/shift-pin`, {
-        method: "PATCH",
-        body: JSON.stringify({ pin }),
-      }),
-    onSuccess: (res: any) => {
-      toast({ title: "Shift PIN updated", description: res.message });
-      invalidate();
-    },
-    onError: (error: any) =>
-      toast({
-        title: "Update failed",
-        description: error.data?.error || "Failed to update shift access PIN",
-        variant: "destructive",
-      }),
-  });
-
   const chargeFreeMutation = useMutation({
     mutationFn: async ({ id, chargeFree }: { id: string; chargeFree: boolean }) =>
       apiRequest(`/api/admin/merchants/${id}/charge-free`, {
@@ -208,15 +198,66 @@ export default function MerchantsManager() {
       }),
   });
 
+  const storeCreateMutation = useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: { shopName: string; displayName: string; selectedProducts: string[] } }) =>
+      apiRequest(`/api/admin/merchants/${id}/stores`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: (res: any) => {
+      toast({ title: "Store created", description: res.message });
+      invalidate();
+    },
+    onError: (error: any) =>
+      toast({
+        title: "Create failed",
+        description: error.data?.error || "Failed to create store",
+        variant: "destructive",
+      }),
+  });
+
+  const storeUpdateMutation = useMutation({
+    mutationFn: async ({ id, storeId, body }: { id: string; storeId: string; body: Record<string, unknown> }) =>
+      apiRequest(`/api/admin/merchants/${id}/stores/${storeId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: (res: any) => {
+      toast({ title: "Store updated", description: res.message });
+      invalidate();
+    },
+    onError: (error: any) =>
+      toast({
+        title: "Update failed",
+        description: error.data?.error || "Failed to update store",
+        variant: "destructive",
+      }),
+  });
+
+  const storeDeleteMutation = useMutation({
+    mutationFn: async ({ id, storeId }: { id: string; storeId: string }) =>
+      apiRequest(`/api/admin/merchants/${id}/stores/${storeId}`, { method: "DELETE" }),
+    onSuccess: (res: any) => {
+      toast({ title: "Store deleted", description: res.message });
+      invalidate();
+    },
+    onError: (error: any) =>
+      toast({
+        title: "Delete failed",
+        description: error.data?.error || "Failed to delete store",
+        variant: "destructive",
+      }),
+  });
+
   return (
     <Card data-testid="card-merchants">
       <CardHeader>
         <div className="flex items-center gap-3">
           <Users className="h-6 w-6 text-primary" />
           <div>
-            <CardTitle className="text-2xl">Merchants</CardTitle>
+            <CardTitle className="text-2xl">Accounts</CardTitle>
             <CardDescription className="mt-1">
-              View and manage all registered merchant accounts
+              Manage merchant accounts and their individual stores
             </CardDescription>
           </div>
         </div>
@@ -225,7 +266,7 @@ export default function MerchantsManager() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by email or shop name..."
+            placeholder="Search by email, account, or store name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -234,10 +275,10 @@ export default function MerchantsManager() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Loading merchants...</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">Loading accounts...</p>
         ) : filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-merchants">
-            {merchants.length === 0 ? "No merchants yet" : "No merchants match your search"}
+            {merchants.length === 0 ? "No accounts yet" : "No accounts match your search"}
           </p>
         ) : (
           <div className="space-y-3">
@@ -251,9 +292,10 @@ export default function MerchantsManager() {
                 priceMutation={priceMutation}
                 resetMutation={resetMutation}
                 statusMutation={statusMutation}
-                productsMutation={productsMutation}
-                shiftPinMutation={shiftPinMutation}
                 chargeFreeMutation={chargeFreeMutation}
+                storeCreateMutation={storeCreateMutation}
+                storeUpdateMutation={storeUpdateMutation}
+                storeDeleteMutation={storeDeleteMutation}
               />
             ))}
           </div>
@@ -271,9 +313,10 @@ interface RowProps {
   priceMutation: any;
   resetMutation: any;
   statusMutation: any;
-  productsMutation: any;
-  shiftPinMutation: any;
   chargeFreeMutation: any;
+  storeCreateMutation: any;
+  storeUpdateMutation: any;
+  storeDeleteMutation: any;
 }
 
 function MerchantRow({
@@ -284,24 +327,15 @@ function MerchantRow({
   priceMutation,
   resetMutation,
   statusMutation,
-  productsMutation,
-  shiftPinMutation,
   chargeFreeMutation,
+  storeCreateMutation,
+  storeUpdateMutation,
+  storeDeleteMutation,
 }: RowProps) {
   const m = merchant;
   const [priceInput, setPriceInput] = useState(
     m.customPrice != null ? (m.customPrice / 100).toFixed(2) : ""
   );
-  const [pendingStatus, setPendingStatus] = useState(m.subscriptionStatus || "inactive");
-  const [productSel, setProductSel] = useState<string[]>(m.selectedProducts);
-  const [pinInput, setPinInput] = useState("");
-
-  const pinValid = /^\d{4}$/.test(pinInput);
-
-  const toggleProduct = (key: string) =>
-    setProductSel((prev) =>
-      prev.includes(key) ? prev.filter((p) => p !== key) : [...prev, key]
-    );
 
   const parsedPrice = priceInput.trim() === "" ? null : Math.round(parseFloat(priceInput) * 100);
   const priceValid = priceInput.trim() === "" || (!isNaN(parsedPrice as number) && (parsedPrice as number) >= 0);
@@ -336,29 +370,20 @@ function MerchantRow({
           <p className="text-sm text-muted-foreground truncate" data-testid={`text-merchant-email-${m.id}`}>
             {m.email}
           </p>
-          <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            {m.selectedProducts.length === 0 ? (
-              <span className="text-xs text-muted-foreground">No products</span>
-            ) : (
-              m.selectedProducts.map((p) => (
-                <Badge key={p} variant="secondary" data-testid={`pill-product-${p}-${m.id}`}>
-                  {PRODUCTS.find((x) => x.key === p)?.label || p}
-                </Badge>
-              ))
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground pt-1" data-testid={`text-customer-count-${m.id}`}>
-            {m.customerCount} customer{m.customerCount === 1 ? "" : "s"}
-            {m.createdAt && (
-              <span data-testid={`text-merchant-joined-${m.id}`}>
-                {" · Joined "}
-                {new Date(m.createdAt).toLocaleDateString(undefined, {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
-            )}
+          <p className="text-xs text-muted-foreground pt-1">
+            <span data-testid={`text-store-count-${m.id}`}>
+              {m.storeCount} store{m.storeCount === 1 ? "" : "s"}
+            </span>
+            {" · "}
+            <span data-testid={`text-customer-count-${m.id}`}>
+              {m.customerCount} customer{m.customerCount === 1 ? "" : "s"}
+            </span>
+            {" · Joined "}
+            <span data-testid={`text-merchant-joined-${m.id}`}>{formatDate(m.createdAt)}</span>
+            {" · Last login "}
+            <span data-testid={`text-merchant-last-login-${m.id}`}>
+              {m.lastLoginAt ? formatDate(m.lastLoginAt) : "Never"}
+            </span>
           </p>
         </div>
         <Button
@@ -373,282 +398,174 @@ function MerchantRow({
       </div>
 
       {expanded && (
-        <div className="mt-4 space-y-5 border-t pt-4">
-          {/* Custom price */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-2">
-              <Tag className="h-4 w-4" /> Custom Monthly Price
-            </Label>
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Leave empty for standard"
-                value={priceInput}
-                onChange={(e) => setPriceInput(e.target.value)}
-                className="max-w-[220px]"
-                data-testid={`input-price-${m.id}`}
+        <div className="mt-4 space-y-6 border-t pt-4">
+          {/* ── Stores ─────────────────────────────────────────────── */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <StoreIcon className="h-4 w-4" /> Stores
+              </Label>
+              <AddStoreDialog
+                merchantId={m.id}
+                primaryProducts={m.stores.find((s) => s.isPrimary)?.selectedProducts || m.selectedProducts}
+                storeCreateMutation={storeCreateMutation}
               />
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    size="default"
-                    disabled={!priceValid || priceMutation.isPending}
-                    data-testid={`button-save-price-${m.id}`}
-                  >
-                    Save Price
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Update custom price?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {parsedPrice == null
-                        ? `This will clear the custom price for ${m.shopName}. They will be charged the standard calculated price.`
-                        : `This will set ${m.shopName}'s monthly charge to ${formatPrice(parsedPrice)}. Stripe checkout will use this amount.`}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel data-testid={`button-cancel-price-${m.id}`}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => priceMutation.mutate({ id: m.id, customPrice: parsedPrice })}
-                      data-testid={`button-confirm-price-${m.id}`}
-                    >
-                      Confirm
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+            </div>
+            <div className="space-y-3">
+              {m.stores.map((s) => (
+                <StoreCard
+                  key={s.id}
+                  merchantId={m.id}
+                  store={s}
+                  canDelete={m.stores.length > 1}
+                  storeUpdateMutation={storeUpdateMutation}
+                  storeDeleteMutation={storeDeleteMutation}
+                />
+              ))}
             </div>
           </div>
 
-          {/* Subscription status */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-2">
-              <ToggleLeft className="h-4 w-4" /> Subscription Status
-            </Label>
-            <div className="flex flex-wrap items-center gap-2">
-              {STATUSES.map((s) => (
-                <AlertDialog key={s}>
+          {/* ── Billing & account controls ─────────────────────────── */}
+          <div className="space-y-5 border-t pt-4">
+            {/* Custom price */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Tag className="h-4 w-4" /> Custom Monthly Price
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Overrides the calculated price (primary store products + €5 per additional store).
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Leave empty for standard"
+                  value={priceInput}
+                  onChange={(e) => setPriceInput(e.target.value)}
+                  className="max-w-[220px]"
+                  data-testid={`input-price-${m.id}`}
+                />
+                <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
-                      variant={m.subscriptionStatus === s ? "default" : "outline"}
-                      size="sm"
-                      disabled={statusMutation.isPending}
-                      onClick={() => setPendingStatus(s)}
-                      data-testid={`button-status-${s}-${m.id}`}
+                      size="default"
+                      disabled={!priceValid || priceMutation.isPending}
+                      data-testid={`button-save-price-${m.id}`}
                     >
-                      {s}
+                      Save Price
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Change subscription status?</AlertDialogTitle>
+                      <AlertDialogTitle>Update custom price?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will set {m.shopName}'s subscription status to "{s}" immediately, without going through Stripe.
+                        {parsedPrice == null
+                          ? `This will clear the custom price for ${m.shopName}. They will be charged the standard calculated price.`
+                          : `This will set ${m.shopName}'s monthly charge to ${formatPrice(parsedPrice)}. Stripe checkout will use this amount.`}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel data-testid={`button-cancel-status-${s}-${m.id}`}>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel data-testid={`button-cancel-price-${m.id}`}>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={() => statusMutation.mutate({ id: m.id, subscriptionStatus: s })}
-                        data-testid={`button-confirm-status-${s}-${m.id}`}
+                        onClick={() => priceMutation.mutate({ id: m.id, customPrice: parsedPrice })}
+                        data-testid={`button-confirm-price-${m.id}`}
                       >
                         Confirm
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              ))}
+              </div>
             </div>
-          </div>
 
-          {/* Charge-free */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-2">
-              <Gift className="h-4 w-4" /> Charge Free
-            </Label>
-            <p className="text-xs text-muted-foreground" data-testid={`text-charge-free-status-${m.id}`}>
-              {m.chargeFree
-                ? "This merchant has full access at no cost. Billing is bypassed."
-                : "This merchant follows normal billing (active subscription or trial)."}
-            </p>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant={m.chargeFree ? "outline" : "default"}
-                  size="sm"
-                  disabled={chargeFreeMutation.isPending}
-                  data-testid={`button-charge-free-toggle-${m.id}`}
-                >
-                  {m.chargeFree ? "Turn Off Charge Free" : "Make Charge Free"}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {m.chargeFree ? "Turn off charge-free?" : "Make this merchant charge-free?"}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {m.chargeFree
-                      ? `This returns ${m.shopName} to normal billing. Access will again depend on an active subscription or trial.`
-                      : `This cancels ${m.shopName}'s active Stripe subscription (if any) and gives them full access to their products at no cost. They won't be billed or prompted to pay.`}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid={`button-cancel-charge-free-${m.id}`}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => chargeFreeMutation.mutate({ id: m.id, chargeFree: !m.chargeFree })}
-                    data-testid={`button-confirm-charge-free-${m.id}`}
-                  >
-                    Confirm
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-
-          {/* Product access */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-2">
-              <Package className="h-4 w-4" /> Product Access
-            </Label>
-            <div className="grid grid-cols-2 gap-2">
-              {PRODUCTS.map((p) => (
-                <div key={p.key} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`product-${p.key}-${m.id}`}
-                    checked={productSel.includes(p.key)}
-                    onCheckedChange={() => toggleProduct(p.key)}
-                    data-testid={`checkbox-product-${p.key}-${m.id}`}
-                  />
-                  <Label htmlFor={`product-${p.key}-${m.id}`} className="text-sm font-normal cursor-pointer">
-                    {p.label}
-                  </Label>
-                </div>
-              ))}
+            {/* Subscription status */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <ToggleLeft className="h-4 w-4" /> Subscription Status
+              </Label>
+              <div className="flex flex-wrap items-center gap-2">
+                {STATUSES.map((s) => (
+                  <AlertDialog key={s}>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant={m.subscriptionStatus === s ? "default" : "outline"}
+                        size="sm"
+                        disabled={statusMutation.isPending}
+                        data-testid={`button-status-${s}-${m.id}`}
+                      >
+                        {s}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Change subscription status?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will set {m.shopName}'s subscription status to "{s}" immediately, without going through Stripe.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel data-testid={`button-cancel-status-${s}-${m.id}`}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => statusMutation.mutate({ id: m.id, subscriptionStatus: s })}
+                          data-testid={`button-confirm-status-${s}-${m.id}`}
+                        >
+                          Confirm
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ))}
+              </div>
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  size="sm"
-                  disabled={productsMutation.isPending}
-                  data-testid={`button-save-products-${m.id}`}
-                >
-                  Save Products
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Update product access?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will change which products {m.shopName} can access, applied immediately.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid={`button-cancel-products-${m.id}`}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => productsMutation.mutate({ id: m.id, selectedProducts: productSel })}
-                    data-testid={`button-confirm-products-${m.id}`}
-                  >
-                    Confirm
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
 
-          {/* Shift access PIN */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-2">
-              <KeyRound className="h-4 w-4" /> Shift Access PIN
-            </Label>
-            <p className="text-xs text-muted-foreground" data-testid={`text-pin-status-${m.id}`}>
-              {m.hasShiftPin
-                ? "A PIN is currently set for the public shift schedule."
-                : "No PIN is set for the public shift schedule."}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="4-digit PIN"
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                className="max-w-[220px]"
-                data-testid={`input-pin-${m.id}`}
-              />
+            {/* Charge-free */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Gift className="h-4 w-4" /> Charge Free
+              </Label>
+              <p className="text-xs text-muted-foreground" data-testid={`text-charge-free-status-${m.id}`}>
+                {m.chargeFree
+                  ? "This account has full access at no cost. Billing is bypassed."
+                  : "This account follows normal billing (active subscription or trial)."}
+              </p>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
-                    size="default"
-                    disabled={!pinValid || shiftPinMutation.isPending}
-                    data-testid={`button-save-pin-${m.id}`}
+                    variant={m.chargeFree ? "outline" : "default"}
+                    size="sm"
+                    disabled={chargeFreeMutation.isPending}
+                    data-testid={`button-charge-free-toggle-${m.id}`}
                   >
-                    Set PIN
+                    {m.chargeFree ? "Turn Off Charge Free" : "Make Charge Free"}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Set shift access PIN?</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      {m.chargeFree ? "Turn off charge-free?" : "Make this account charge-free?"}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will set {m.shopName}'s public shift schedule PIN to "{pinInput}". They can use this PIN immediately.
+                      {m.chargeFree
+                        ? `This returns ${m.shopName} to normal billing. Access will again depend on an active subscription or trial.`
+                        : `This cancels ${m.shopName}'s active Stripe subscription (if any) and gives them full access to their products at no cost. They won't be billed or prompted to pay.`}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel data-testid={`button-cancel-pin-${m.id}`}>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel data-testid={`button-cancel-charge-free-${m.id}`}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => {
-                        shiftPinMutation.mutate({ id: m.id, pin: pinInput });
-                        setPinInput("");
-                      }}
-                      data-testid={`button-confirm-pin-${m.id}`}
+                      onClick={() => chargeFreeMutation.mutate({ id: m.id, chargeFree: !m.chargeFree })}
+                      data-testid={`button-confirm-charge-free-${m.id}`}
                     >
                       Confirm
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              {m.hasShiftPin && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="default"
-                      disabled={shiftPinMutation.isPending}
-                      data-testid={`button-clear-pin-${m.id}`}
-                    >
-                      Clear PIN
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Clear shift access PIN?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will remove {m.shopName}'s public shift schedule PIN. The schedule will be inaccessible until a new PIN is set.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel data-testid={`button-cancel-clear-pin-${m.id}`}>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => {
-                          shiftPinMutation.mutate({ id: m.id, pin: null });
-                          setPinInput("");
-                        }}
-                        data-testid={`button-confirm-clear-pin-${m.id}`}
-                      >
-                        Clear PIN
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
             </div>
           </div>
 
-          {/* Send reset & Delete */}
+          {/* ── Send reset & Delete account ────────────────────────── */}
           <div className="flex flex-wrap items-center gap-2 border-t pt-4">
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -688,15 +605,16 @@ function MerchantRow({
                   disabled={deleteMutation.isPending}
                   data-testid={`button-delete-${m.id}`}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" /> Delete Merchant
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete Account
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this merchant?</AlertDialogTitle>
+                  <AlertDialogTitle>Delete this account?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This permanently deletes {m.shopName} ({m.email}) and ALL their data —
-                    customers, loyalty cards, spins, menu, and shifts. This cannot be undone.
+                    This permanently deletes {m.shopName} ({m.email}), all {m.storeCount} store
+                    {m.storeCount === 1 ? "" : "s"}, and ALL their data — customers, loyalty cards,
+                    spins, menu, and shifts. This cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -714,5 +632,357 @@ function MerchantRow({
         </div>
       )}
     </div>
+  );
+}
+
+interface StoreCardProps {
+  merchantId: string;
+  store: StoreDetail;
+  canDelete: boolean;
+  storeUpdateMutation: any;
+  storeDeleteMutation: any;
+}
+
+function StoreCard({ merchantId, store, canDelete, storeUpdateMutation, storeDeleteMutation }: StoreCardProps) {
+  const s = store;
+  const [displayName, setDisplayName] = useState(s.displayName || "");
+  const [shopName, setShopName] = useState(s.shopName);
+  const [productSel, setProductSel] = useState<string[]>(s.selectedProducts);
+  const [pinInput, setPinInput] = useState("");
+
+  const pinValid = /^\d{4}$/.test(pinInput);
+  const detailsChanged = displayName.trim() !== (s.displayName || "") || shopName.trim() !== s.shopName;
+  const detailsValid = displayName.trim().length > 0 && /^[a-z0-9-]+$/.test(shopName.trim());
+
+  const toggleProduct = (key: string) =>
+    setProductSel((prev) =>
+      prev.includes(key) ? prev.filter((p) => p !== key) : [...prev, key]
+    );
+
+  const productsChanged =
+    productSel.length !== s.selectedProducts.length ||
+    productSel.some((p) => !s.selectedProducts.includes(p));
+
+  return (
+    <div className="rounded-md border bg-muted/30 p-4 space-y-4" data-testid={`store-card-${s.id}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium" data-testid={`text-store-name-${s.id}`}>
+            {s.displayName || s.shopName}
+          </span>
+          {s.isPrimary && (
+            <Badge variant="default" data-testid={`badge-store-primary-${s.id}`}>
+              <Star className="h-3 w-3 mr-1" /> Primary
+            </Badge>
+          )}
+          <span className="text-xs text-muted-foreground" data-testid={`text-store-slug-${s.id}`}>
+            /{s.shopName}
+          </span>
+        </div>
+        <span className="text-xs text-muted-foreground" data-testid={`text-store-customers-${s.id}`}>
+          {s.customerCount} customer{s.customerCount === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      {s.isPrimary && (
+        <p className="text-xs text-muted-foreground">
+          This is the primary store — its products set the account's base price.
+        </p>
+      )}
+
+      {/* Rename / slug */}
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">Store Details</Label>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Input
+            placeholder="Display name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            data-testid={`input-store-display-${s.id}`}
+          />
+          <Input
+            placeholder="url-slug"
+            value={shopName}
+            onChange={(e) => setShopName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+            data-testid={`input-store-slug-${s.id}`}
+          />
+        </div>
+        <Button
+          size="sm"
+          disabled={!detailsChanged || !detailsValid || storeUpdateMutation.isPending}
+          onClick={() =>
+            storeUpdateMutation.mutate({
+              id: merchantId,
+              storeId: s.id,
+              body: { displayName: displayName.trim(), shopName: shopName.trim() },
+            })
+          }
+          data-testid={`button-save-store-details-${s.id}`}
+        >
+          Save Details
+        </Button>
+      </div>
+
+      {/* Products */}
+      <div className="space-y-2">
+        <Label className="text-xs font-medium flex items-center gap-2">
+          <Package className="h-4 w-4" /> Product Access
+        </Label>
+        <div className="grid grid-cols-2 gap-2">
+          {PRODUCTS.map((p) => (
+            <div key={p.key} className="flex items-center space-x-2">
+              <Checkbox
+                id={`product-${p.key}-${s.id}`}
+                checked={productSel.includes(p.key)}
+                onCheckedChange={() => toggleProduct(p.key)}
+                data-testid={`checkbox-product-${p.key}-${s.id}`}
+              />
+              <Label htmlFor={`product-${p.key}-${s.id}`} className="text-sm font-normal cursor-pointer">
+                {p.label}
+              </Label>
+            </div>
+          ))}
+        </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              size="sm"
+              disabled={!productsChanged || storeUpdateMutation.isPending}
+              data-testid={`button-save-products-${s.id}`}
+            >
+              Save Products
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Update product access?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This changes which products "{s.displayName || s.shopName}" can access, applied immediately.
+                {s.isPrimary
+                  ? " As the primary store, this also updates the account's base price calculation."
+                  : " This does not change the account's bill."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid={`button-cancel-products-${s.id}`}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() =>
+                  storeUpdateMutation.mutate({
+                    id: merchantId,
+                    storeId: s.id,
+                    body: { selectedProducts: productSel },
+                  })
+                }
+                data-testid={`button-confirm-products-${s.id}`}
+              >
+                Confirm
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      {/* Shift PIN */}
+      <div className="space-y-2">
+        <Label className="text-xs font-medium flex items-center gap-2">
+          <KeyRound className="h-4 w-4" /> Shift Access PIN
+        </Label>
+        <p className="text-xs text-muted-foreground" data-testid={`text-pin-status-${s.id}`}>
+          {s.hasPin
+            ? "A PIN is set for this store's public shift schedule."
+            : "No PIN is set for this store's public shift schedule."}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            type="text"
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="4-digit PIN"
+            value={pinInput}
+            onChange={(e) => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            className="max-w-[160px]"
+            data-testid={`input-pin-${s.id}`}
+          />
+          <Button
+            size="default"
+            disabled={!pinValid || storeUpdateMutation.isPending}
+            onClick={() => {
+              storeUpdateMutation.mutate({ id: merchantId, storeId: s.id, body: { pin: pinInput } });
+              setPinInput("");
+            }}
+            data-testid={`button-save-pin-${s.id}`}
+          >
+            Set PIN
+          </Button>
+          {s.hasPin && (
+            <Button
+              variant="outline"
+              size="default"
+              disabled={storeUpdateMutation.isPending}
+              onClick={() => {
+                storeUpdateMutation.mutate({ id: merchantId, storeId: s.id, body: { pin: null } });
+                setPinInput("");
+              }}
+              data-testid={`button-clear-pin-${s.id}`}
+            >
+              Clear PIN
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Delete store */}
+      <div className="border-t pt-3">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!canDelete || storeDeleteMutation.isPending}
+              data-testid={`button-delete-store-${s.id}`}
+            >
+              <Trash2 className="h-4 w-4 mr-2" /> Delete Store
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this store?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently deletes "{s.displayName || s.shopName}" and all of its data —
+                customers, loyalty cards, spins, menu, and shifts.
+                {s.isPrimary
+                  ? " As this is the primary store, the next-oldest store becomes primary and will drive the account's base price."
+                  : " This removes the €5/mo charge for this additional store."}
+                {" "}This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid={`button-cancel-delete-store-${s.id}`}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => storeDeleteMutation.mutate({ id: merchantId, storeId: s.id })}
+                data-testid={`button-confirm-delete-store-${s.id}`}
+              >
+                Delete Permanently
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {!canDelete && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Cannot delete the account's only store.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface AddStoreDialogProps {
+  merchantId: string;
+  primaryProducts: string[];
+  storeCreateMutation: any;
+}
+
+function AddStoreDialog({ merchantId, primaryProducts, storeCreateMutation }: AddStoreDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [shopName, setShopName] = useState("");
+  const [productSel, setProductSel] = useState<string[]>(primaryProducts);
+
+  const valid = displayName.trim().length > 0 && /^[a-z0-9-]+$/.test(shopName.trim());
+
+  const toggleProduct = (key: string) =>
+    setProductSel((prev) =>
+      prev.includes(key) ? prev.filter((p) => p !== key) : [...prev, key]
+    );
+
+  const reset = () => {
+    setDisplayName("");
+    setShopName("");
+    setProductSel(primaryProducts);
+  };
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) reset();
+      }}
+    >
+      <AlertDialogTrigger asChild>
+        <Button size="sm" data-testid={`button-add-store-${merchantId}`}>
+          <Plus className="h-4 w-4 mr-1" /> Add Store
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Add a store</AlertDialogTitle>
+          <AlertDialogDescription>
+            Each additional store adds a flat €5/mo to the account, regardless of products.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Display Name</Label>
+            <Input
+              placeholder="Second Location"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              data-testid={`input-new-store-display-${merchantId}`}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">URL Slug</Label>
+            <Input
+              placeholder="second-location"
+              value={shopName}
+              onChange={(e) => setShopName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+              data-testid={`input-new-store-slug-${merchantId}`}
+            />
+            <p className="text-xs text-muted-foreground">Lowercase letters, numbers, and hyphens only.</p>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <Package className="h-4 w-4" /> Product Access
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              {PRODUCTS.map((p) => (
+                <div key={p.key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`new-product-${p.key}-${merchantId}`}
+                    checked={productSel.includes(p.key)}
+                    onCheckedChange={() => toggleProduct(p.key)}
+                    data-testid={`checkbox-new-product-${p.key}-${merchantId}`}
+                  />
+                  <Label htmlFor={`new-product-${p.key}-${merchantId}`} className="text-sm font-normal cursor-pointer">
+                    {p.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel data-testid={`button-cancel-add-store-${merchantId}`}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={!valid || storeCreateMutation.isPending}
+            onClick={() =>
+              storeCreateMutation.mutate({
+                id: merchantId,
+                body: {
+                  shopName: shopName.trim(),
+                  displayName: displayName.trim(),
+                  selectedProducts: productSel,
+                },
+              })
+            }
+            data-testid={`button-confirm-add-store-${merchantId}`}
+          >
+            Create Store
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

@@ -140,6 +140,61 @@ function getProductDescription(products: string[]): string {
   return "No products selected";
 }
 
+// Recompute an account's billing basis from its stores and keep it in sync.
+//
+// Billing rule: the PRIMARY (oldest) store's products set the base price, and
+// each ADDITIONAL store adds a flat €5/mo regardless of its products. We mirror
+// the primary store's products onto `users.selectedProducts` and set
+// `users.additionalStores = storeCount - 1` so all existing billing/checkout
+// code (which reads the user fields) keeps working unchanged.
+//
+// Stripe is synced best-effort: the DB is the source of truth, so a Stripe
+// failure is logged and left for the next renewal/reconciliation. Pass
+// `syncStripe: false` to skip Stripe (e.g. product-only changes that should not
+// reprice immediately, matching existing behavior).
+async function syncBillingFromStores(
+  userId: string,
+  opts: { syncStripe?: boolean; prorationBehavior?: 'create_prorations' | 'none' } = {},
+): Promise<typeof users.$inferSelect> {
+  const { syncStripe = true, prorationBehavior = 'create_prorations' } = opts;
+
+  const userStores = await db
+    .select({ id: stores.id, selectedProducts: stores.selectedProducts })
+    .from(stores)
+    .where(eq(stores.userId, userId))
+    .orderBy(asc(stores.createdAt));
+
+  const baseProducts = userStores[0]?.selectedProducts ?? [];
+  const additionalStores = Math.max(0, userStores.length - 1);
+
+  const [updatedUser] = await db
+    .update(users)
+    .set({ selectedProducts: baseProducts, additionalStores })
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (syncStripe) {
+    const isChargeFree = updatedUser.chargeFree === true;
+    const inTrial = updatedUser.trialEndsAt && new Date(updatedUser.trialEndsAt) > new Date();
+    const hasActiveSub = updatedUser.subscriptionStatus === 'active' && updatedUser.stripeSubscriptionId;
+    if (!isChargeFree && !inTrial && hasActiveSub) {
+      try {
+        const newPrice = updatedUser.customPrice ?? calculateProductPrice(baseProducts, additionalStores);
+        await updateStripeSubscriptionPrice(
+          updatedUser.stripeSubscriptionId!,
+          newPrice,
+          getProductDescription(baseProducts),
+          prorationBehavior,
+        );
+      } catch (stripeErr) {
+        console.error('[Billing] Stripe price sync failed (DB kept, will reconcile):', stripeErr);
+      }
+    }
+  }
+
+  return updatedUser;
+}
+
 let googleWalletService: GoogleWalletService | null = null;
 try {
   googleWalletService = new GoogleWalletService();
@@ -238,6 +293,7 @@ async function resolveActiveStore(req: Request, res: Response, next: Function) {
         userId: user.id,
         shopName: user.shopName || `store-${user.id.slice(0, 8)}`,
         displayName: user.shopName || 'My Store',
+        selectedProducts: user.selectedProducts || [],
       }).returning();
       req.storeId = newStore.id;
       console.log(`[resolveActiveStore] Auto-provisioned store ${newStore.id} for user ${user.id}`);
@@ -445,6 +501,12 @@ export function registerRoutes(app: Express) {
           req.session.subuserId = undefined;
           req.session.permissions = undefined;
           req.session.subuserStoreIds = undefined;
+
+          // Track last login for owner accounts only (best-effort, non-blocking).
+          db.update(users)
+            .set({ lastLoginAt: new Date() })
+            .where(eq(users.id, cleanUser.id))
+            .catch((e) => console.error("[Login] Failed to update lastLoginAt:", e));
         }
 
         // Explicitly save session to persist data
@@ -534,6 +596,7 @@ export function registerRoutes(app: Express) {
           userId: user.id,
           shopName: user.shopName,
           displayName: user.shopName,
+          selectedProducts: user.selectedProducts || [],
         });
       }
 
@@ -910,11 +973,13 @@ export function registerRoutes(app: Express) {
         })
         .returning();
 
-      // Auto-create a default store for the admin-created user
+      // Auto-create a default store for the admin-created user.
+      // The first store mirrors the chosen products so it drives the base price.
       await db.insert(stores).values({
         userId: newUser.id,
         shopName: newUser.shopName,
         displayName: newUser.shopName,
+        selectedProducts: newUser.selectedProducts || [],
       }).onConflictDoNothing();
 
       res.json({ 
@@ -967,17 +1032,36 @@ export function registerRoutes(app: Express) {
       const merchants = await Promise.all(
         allUsers.map(async (u) => {
           const customerRows = await db
-            .select({ id: customers.id })
+            .select({ id: customers.id, storeId: customers.storeId })
             .from(customers)
             .where(eq(customers.userId, u.id));
           const storeRows = await db
-            .select({ id: stores.id, shopName: stores.shopName, displayName: stores.displayName })
+            .select({
+              id: stores.id,
+              shopName: stores.shopName,
+              displayName: stores.displayName,
+              selectedProducts: stores.selectedProducts,
+              shiftAccessPin: stores.shiftAccessPin,
+              createdAt: stores.createdAt,
+            })
             .from(stores)
             .where(eq(stores.userId, u.id))
             .orderBy(asc(stores.createdAt));
           const additionalStores = u.additionalStores ?? 0;
           const selectedProducts = u.selectedProducts || [];
           const expectedPrice = u.customPrice ?? calculateProductPrice(selectedProducts, additionalStores);
+          // Per-store details for the account-first admin UI. The primary store
+          // (oldest) drives the base price; no pricing is exposed per store.
+          const storeDetails = storeRows.map((s, idx) => ({
+            id: s.id,
+            shopName: s.shopName,
+            displayName: s.displayName,
+            selectedProducts: s.selectedProducts || [],
+            hasPin: !!s.shiftAccessPin,
+            isPrimary: idx === 0,
+            customerCount: customerRows.filter(c => c.storeId === s.id).length,
+            createdAt: s.createdAt,
+          }));
           return {
             id: u.id,
             email: u.email,
@@ -989,8 +1073,9 @@ export function registerRoutes(app: Express) {
             customerCount: customerRows.length,
             storeCount: storeRows.length,
             storeNames: storeRows.map(s => s.displayName || s.shopName),
-            hasShiftPin: !!u.shiftAccessPin,
+            stores: storeDetails,
             createdAt: u.createdAt,
+            lastLoginAt: u.lastLoginAt,
             additionalStores,
             expectedPrice,
           };
@@ -1280,81 +1365,232 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Admin: Set a merchant's product access
-  app.patch("/api/admin/merchants/:id/products", requireAdminAuth, async (req, res) => {
+  // ── Admin: Per-store management ────────────────────────────────────────────
+  // Product access and shift PIN live on individual stores. The PRIMARY (oldest)
+  // store drives the account's base price; additional stores add a flat €5/mo
+  // regardless of products. No pricing is exposed or set in these endpoints.
+
+  // Admin: List a merchant's stores
+  app.get("/api/admin/merchants/:id/stores", requireAdminAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const { selectedProducts } = req.body;
-
-      const productSchema = z.array(z.enum(["loyalty", "spin", "menu", "shift"]));
-      const parsed = productSchema.safeParse(selectedProducts);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid products selection" });
-      }
-
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, id))
-        .limit(1);
-
+      const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
       if (!user) {
         return res.status(404).json({ error: "Merchant not found" });
       }
 
-      await db
-        .update(users)
-        .set({ selectedProducts: parsed.data })
-        .where(eq(users.id, id));
+      const storeRows = await db
+        .select({
+          id: stores.id,
+          shopName: stores.shopName,
+          displayName: stores.displayName,
+          selectedProducts: stores.selectedProducts,
+          shiftAccessPin: stores.shiftAccessPin,
+          createdAt: stores.createdAt,
+        })
+        .from(stores)
+        .where(eq(stores.userId, id))
+        .orderBy(asc(stores.createdAt));
 
-      res.json({ success: true, message: "Product access updated" });
+      const result = await Promise.all(
+        storeRows.map(async (s, idx) => {
+          const customerRows = await db
+            .select({ id: customers.id })
+            .from(customers)
+            .where(eq(customers.storeId, s.id));
+          return {
+            id: s.id,
+            shopName: s.shopName,
+            displayName: s.displayName,
+            selectedProducts: s.selectedProducts || [],
+            hasPin: !!s.shiftAccessPin,
+            isPrimary: idx === 0,
+            customerCount: customerRows.length,
+            createdAt: s.createdAt,
+          };
+        })
+      );
+
+      res.json({ stores: result });
     } catch (error: any) {
-      res.status(500).json({ error: error.message || "Failed to update products" });
+      res.status(500).json({ error: error.message || "Failed to load stores" });
     }
   });
 
-  // Admin: Set or clear a merchant's shift access PIN
-  app.patch("/api/admin/merchants/:id/shift-pin", requireAdminAuth, async (req, res) => {
+  // Admin: Create a store for a merchant
+  app.post("/api/admin/merchants/:id/stores", requireAdminAuth, async (req, res) => {
     try {
       const { id } = req.params;
-
-      const schema = z.object({
-        pin: z.union([
-          z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
-          z.null(),
-        ]),
-      });
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "PIN must be exactly 4 digits, or null to clear" });
-      }
-
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, id))
-        .limit(1);
-
+      const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
       if (!user) {
         return res.status(404).json({ error: "Merchant not found" });
       }
 
-      const { pin } = parsed.data;
-      const hashedPin = pin === null ? null : await hashPassword(pin);
+      const validatedData = createStoreSchema.parse(req.body);
 
-      await db
-        .update(users)
-        .set({ shiftAccessPin: hashedPin })
-        .where(eq(users.id, id));
+      // Globally-unique slug check (used in public URLs) — friendly message.
+      const [slugTaken] = await db
+        .select({ id: stores.id })
+        .from(stores)
+        .where(eq(stores.shopName, validatedData.shopName))
+        .limit(1);
+      if (slugTaken) {
+        return res.status(409).json({ error: "That store URL is already taken. Please choose a different one." });
+      }
 
-      res.json({
-        success: true,
-        message: pin === null
-          ? `Shift access PIN cleared for ${user.shopName}`
-          : `Shift access PIN updated for ${user.shopName}`,
-      });
+      // New store inherits the primary store's products unless products were
+      // explicitly provided, so it is immediately usable.
+      const existingStores = await db
+        .select({ id: stores.id, selectedProducts: stores.selectedProducts })
+        .from(stores)
+        .where(eq(stores.userId, id))
+        .orderBy(asc(stores.createdAt));
+      const products = validatedData.selectedProducts ?? existingStores[0]?.selectedProducts ?? [];
+      const hashedPin = validatedData.shiftAccessPin
+        ? await hashPassword(validatedData.shiftAccessPin)
+        : null;
+
+      let newStore: typeof stores.$inferSelect;
+      try {
+        [newStore] = await db
+          .insert(stores)
+          .values({
+            userId: id,
+            shopName: validatedData.shopName,
+            displayName: validatedData.displayName || validatedData.shopName,
+            selectedProducts: products,
+            shiftAccessPin: hashedPin,
+          })
+          .returning();
+        if (!newStore) throw new Error("Store insert returned no row");
+      } catch (insertErr: any) {
+        const isDuplicateSlug =
+          insertErr?.code === "23505" ||
+          (typeof insertErr?.message === "string" && insertErr.message.includes("stores_shop_name_unique"));
+        if (isDuplicateSlug) {
+          return res.status(409).json({ error: "That store URL is already taken. Please choose a different one." });
+        }
+        throw insertErr;
+      }
+
+      // Recompute billing: +€5 for the extra store (primary products unchanged).
+      await syncBillingFromStores(id);
+
+      res.json({ success: true, store: { id: newStore.id }, message: "Store created" });
     } catch (error: any) {
-      res.status(500).json({ error: error.message || "Failed to update shift access PIN" });
+      res.status(400).json({ error: error.message || "Failed to create store" });
+    }
+  });
+
+  // Admin: Update a store (rename, products, PIN). No pricing fields.
+  app.patch("/api/admin/merchants/:id/stores/:storeId", requireAdminAuth, async (req, res) => {
+    try {
+      const { id, storeId } = req.params;
+
+      const schema = z.object({
+        displayName: z.string().min(1).max(100).optional(),
+        shopName: z.string().min(1).max(60).regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and hyphens allowed").optional(),
+        selectedProducts: z.array(z.enum(["loyalty", "spin", "menu", "shift"])).optional(),
+        pin: z.union([z.string().regex(/^\d{4,6}$/, "PIN must be 4-6 digits"), z.null()]).optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid store update" });
+      }
+
+      const storeRows = await db
+        .select()
+        .from(stores)
+        .where(eq(stores.userId, id))
+        .orderBy(asc(stores.createdAt));
+      const target = storeRows.find(s => s.id === storeId);
+      if (!target) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+      const isPrimary = storeRows[0]?.id === storeId;
+
+      const updates: Partial<typeof stores.$inferInsert> = {};
+      if (parsed.data.displayName !== undefined) updates.displayName = parsed.data.displayName;
+      if (parsed.data.selectedProducts !== undefined) updates.selectedProducts = parsed.data.selectedProducts;
+      if (parsed.data.pin !== undefined) {
+        updates.shiftAccessPin = parsed.data.pin === null ? null : await hashPassword(parsed.data.pin);
+      }
+      if (parsed.data.shopName !== undefined && parsed.data.shopName !== target.shopName) {
+        const [slugTaken] = await db
+          .select({ id: stores.id })
+          .from(stores)
+          .where(eq(stores.shopName, parsed.data.shopName))
+          .limit(1);
+        if (slugTaken) {
+          return res.status(409).json({ error: "That store URL is already taken. Please choose a different one." });
+        }
+        updates.shopName = parsed.data.shopName;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        try {
+          await db
+            .update(stores)
+            .set(updates)
+            .where(and(eq(stores.id, storeId), eq(stores.userId, id)));
+        } catch (updateErr: any) {
+          const isDuplicateSlug =
+            updateErr?.code === "23505" ||
+            (typeof updateErr?.message === "string" && updateErr.message.includes("stores_shop_name_unique"));
+          if (isDuplicateSlug) {
+            return res.status(409).json({ error: "That store URL is already taken. Please choose a different one." });
+          }
+          throw updateErr;
+        }
+      }
+
+      // If the primary store's products changed, mirror them onto the account and
+      // reprice the active Stripe subscription — the base price follows the
+      // primary store's products (no-op for trial/charge-free or accounts without
+      // an active subscription). Non-primary product changes never affect billing.
+      if (isPrimary && parsed.data.selectedProducts !== undefined) {
+        await syncBillingFromStores(id);
+      }
+
+      res.json({ success: true, message: "Store updated" });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Failed to update store" });
+    }
+  });
+
+  // Admin: Delete a store. Can't delete the account's only store.
+  app.delete("/api/admin/merchants/:id/stores/:storeId", requireAdminAuth, async (req, res) => {
+    try {
+      const { id, storeId } = req.params;
+
+      const storeRows = await db
+        .select({ id: stores.id })
+        .from(stores)
+        .where(eq(stores.userId, id))
+        .orderBy(asc(stores.createdAt));
+      if (storeRows.length === 0) {
+        return res.status(404).json({ error: "Merchant not found or has no stores" });
+      }
+      if (storeRows.length <= 1) {
+        return res.status(400).json({ error: "Cannot delete the account's only store" });
+      }
+      if (!storeRows.some(s => s.id === storeId)) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      const [deleted] = await db
+        .delete(stores)
+        .where(and(eq(stores.id, storeId), eq(stores.userId, id)))
+        .returning();
+      if (!deleted) return res.status(404).json({ error: "Store not found" });
+
+      // Recompute billing. If the primary was deleted, the next-oldest becomes
+      // primary and now drives the base price.
+      await syncBillingFromStores(id, { prorationBehavior: 'none' });
+
+      res.json({ success: true, message: "Store deleted" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to delete store" });
     }
   });
 
@@ -1374,6 +1610,33 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "Invalid product selection" });
       }
 
+      // This flow sets the merchant's MAIN subscription products, which belong to
+      // the PRIMARY (oldest) store. Write the primary store's products first, then
+      // mirror them onto the user so existing billing/checkout code keeps working.
+      const userStores = await db
+        .select({ id: stores.id })
+        .from(stores)
+        .where(eq(stores.userId, req.user!.id))
+        .orderBy(asc(stores.createdAt));
+      if (userStores[0]) {
+        await db
+          .update(stores)
+          .set({ selectedProducts: products })
+          .where(eq(stores.id, userStores[0].id));
+
+        // Recompute billing from stores: mirrors the primary store's products
+        // onto the account and reprices the active Stripe subscription so the
+        // base price follows the primary store's products (no-op during
+        // trial/charge-free or when there's no active subscription).
+        const updatedUser = await syncBillingFromStores(req.user!.id);
+        return res.json({
+          success: true,
+          selectedProducts: updatedUser.selectedProducts,
+          price: updatedUser.customPrice ?? calculateProductPrice(updatedUser.selectedProducts ?? [], updatedUser.additionalStores ?? 0),
+        });
+      }
+
+      // Fallback (no store yet): update the user mirror directly.
       const [updatedUser] = await db
         .update(users)
         .set({
@@ -1385,7 +1648,7 @@ export function registerRoutes(app: Express) {
       res.json({
         success: true,
         selectedProducts: updatedUser.selectedProducts,
-        price: calculateProductPrice(products, req.user!.additionalStores ?? 0),
+        price: updatedUser.customPrice ?? calculateProductPrice(products, updatedUser.additionalStores ?? 0),
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1502,12 +1765,15 @@ export function registerRoutes(app: Express) {
         return res.status(409).json({ error: "That store URL is already taken. Please choose a different one." });
       }
 
-      // Count existing stores to determine if this is an extra (billable) store.
+      // Determine the account's existing stores. A new store inherits the
+      // primary (oldest) store's products so it is immediately usable; billing
+      // is then recomputed from all stores by syncBillingFromStores.
       const existingStores = await db
-        .select({ id: stores.id })
+        .select({ id: stores.id, selectedProducts: stores.selectedProducts })
         .from(stores)
-        .where(eq(stores.userId, req.user!.id));
-      const isExtraStore = existingStores.length >= 1;
+        .where(eq(stores.userId, req.user!.id))
+        .orderBy(asc(stores.createdAt));
+      const primaryProducts = existingStores[0]?.selectedProducts ?? [];
 
       // 1. Persist the store (DB write first — catches unique-constraint violations
       //    before any billing action is taken).
@@ -1519,6 +1785,7 @@ export function registerRoutes(app: Express) {
             userId: req.user!.id,
             shopName: validatedData.shopName,
             displayName: validatedData.displayName || validatedData.shopName,
+            selectedProducts: primaryProducts,
           })
           .returning();
         if (!newStore) throw new Error("Store insert returned no row");
@@ -1534,34 +1801,9 @@ export function registerRoutes(app: Express) {
         throw insertErr;
       }
 
-      if (isExtraStore) {
-        // 2. Increment additionalStores in DB.
-        const newAdditionalStores = (req.user!.additionalStores ?? 0) + 1;
-        await db
-          .update(users)
-          .set({ additionalStores: newAdditionalStores })
-          .where(eq(users.id, req.user!.id));
-
-        // 3. Best-effort Stripe sync. The store and the additionalStores count
-        //    (the billing source of truth) are already persisted, so a Stripe
-        //    failure must NOT block store creation. We log it for follow-up and
-        //    let the next renewal/reconciliation pick up the correct price.
-        const isChargeFree = req.user!.chargeFree === true;
-        const inTrial = req.user!.trialEndsAt && new Date(req.user!.trialEndsAt) > new Date();
-        const hasActiveSub = req.user!.subscriptionStatus === 'active' && req.user!.stripeSubscriptionId;
-
-        if (!isChargeFree && !inTrial && hasActiveSub) {
-          try {
-            const selectedProducts = req.user!.selectedProducts || [];
-            const newPrice = req.user!.customPrice ?? calculateProductPrice(selectedProducts, newAdditionalStores);
-            const description = getProductDescription(selectedProducts);
-            await updateStripeSubscriptionPrice(req.user!.stripeSubscriptionId!, newPrice, description, 'create_prorations');
-          } catch (stripeErr) {
-            // Non-fatal: keep the store and the incremented count; just log.
-            console.error('[Stores] Stripe price update failed after store creation (store kept, billing will reconcile):', stripeErr);
-          }
-        }
-      }
+      // 2. Recompute billing from the (now updated) store set: primary products
+      //    drive the base price, +€5 per extra store. Stripe synced best-effort.
+      await syncBillingFromStores(req.user!.id);
 
       res.json(newStore);
     } catch (error: any) {
@@ -1571,6 +1813,16 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/stores/:storeId", requireAuth, async (req, res) => {
     try {
+      // Guard against billing drift: product access is NOT editable via this
+      // owner store-profile route (it would desync the users.selectedProducts
+      // billing mirror). Products change only through /select-products, store
+      // add/remove, or the admin per-store route — all of which call
+      // syncBillingFromStores. Reject rather than silently ignore.
+      if (req.body && "selectedProducts" in req.body) {
+        return res.status(400).json({
+          error: "Product access can't be changed here. Use product selection so billing stays in sync.",
+        });
+      }
       const validatedData = updateStoreSchema.parse(req.body);
       const [updatedStore] = await db
         .update(stores)
@@ -1602,34 +1854,10 @@ export function registerRoutes(app: Express) {
         .returning();
       if (!deleted) return res.status(404).json({ error: "Store not found" });
 
-      const currentAdditional = req.user!.additionalStores ?? 0;
-      if (currentAdditional > 0) {
-        // 2. Decrement additionalStores in DB.
-        await db
-          .update(users)
-          .set({ additionalStores: currentAdditional - 1 })
-          .where(eq(users.id, req.user!.id));
-
-        // 3. Best-effort Stripe sync. The deletion and the decremented count
-        //    (the billing source of truth) are already persisted, so a Stripe
-        //    failure must NOT block deletion. We log it for follow-up and let
-        //    the next renewal/reconciliation pick up the correct price.
-        const isChargeFree = req.user!.chargeFree === true;
-        const inTrial = req.user!.trialEndsAt && new Date(req.user!.trialEndsAt) > new Date();
-        const hasActiveSub = req.user!.subscriptionStatus === 'active' && req.user!.stripeSubscriptionId;
-
-        if (!isChargeFree && !inTrial && hasActiveSub) {
-          try {
-            const selectedProducts = req.user!.selectedProducts || [];
-            const newPrice = req.user!.customPrice ?? calculateProductPrice(selectedProducts, currentAdditional - 1);
-            const description = getProductDescription(selectedProducts);
-            await updateStripeSubscriptionPrice(req.user!.stripeSubscriptionId!, newPrice, description, 'none');
-          } catch (stripeErr) {
-            // Non-fatal: keep the deletion and the decremented count; just log.
-            console.error('[Stores] Stripe price update failed after store deletion (deletion kept, billing will reconcile):', stripeErr);
-          }
-        }
-      }
+      // 2. Recompute billing from the remaining stores. If the primary store was
+      //    deleted, the next-oldest store becomes primary and now drives the base
+      //    price. Stripe synced best-effort (deletion already persisted).
+      await syncBillingFromStores(req.user!.id, { prorationBehavior: 'none' });
 
       res.json({ success: true });
     } catch (error: any) {
@@ -3758,20 +3986,18 @@ export function registerRoutes(app: Express) {
     try {
       const { pin } = z.object({ pin: z.string().min(4).max(6) }).parse(req.body);
       
+      if (!req.storeId) {
+        return res.status(400).json({ error: "No active store selected" });
+      }
+
       const hashedPin = await hashPassword(pin);
 
-      if (req.storeId) {
-        // Update the active store's PIN
-        await db
-          .update(stores)
-          .set({ shiftAccessPin: hashedPin })
-          .where(and(eq(stores.id, req.storeId), eq(stores.userId, req.user!.id)));
-      }
-      // Also update on user for backward compatibility
+      // Shift PINs are per-store. We intentionally do NOT write the account-level
+      // users.shiftAccessPin (legacy/deprecated) so a PIN can't leak across stores.
       await db
-        .update(users)
+        .update(stores)
         .set({ shiftAccessPin: hashedPin })
-        .where(eq(users.id, req.user!.id));
+        .where(and(eq(stores.id, req.storeId), eq(stores.userId, req.user!.id)));
 
       res.json({ success: true, pin });
     } catch (error: any) {
@@ -3787,9 +4013,10 @@ export function registerRoutes(app: Express) {
           .from(stores)
           .where(and(eq(stores.id, req.storeId), eq(stores.userId, req.user!.id)))
           .limit(1);
-        return res.json({ hasPIN: !!(store?.shiftAccessPin || req.user!.shiftAccessPin) });
+        // Per-store only — no account-level fallback.
+        return res.json({ hasPIN: !!store?.shiftAccessPin });
       }
-      res.json({ hasPIN: !!req.user!.shiftAccessPin });
+      res.json({ hasPIN: false });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -3894,7 +4121,9 @@ export function registerRoutes(app: Express) {
         .where(eq(users.id, store.userId))
         .limit(1);
 
-      const storedPin = store.shiftAccessPin || user?.shiftAccessPin;
+      // Per-store PIN only — no account-level fallback, so one store's PIN can
+      // never authenticate another store.
+      const storedPin = store.shiftAccessPin;
       if (!storedPin) {
         return res.status(401).json({ error: "No PIN configured" });
       }
@@ -3905,9 +4134,9 @@ export function registerRoutes(app: Express) {
       } else {
         isPinValid = storedPin === pin;
         if (isPinValid) {
+          // Upgrade a legacy plaintext store PIN to a hash in place.
           const hashedPin = await hashPassword(pin);
           await db.update(stores).set({ shiftAccessPin: hashedPin }).where(eq(stores.id, store.id));
-          if (user) await db.update(users).set({ shiftAccessPin: hashedPin }).where(eq(users.id, user.id));
         }
       }
 

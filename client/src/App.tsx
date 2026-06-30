@@ -70,21 +70,21 @@ function Router() {
       </Route>
       <Route path="/dashboard/loyalty">
         {() => (
-          <DashboardLayout>
+          <DashboardLayout requiredProduct="loyalty">
             <LoyaltyCardsSection />
           </DashboardLayout>
         )}
       </Route>
       <Route path="/dashboard/scanner">
         {() => (
-          <DashboardLayout>
+          <DashboardLayout requiredProduct="loyalty">
             <ScannerPage />
           </DashboardLayout>
         )}
       </Route>
       <Route path="/dashboard/spin-wheel">
         {() => (
-          <DashboardLayout>
+          <DashboardLayout requiredProduct="spin">
             <SpinWheelSection />
           </DashboardLayout>
         )}
@@ -112,14 +112,14 @@ function Router() {
       </Route>
       <Route path="/dashboard/menu">
         {() => (
-          <DashboardLayout>
+          <DashboardLayout requiredProduct="menu">
             <MenuBuilder />
           </DashboardLayout>
         )}
       </Route>
       <Route path="/dashboard/shifts">
         {() => (
-          <DashboardLayout>
+          <DashboardLayout requiredProduct="shift">
             <ShiftsManager />
           </DashboardLayout>
         )}
