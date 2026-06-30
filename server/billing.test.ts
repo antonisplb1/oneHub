@@ -35,6 +35,7 @@ import { eq, asc } from "drizzle-orm";
 import {
   calculateProductPrice,
   syncBillingFromStores,
+  reconcileBilling,
   type BillingStripe,
 } from "./billing";
 
@@ -86,6 +87,34 @@ function makeThrowingStripe() {
     },
   };
   return stripe;
+}
+
+// A Stripe spy for reconciliation. reconcileBilling scans EVERY billable account
+// in the (shared, real) test DB, so this spy is keyed by subscription id: it
+// reports a configurable stale CURRENT price for OUR test subscription and lets
+// every assertion focus on our account alone (via `ourUpdates`). Other accounts
+// that happen to drift just exercise the spy harmlessly — reconcileBilling never
+// writes to the DB, it only talks to (this fake) Stripe.
+function makeReconcileStripe(ourSubId: string, ourCurrentUnitAmount: number) {
+  const currentById = new Map<string, number>([[ourSubId, ourCurrentUnitAmount]]);
+  const updatesById = new Map<string, number[]>();
+  const stripe: BillingStripe = {
+    subscriptions: {
+      retrieve: async (id: string) => ({
+        items: { data: [{ id: `si_${id}`, price: { unit_amount: currentById.get(id) ?? 0 } }] },
+      }),
+      update: async (id: string, params: any) => {
+        const amount = params.items[0].price_data.unit_amount;
+        const arr = updatesById.get(id) ?? [];
+        arr.push(amount);
+        updatesById.set(id, arr);
+        currentById.set(id, amount);
+        return {};
+      },
+    },
+  };
+  const ourUpdates = () => updatesById.get(ourSubId) ?? [];
+  return { stripe, ourUpdates };
 }
 
 let userId = "";
@@ -300,6 +329,69 @@ async function run() {
   assertEqual((await getUser()).selectedProducts, ["menu"], "after delete: next-oldest (menu) is now primary");
   assertEqual((await getUser()).additionalStores, 1, "after delete: additionalStores recomputed to 1");
   assertEqual(await priceForUser(), 1300, "after delete: €8 (menu base) + €5 (1 extra) = €13");
+
+  // --- Scenario E: reconciliation detects + corrects stale Stripe prices -----
+  // Simulates the exact failure mode the task targets: the DB was updated but a
+  // failed best-effort Stripe sync left the live subscription at a stale price.
+  console.log("\n=== E. Reconciliation detects and corrects billing drift ===");
+  await resetStores();
+  const ourSub = `sub_recon_${slugPrefix}`;
+  const e0 = Date.now();
+  await addStore("e-primary", BUNDLE, e0); // expected base €36.99
+  await db
+    .update(users)
+    .set({
+      subscriptionStatus: "active",
+      stripeSubscriptionId: ourSub,
+      chargeFree: false,
+      trialEndsAt: null,
+      customPrice: null,
+    })
+    .where(eq(users.id, userId));
+  await syncBillingFromStores(makeThrowingStripe(), userId); // DB now expects 3699; Stripe stuck
+
+  // E1: dry run reports the drift WITHOUT touching Stripe.
+  const recDry = makeReconcileStripe(ourSub, 1900); // Stripe stale at €19.00
+  const dryResult = await reconcileBilling(recDry.stripe, { dryRun: true });
+  const dryEntry = dryResult.drift.find((d) => d.userId === userId);
+  assertEqual(!!dryEntry, true, "dry run: drift detected for our account");
+  assertEqual(dryEntry?.expectedCents, 3699, "dry run: expected price = €36.99");
+  assertEqual(dryEntry?.actualCents, 1900, "dry run: stale Stripe price = €19.00");
+  assertEqual(dryEntry?.fixed, false, "dry run: nothing marked fixed");
+  assertEqual(recDry.ourUpdates().length, 0, "dry run: our Stripe sub NOT updated");
+
+  // E2: live run corrects Stripe to the expected price.
+  const recFix = makeReconcileStripe(ourSub, 1900);
+  const fixResult = await reconcileBilling(recFix.stripe);
+  const fixEntry = fixResult.drift.find((d) => d.userId === userId);
+  assertEqual(fixEntry?.fixed, true, "live run: drift corrected");
+  assertEqual(recFix.ourUpdates().at(-1), 3699, "live run: our Stripe sub repriced to €36.99");
+
+  // E3: a second pass finds nothing to fix (now in sync).
+  const recAgain = makeReconcileStripe(ourSub, 3699);
+  const againResult = await reconcileBilling(recAgain.stripe);
+  assertEqual(againResult.drift.some((d) => d.userId === userId), false, "second pass: no drift, our account in sync");
+  assertEqual(recAgain.ourUpdates().length, 0, "second pass: our Stripe sub NOT touched when in sync");
+
+  // E4: trial accounts are a no-op even when Stripe is stale.
+  await db
+    .update(users)
+    .set({ trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) })
+    .where(eq(users.id, userId));
+  const recTrial = makeReconcileStripe(ourSub, 1900); // stale, but account is in trial
+  const trialResult = await reconcileBilling(recTrial.stripe);
+  assertEqual(trialResult.drift.some((d) => d.userId === userId), false, "trial: account skipped (no drift acted on)");
+  assertEqual(recTrial.ourUpdates().length, 0, "trial: our Stripe sub NOT touched");
+
+  // E5: charge-free accounts are a no-op even when Stripe is stale.
+  await db
+    .update(users)
+    .set({ trialEndsAt: null, chargeFree: true })
+    .where(eq(users.id, userId));
+  const recFree = makeReconcileStripe(ourSub, 1900);
+  const freeResult = await reconcileBilling(recFree.stripe);
+  assertEqual(freeResult.drift.some((d) => d.userId === userId), false, "charge-free: account skipped");
+  assertEqual(recFree.ourUpdates().length, 0, "charge-free: our Stripe sub NOT touched");
 }
 
 async function cleanup() {

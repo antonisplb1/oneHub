@@ -34,6 +34,9 @@ import {
   Store as StoreIcon,
   Plus,
   Star,
+  Scale,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 
 interface StoreDetail {
@@ -45,6 +48,22 @@ interface StoreDetail {
   isPrimary: boolean;
   customerCount: number;
   createdAt: string | null;
+}
+
+interface ReconcileDrift {
+  userId: string;
+  email: string;
+  expectedCents: number;
+  actualCents: number | null;
+  fixed: boolean;
+  error?: string;
+}
+
+interface ReconcileResult {
+  dryRun: boolean;
+  checked: number;
+  inSync: number;
+  drift: ReconcileDrift[];
 }
 
 interface Merchant {
@@ -97,6 +116,7 @@ export default function MerchantsManager() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [reconcileResult, setReconcileResult] = useState<ReconcileResult | null>(null);
 
   const { data, isLoading } = useQuery<{ merchants: Merchant[] }>({
     queryKey: ["/api/admin/merchants"],
@@ -115,6 +135,39 @@ export default function MerchantsManager() {
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["/api/admin/merchants"] });
+
+  const reconcileMutation = useMutation({
+    mutationFn: async (dryRun: boolean) =>
+      apiRequest("/api/admin/billing/reconcile", {
+        method: "POST",
+        body: JSON.stringify({ dryRun }),
+      }) as Promise<ReconcileResult>,
+    onSuccess: (res: ReconcileResult) => {
+      setReconcileResult(res);
+      const driftCount = res.drift.length;
+      if (driftCount === 0) {
+        toast({
+          title: "Billing in sync",
+          description: `Checked ${res.checked} billable account${res.checked === 1 ? "" : "s"}. No drift found.`,
+        });
+      } else {
+        toast({
+          title: res.dryRun ? `${driftCount} account${driftCount === 1 ? "" : "s"} drifting` : `Corrected ${res.drift.filter((d) => d.fixed).length}/${driftCount}`,
+          description: res.dryRun
+            ? "Stripe prices differ from expected. Review below, then correct."
+            : "Stripe subscription prices have been re-synced.",
+          variant: driftCount > 0 ? "destructive" : "default",
+        });
+      }
+      invalidate();
+    },
+    onError: (error: any) =>
+      toast({
+        title: "Reconciliation failed",
+        description: error.data?.error || "Failed to reconcile billing",
+        variant: "destructive",
+      }),
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) =>
@@ -263,16 +316,36 @@ export default function MerchantsManager() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by email, account, or store name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-            data-testid="input-search-merchants"
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by email, account, or store name..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+              data-testid="input-search-merchants"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => reconcileMutation.mutate(true)}
+            disabled={reconcileMutation.isPending}
+            data-testid="button-check-billing-drift"
+          >
+            <Scale className="h-4 w-4 mr-2" />
+            {reconcileMutation.isPending ? "Checking..." : "Check Billing Drift"}
+          </Button>
         </div>
+
+        {reconcileResult && (
+          <BillingDriftPanel
+            result={reconcileResult}
+            onCorrect={() => reconcileMutation.mutate(false)}
+            correcting={reconcileMutation.isPending}
+          />
+        )}
 
         {isLoading ? (
           <p className="text-sm text-muted-foreground py-6 text-center">Loading accounts...</p>
@@ -302,6 +375,94 @@ export default function MerchantsManager() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function BillingDriftPanel({
+  result,
+  onCorrect,
+  correcting,
+}: {
+  result: ReconcileResult;
+  onCorrect: () => void;
+  correcting: boolean;
+}) {
+  const hasDrift = result.drift.length > 0;
+  const unfixed = result.drift.filter((d) => !d.fixed);
+
+  if (!hasDrift) {
+    return (
+      <div
+        className="rounded-md border p-4 flex items-center gap-2"
+        data-testid="panel-billing-drift"
+      >
+        <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+        <p className="text-sm">
+          Checked {result.checked} billable account{result.checked === 1 ? "" : "s"} — all Stripe prices match the expected price.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border p-4 space-y-3" data-testid="panel-billing-drift">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <p className="text-sm font-medium" data-testid="text-drift-summary">
+            {result.drift.length} account{result.drift.length === 1 ? "" : "s"} with billing drift
+            {result.dryRun ? "" : ` · ${result.drift.filter((d) => d.fixed).length} corrected`}
+          </p>
+        </div>
+        {result.dryRun && unfixed.length > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" disabled={correcting} data-testid="button-correct-billing-drift">
+                Correct All in Stripe
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Correct billing drift in Stripe?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will update the live Stripe subscription price for {unfixed.length} account
+                  {unfixed.length === 1 ? "" : "s"} to match their expected price. Proration will apply.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-correct-drift">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={onCorrect} data-testid="button-confirm-correct-drift">
+                  Correct Now
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+      <div className="space-y-2">
+        {result.drift.map((d) => (
+          <div
+            key={d.userId}
+            className="flex flex-wrap items-center justify-between gap-2 text-sm"
+            data-testid={`row-drift-${d.userId}`}
+          >
+            <span className="truncate">{d.email}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">
+                Stripe {d.actualCents === null ? "unknown" : formatPrice(d.actualCents)} → expected {formatPrice(d.expectedCents)}
+              </span>
+              {d.error ? (
+                <Badge variant="destructive" data-testid={`badge-drift-status-${d.userId}`}>Error</Badge>
+              ) : d.fixed ? (
+                <Badge variant="default" data-testid={`badge-drift-status-${d.userId}`}>Fixed</Badge>
+              ) : (
+                <Badge variant="outline" data-testid={`badge-drift-status-${d.userId}`}>Drift</Badge>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

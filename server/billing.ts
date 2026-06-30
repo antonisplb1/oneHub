@@ -6,7 +6,7 @@
 // touching the live Stripe API.
 import { db } from "./db";
 import { users, stores } from "@shared/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and, isNotNull } from "drizzle-orm";
 
 // Product pricing configuration (cents)
 export const PRODUCT_PRICES = {
@@ -147,4 +147,126 @@ export async function syncBillingFromStores(
   }
 
   return updatedUser;
+}
+
+// The expected (correct) monthly price for an account, in cents, using the same
+// basis as syncBillingFromStores and the admin merchants endpoint: an explicit
+// customPrice override wins, otherwise it's derived from the mirrored products
+// and additional store count.
+export function expectedPriceForUser(user: typeof users.$inferSelect): number {
+  return user.customPrice ?? calculateProductPrice(user.selectedProducts ?? [], user.additionalStores ?? 0);
+}
+
+// True when an account is one we actually charge: not charge-free, not in trial,
+// and holding an active Stripe subscription. This is the SAME gating that
+// syncBillingFromStores applies before it ever touches Stripe, so reconciliation
+// only ever acts on accounts that should have a live, correctly-priced sub.
+export function isBillableAccount(user: typeof users.$inferSelect): boolean {
+  const isChargeFree = user.chargeFree === true;
+  const inTrial = !!user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
+  const hasActiveSub = user.subscriptionStatus === 'active' && !!user.stripeSubscriptionId;
+  return !isChargeFree && !inTrial && hasActiveSub;
+}
+
+export interface ReconciliationDrift {
+  userId: string;
+  email: string;
+  expectedCents: number;
+  actualCents: number | null;
+  fixed: boolean;
+  error?: string;
+}
+
+export interface ReconciliationResult {
+  checked: number;
+  inSync: number;
+  drift: ReconciliationDrift[];
+}
+
+// Detect (and optionally correct) accounts whose live Stripe subscription price
+// has drifted away from the price their stores say they should be paying.
+//
+// This is the safety net for syncBillingFromStores' best-effort Stripe sync: if
+// that call ever fails (outage, transient error) the DB is updated but Stripe is
+// left stale, silently over- or under-charging the merchant forever. Running this
+// on a schedule (and on demand from admin) closes that gap.
+//
+// Gating mirrors syncBillingFromStores exactly via isBillableAccount, so trial /
+// charge-free / no-active-subscription accounts are a guaranteed no-op.
+//
+// Pass `dryRun: true` to report drift without changing anything in Stripe — used
+// by the admin UI to surface drift for review before correcting.
+export async function reconcileBilling(
+  stripe: BillingStripe,
+  opts: { dryRun?: boolean } = {},
+): Promise<ReconciliationResult> {
+  const { dryRun = false } = opts;
+  const result: ReconciliationResult = { checked: 0, inSync: 0, drift: [] };
+
+  // Only pull candidates that could possibly be billable. The full per-account
+  // gating still runs below; this just keeps us from scanning every row.
+  const candidates = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.subscriptionStatus, 'active'), isNotNull(users.stripeSubscriptionId)));
+
+  for (const user of candidates) {
+    if (!isBillableAccount(user)) continue;
+    result.checked++;
+
+    const expectedCents = expectedPriceForUser(user);
+
+    let actualCents: number | null = null;
+    try {
+      const sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId!);
+      const amount = sub?.items?.data?.[0]?.price?.unit_amount;
+      actualCents = typeof amount === 'number' ? amount : null;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Reconcile] Failed to read Stripe subscription for ${user.email}: ${msg}`);
+      result.drift.push({ userId: user.id, email: user.email, expectedCents, actualCents: null, fixed: false, error: msg });
+      continue;
+    }
+
+    if (actualCents === expectedCents) {
+      result.inSync++;
+      continue;
+    }
+
+    // Drift detected — Stripe is charging an amount the stores no longer justify.
+    console.warn(
+      `[Reconcile] DRIFT for ${user.email}: Stripe=${actualCents === null ? 'unknown' : '€' + (actualCents / 100).toFixed(2)} expected=€${(expectedCents / 100).toFixed(2)}`,
+    );
+    const entry: ReconciliationDrift = { userId: user.id, email: user.email, expectedCents, actualCents, fixed: false };
+
+    if (!dryRun) {
+      try {
+        await updateStripeSubscriptionPrice(
+          stripe,
+          user.stripeSubscriptionId!,
+          expectedCents,
+          getProductDescription(user.selectedProducts ?? []),
+          'create_prorations',
+        );
+        entry.fixed = true;
+        console.log(`[Reconcile] Corrected ${user.email} to €${(expectedCents / 100).toFixed(2)}`);
+      } catch (err) {
+        entry.error = err instanceof Error ? err.message : String(err);
+        console.error(`[Reconcile] Failed to correct ${user.email}: ${entry.error}`);
+      }
+    }
+
+    result.drift.push(entry);
+  }
+
+  if (result.drift.length > 0) {
+    const fixedCount = result.drift.filter((d) => d.fixed).length;
+    console.warn(
+      `[Reconcile] Finished: ${result.checked} checked, ${result.inSync} in sync, ${result.drift.length} drifted${dryRun ? ' (dry run, none changed)' : `, ${fixedCount} corrected`}`,
+    );
+  } else {
+    console.log(`[Reconcile] Finished: ${result.checked} checked, all in sync`);
+  }
+
+  return result;
 }

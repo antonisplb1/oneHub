@@ -50,7 +50,8 @@ import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { requirePermission, ownerOnly } from "./permissions";
-import { calculateProductPrice, getProductDescription, syncBillingFromStores as syncBillingFromStoresImpl } from "./billing";
+import { calculateProductPrice, getProductDescription, syncBillingFromStores as syncBillingFromStoresImpl, reconcileBilling } from "./billing";
+import { startReconciliationService } from "./reconcile";
 
 // Use test keys in development, production keys in production
 const stripeSecretKey = process.env.NODE_ENV === 'development' 
@@ -256,6 +257,11 @@ const sendMessageSchema = z.object({
 });
 
 export function registerRoutes(app: Express) {
+  // Safety net for best-effort Stripe price sync: a daily job re-checks every
+  // billable account's live Stripe price against the price its stores justify
+  // and corrects any drift left behind by a failed sync.
+  startReconciliationService(stripe);
+
   // Resolve active store for authenticated API requests (runs before all API routes)
   app.use('/api', (req: Request, res: Response, next: Function) => {
     if (!req.isAuthenticated()) return next();
@@ -971,6 +977,20 @@ export function registerRoutes(app: Express) {
       res.json({ merchants });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to load merchants" });
+    }
+  });
+
+  // Admin: Detect (and optionally correct) billing drift. Compares each billable
+  // account's live Stripe subscription price against the price its stores justify
+  // and reports any mismatch. Pass `{ dryRun: true }` to only surface drift for
+  // review without changing anything in Stripe; default corrects it.
+  app.post("/api/admin/billing/reconcile", requireAdminAuth, async (req, res) => {
+    try {
+      const dryRun = req.body?.dryRun === true;
+      const result = await reconcileBilling(stripe, { dryRun });
+      res.json({ dryRun, ...result });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Billing reconciliation failed" });
     }
   });
 
