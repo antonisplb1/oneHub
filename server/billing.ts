@@ -149,6 +149,61 @@ export async function syncBillingFromStores(
   return updatedUser;
 }
 
+// Result of applying an owner's store edit: either the store was not found (so
+// the route returns 404) or the updated store row.
+export interface StoreUpdateResult {
+  notFound?: boolean;
+  store?: typeof stores.$inferSelect;
+}
+
+// Apply a merchant's edit to one of their stores and route the billing
+// consequence. This is the core of the owner PATCH /api/stores/:storeId handler,
+// extracted so the routing decision can be unit tested with a Stripe spy:
+//
+//   - PRIMARY (oldest) store + a products change -> recompute the billing mirror
+//     and reprice the active Stripe subscription (the primary store's products
+//     drive the base price).
+//   - NON-primary store edit, or any edit that doesn't touch selectedProducts ->
+//     update only that store row; the bill (mirror, additionalStores, Stripe
+//     price) is left untouched.
+//
+// `update` is the already-validated patch (see updateStoreSchema). Validation
+// stays in the route; this function owns only the billing routing decision.
+export async function applyStoreUpdate(
+  stripe: BillingStripe,
+  userId: string,
+  storeId: string,
+  update: Partial<typeof stores.$inferInsert>,
+): Promise<StoreUpdateResult> {
+  // Identify the PRIMARY (oldest) store up-front: its products drive the account
+  // base price, so a primary-store product change must recompute the billing
+  // mirror. Non-primary product changes never affect the bill.
+  const storeRows = await db
+    .select({ id: stores.id })
+    .from(stores)
+    .where(eq(stores.userId, userId))
+    .orderBy(asc(stores.createdAt));
+  if (!storeRows.some((s) => s.id === storeId)) {
+    return { notFound: true };
+  }
+  const isPrimary = storeRows[0]?.id === storeId;
+
+  const [updatedStore] = await db
+    .update(stores)
+    .set(update)
+    .where(and(eq(stores.id, storeId), eq(stores.userId, userId)))
+    .returning();
+  if (!updatedStore) return { notFound: true };
+
+  // Only a PRIMARY product change moves the bill. Everything else (non-primary
+  // edits, or primary edits that don't touch products) leaves billing alone.
+  if (isPrimary && update.selectedProducts !== undefined) {
+    await syncBillingFromStores(stripe, userId);
+  }
+
+  return { store: updatedStore };
+}
+
 // The expected (correct) monthly price for an account, in cents, using the same
 // basis as syncBillingFromStores and the admin merchants endpoint: an explicit
 // customPrice override wins, otherwise it's derived from the mirrored products

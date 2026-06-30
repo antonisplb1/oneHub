@@ -36,6 +36,7 @@ import {
   calculateProductPrice,
   syncBillingFromStores,
   reconcileBilling,
+  applyStoreUpdate,
   type BillingStripe,
 } from "./billing";
 
@@ -392,6 +393,65 @@ async function run() {
   const freeResult = await reconcileBilling(recFree.stripe);
   assertEqual(freeResult.drift.some((d) => d.userId === userId), false, "charge-free: account skipped");
   assertEqual(recFree.ourUpdates().length, 0, "charge-free: our Stripe sub NOT touched");
+
+  // --- Scenario F: the owner PATCH route decision (applyStoreUpdate) ----------
+  // These exercise the routing decision in PATCH /api/stores/:storeId itself:
+  // editing the PRIMARY store's products reprices, editing a NON-primary store's
+  // products never touches the bill. applyStoreUpdate is the extracted core of
+  // that route, so the Stripe spy can assert the exact charge.
+  console.log("\n=== F. PATCH /api/stores/:storeId routing decision ===");
+
+  // Fresh 3-store account on an ACTIVE PAID sub so a reprice would reach Stripe.
+  await resetStores();
+  await db
+    .update(users)
+    .set({
+      subscriptionStatus: "active",
+      stripeSubscriptionId: "sub_test_123",
+      chargeFree: false,
+      trialEndsAt: null,
+      customPrice: null,
+    })
+    .where(eq(users.id, userId));
+  const f0 = Date.now();
+  const fPrimary = await addStore("f-primary", ["loyalty"], f0); // €19 base
+  const fSecond = await addStore("f-second", ["spin"], f0 + 1000);
+  const fThird = await addStore("f-third", ["menu"], f0 + 2000);
+  await syncBillingFromStores(makeStripeSpy().stripe, userId, { syncStripe: false });
+  assertEqual((await getUser()).selectedProducts, ["loyalty"], "F setup: mirror = primary products");
+  assertEqual((await getUser()).additionalStores, 2, "F setup: additionalStores = 2");
+
+  // F1: editing a NON-primary store's products updates ONLY that store row.
+  const spyF1 = makeStripeSpy();
+  const f1Result = await applyStoreUpdate(spyF1.stripe, userId, fSecond.id, { selectedProducts: BUNDLE });
+  assertEqual(f1Result.notFound, undefined, "F1: non-primary edit returns the store (not 404)");
+  const [secondAfter] = await db.select().from(stores).where(eq(stores.id, fSecond.id));
+  assertEqual(secondAfter.selectedProducts, BUNDLE, "F1: non-primary store row updated to bundle");
+  assertEqual((await getUser()).selectedProducts, ["loyalty"], "F1: mirror unchanged (still primary products)");
+  assertEqual((await getUser()).additionalStores, 2, "F1: additionalStores unchanged");
+  assertEqual(spyF1.calls.length, 0, "F1: Stripe NOT repriced for a non-primary edit");
+
+  // F2: editing the PRIMARY store's products updates the mirror AND reprices.
+  const spyF2 = makeStripeSpy();
+  const f2Result = await applyStoreUpdate(spyF2.stripe, userId, fPrimary.id, { selectedProducts: BUNDLE });
+  assertEqual(f2Result.notFound, undefined, "F2: primary edit returns the store (not 404)");
+  assertEqual((await getUser()).selectedProducts, BUNDLE, "F2: primary edit updates the mirror to bundle");
+  assertEqual(spyF2.calls.length, 1, "F2: active sub -> Stripe repriced exactly once");
+  // bundle (3699) + 2 extra stores (1000) = 4699
+  assertEqual(spyF2.calls[0]?.unitAmount, 4699, "F2: Stripe charged €46.99 (bundle + 2 extra stores)");
+
+  // F3: editing the primary store WITHOUT touching products never reprices.
+  const spyF3 = makeStripeSpy();
+  await applyStoreUpdate(spyF3.stripe, userId, fPrimary.id, { displayName: "Renamed Primary" });
+  const [primaryAfter] = await db.select().from(stores).where(eq(stores.id, fPrimary.id));
+  assertEqual(primaryAfter.displayName, "Renamed Primary", "F3: primary store row renamed");
+  assertEqual(spyF3.calls.length, 0, "F3: non-product primary edit does NOT reprice");
+
+  // F4: editing a store that doesn't belong to the account is a 404 no-op.
+  const spyF4 = makeStripeSpy();
+  const f4Result = await applyStoreUpdate(spyF4.stripe, userId, fThird.id + "-missing", { selectedProducts: ["menu"] });
+  assertEqual(f4Result.notFound, true, "F4: unknown store id -> notFound");
+  assertEqual(spyF4.calls.length, 0, "F4: unknown store id -> Stripe untouched");
 }
 
 async function cleanup() {

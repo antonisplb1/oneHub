@@ -50,7 +50,7 @@ import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { requirePermission, ownerOnly } from "./permissions";
-import { calculateProductPrice, getProductDescription, syncBillingFromStores as syncBillingFromStoresImpl, reconcileBilling } from "./billing";
+import { calculateProductPrice, getProductDescription, syncBillingFromStores as syncBillingFromStoresImpl, reconcileBilling, applyStoreUpdate } from "./billing";
 import { startReconciliationService } from "./reconcile";
 
 // Use test keys in development, production keys in production
@@ -1721,36 +1721,13 @@ export function registerRoutes(app: Express) {
     try {
       const validatedData = updateStoreSchema.parse(req.body);
 
-      // Identify the PRIMARY (oldest) store up-front: its products drive the
-      // account base price, so a primary-store product change must recompute the
-      // billing mirror. Non-primary product changes never affect the bill (only
-      // the flat €5/store applies).
-      const storeRows = await db
-        .select({ id: stores.id })
-        .from(stores)
-        .where(eq(stores.userId, req.user!.id))
-        .orderBy(asc(stores.createdAt));
-      if (!storeRows.some(s => s.id === req.params.storeId)) {
-        return res.status(404).json({ error: "Store not found" });
-      }
-      const isPrimary = storeRows[0]?.id === req.params.storeId;
+      // The billing routing decision (primary product change -> reprice;
+      // non-primary or non-product edit -> leave the bill alone) lives in
+      // applyStoreUpdate so it can be unit tested with a Stripe spy.
+      const result = await applyStoreUpdate(stripe, req.user!.id, req.params.storeId, validatedData);
+      if (result.notFound) return res.status(404).json({ error: "Store not found" });
 
-      const [updatedStore] = await db
-        .update(stores)
-        .set(validatedData)
-        .where(and(eq(stores.id, req.params.storeId), eq(stores.userId, req.user!.id)))
-        .returning();
-      if (!updatedStore) return res.status(404).json({ error: "Store not found" });
-
-      // If the primary store's products changed, mirror them onto the account and
-      // reprice the active Stripe subscription so the base price follows the
-      // primary store's products (no-op for trial/charge-free accounts or those
-      // without an active subscription).
-      if (isPrimary && validatedData.selectedProducts !== undefined) {
-        await syncBillingFromStores(req.user!.id);
-      }
-
-      res.json(updatedStore);
+      res.json(result.store);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
