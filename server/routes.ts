@@ -1542,8 +1542,10 @@ export function registerRoutes(app: Express) {
           .set({ additionalStores: newAdditionalStores })
           .where(eq(users.id, req.user!.id));
 
-        // 3. Update Stripe subscription. If this fails, compensate by rolling
-        //    back the DB changes so billing stays in sync with store state.
+        // 3. Best-effort Stripe sync. The store and the additionalStores count
+        //    (the billing source of truth) are already persisted, so a Stripe
+        //    failure must NOT block store creation. We log it for follow-up and
+        //    let the next renewal/reconciliation pick up the correct price.
         const isChargeFree = req.user!.chargeFree === true;
         const inTrial = req.user!.trialEndsAt && new Date(req.user!.trialEndsAt) > new Date();
         const hasActiveSub = req.user!.subscriptionStatus === 'active' && req.user!.stripeSubscriptionId;
@@ -1555,11 +1557,8 @@ export function registerRoutes(app: Express) {
             const description = getProductDescription(selectedProducts);
             await updateStripeSubscriptionPrice(req.user!.stripeSubscriptionId!, newPrice, description, 'create_prorations');
           } catch (stripeErr) {
-            // Compensate: roll back store creation and additionalStores increment.
-            console.error('[Stores] Stripe update failed after store creation — compensating:', stripeErr);
-            await db.delete(stores).where(eq(stores.id, newStore.id));
-            await db.update(users).set({ additionalStores: req.user!.additionalStores ?? 0 }).where(eq(users.id, req.user!.id));
-            return res.status(500).json({ error: "Failed to update your subscription billing. Your store was not created. Please try again." });
+            // Non-fatal: keep the store and the incremented count; just log.
+            console.error('[Stores] Stripe price update failed after store creation (store kept, billing will reconcile):', stripeErr);
           }
         }
       }
@@ -1611,8 +1610,10 @@ export function registerRoutes(app: Express) {
           .set({ additionalStores: currentAdditional - 1 })
           .where(eq(users.id, req.user!.id));
 
-        // 3. Update Stripe subscription. If this fails, compensate by restoring
-        //    the deleted store and re-incrementing additionalStores.
+        // 3. Best-effort Stripe sync. The deletion and the decremented count
+        //    (the billing source of truth) are already persisted, so a Stripe
+        //    failure must NOT block deletion. We log it for follow-up and let
+        //    the next renewal/reconciliation pick up the correct price.
         const isChargeFree = req.user!.chargeFree === true;
         const inTrial = req.user!.trialEndsAt && new Date(req.user!.trialEndsAt) > new Date();
         const hasActiveSub = req.user!.subscriptionStatus === 'active' && req.user!.stripeSubscriptionId;
@@ -1624,21 +1625,8 @@ export function registerRoutes(app: Express) {
             const description = getProductDescription(selectedProducts);
             await updateStripeSubscriptionPrice(req.user!.stripeSubscriptionId!, newPrice, description, 'none');
           } catch (stripeErr) {
-            // Compensate: restore deleted store and re-increment additionalStores.
-            console.error('[Stores] Stripe update failed after store deletion — compensating:', stripeErr);
-            await db.insert(stores).values({
-              id: deleted.id,
-              userId: deleted.userId,
-              shopName: deleted.shopName,
-              displayName: deleted.displayName,
-              logo: deleted.logo,
-              menuBannerImage: deleted.menuBannerImage,
-              cardBackgroundColor: deleted.cardBackgroundColor,
-              shiftAccessPin: deleted.shiftAccessPin,
-              createdAt: deleted.createdAt,
-            });
-            await db.update(users).set({ additionalStores: currentAdditional }).where(eq(users.id, req.user!.id));
-            return res.status(500).json({ error: "Failed to update your subscription billing. Your store was not deleted. Please try again." });
+            // Non-fatal: keep the deletion and the decremented count; just log.
+            console.error('[Stores] Stripe price update failed after store deletion (deletion kept, billing will reconcile):', stripeErr);
           }
         }
       }
