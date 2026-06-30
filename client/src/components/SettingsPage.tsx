@@ -8,7 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Upload, X, Ticket, Gift, UtensilsCrossed, Calendar } from "lucide-react";
+import { useStore } from "@/contexts/StoreContext";
+import { Upload, X, Ticket, Gift, UtensilsCrossed, Calendar, Store } from "lucide-react";
 
 const PRODUCT_INFO = [
   {
@@ -43,37 +44,44 @@ const PRODUCT_INFO = [
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const { activeStore, stores } = useStore();
   const { toast } = useToast();
-  const [shopName, setShopName] = useState(user?.shopName || "");
-  const [logoUrl, setLogoUrl] = useState(user?.logo || "");
-  const [menuBannerImage, setMenuBannerImage] = useState(user?.menuBannerImage || "");
-  const [cardBackgroundColor, setCardBackgroundColor] = useState(user?.cardBackgroundColor || "#4285F4");
+  const [displayName, setDisplayName] = useState(activeStore?.displayName || "");
+  const [logoUrl, setLogoUrl] = useState(activeStore?.logo || "");
+  const [menuBannerImage, setMenuBannerImage] = useState(activeStore?.menuBannerImage || "");
+  const [cardBackgroundColor, setCardBackgroundColor] = useState(activeStore?.cardBackgroundColor || "#4285F4");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>(user?.selectedProducts || []);
 
   useEffect(() => {
+    if (activeStore) {
+      setDisplayName(activeStore.displayName || "");
+      setLogoUrl(activeStore.logo || "");
+      setMenuBannerImage(activeStore.menuBannerImage || "");
+      setCardBackgroundColor(activeStore.cardBackgroundColor || "#4285F4");
+    }
+  }, [activeStore]);
+
+  useEffect(() => {
     if (user) {
-      setShopName(user.shopName || "");
-      setLogoUrl(user.logo || "");
-      setMenuBannerImage(user.menuBannerImage || "");
-      setCardBackgroundColor(user.cardBackgroundColor || "#4285F4");
       setSelectedProducts(user.selectedProducts || []);
     }
   }, [user]);
 
   const updateMutation = useMutation({
-    mutationFn: (data: { shopName: string; logo?: string; menuBannerImage?: string; cardBackgroundColor?: string }) => {
-      return apiRequest("/api/user/profile", {
+    mutationFn: (data: { displayName: string; logo?: string | null; menuBannerImage?: string | null; cardBackgroundColor?: string }) => {
+      if (!activeStore) throw new Error("No active store selected");
+      return apiRequest(`/api/stores/${activeStore.id}`, {
         method: "PATCH",
         body: JSON.stringify(data),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api", "auth", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stores"] });
       toast({
         title: "Settings updated!",
-        description: "Your shop information has been saved.",
+        description: "Your store branding has been saved.",
       });
     },
     onError: (error: Error) => {
@@ -152,9 +160,9 @@ export default function SettingsPage() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateMutation.mutate({
-      shopName,
-      logo: logoUrl || undefined,
-      menuBannerImage: menuBannerImage || undefined,
+      displayName,
+      logo: logoUrl || null,
+      menuBannerImage: menuBannerImage || null,
       cardBackgroundColor,
     });
   };
@@ -317,20 +325,31 @@ export default function SettingsPage() {
 
       <Card className="border-card-border shadow-sm">
         <CardHeader className="pb-6">
-          <CardTitle className="text-xl font-semibold">Shop Information</CardTitle>
+          <div className="flex items-center gap-2">
+            <Store className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <CardTitle className="text-xl font-semibold">Store Branding</CardTitle>
+              {stores.length > 1 && activeStore && (
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Editing: <span className="font-medium text-foreground">{activeStore.displayName || activeStore.shopName}</span>
+                </p>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSave} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="shop-name" className="text-sm font-medium">Shop Name</Label>
+              <Label htmlFor="shop-name" className="text-sm font-medium">Display Name</Label>
               <Input
                 id="shop-name"
-                value={shopName}
-                onChange={(e) => setShopName(e.target.value)}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="My Coffee Shop"
                 data-testid="input-shop-name"
                 required
               />
+              <p className="text-sm text-muted-foreground">The name shown to customers on their loyalty cards and digital menu.</p>
             </div>
             <div>
               <Label htmlFor="logo-upload">Shop Logo (optional)</Label>

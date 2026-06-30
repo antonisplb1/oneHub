@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Users, Mail, Shield, CheckCircle2, XCircle, Store } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Mail, Shield, CheckCircle2, XCircle, Store as StoreIcon } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Subuser } from "@shared/schema";
@@ -399,7 +399,7 @@ export default function TeamManagement() {
             {multipleStores && (
               <div className="space-y-3">
                 <Label className="flex items-center gap-2">
-                  <Store className="w-4 h-4" />
+                  <StoreIcon className="w-4 h-4" />
                   Store Access
                 </Label>
                 <p className="text-sm text-muted-foreground">
@@ -485,7 +485,7 @@ export default function TeamManagement() {
             {multipleStores && (
               <div className="space-y-3 pt-2">
                 <Label className="flex items-center gap-2">
-                  <Store className="w-4 h-4" />
+                  <StoreIcon className="w-4 h-4" />
                   Store Access
                 </Label>
                 <p className="text-sm text-muted-foreground">
