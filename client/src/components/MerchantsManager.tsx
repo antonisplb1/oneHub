@@ -662,7 +662,9 @@ function MerchantRow({
                       <AlertDialogHeader>
                         <AlertDialogTitle>Change subscription status?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will set {m.shopName}'s subscription status to "{s}" immediately, without going through Stripe.
+                          {s === "active"
+                            ? `This marks ${m.shopName} as "active". It only works if they already have a live Stripe subscription — you can't force "active" without one.`
+                            : `This sets ${m.shopName}'s status to "${s}" and cancels their live Stripe subscription (if any) so they're no longer billed.`}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

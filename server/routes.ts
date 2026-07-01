@@ -50,7 +50,7 @@ import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { requirePermission, ownerOnly } from "./permissions";
-import { calculateProductPrice, getProductDescription, syncBillingFromStores as syncBillingFromStoresImpl, reconcileBilling, applyStoreUpdate } from "./billing";
+import { calculateProductPrice, getProductDescription, syncBillingFromStores as syncBillingFromStoresImpl, reconcileBilling, applyStoreUpdate, applyCustomPrice, applyStatusChange, cancelStripeSubscription } from "./billing";
 import { startReconciliationService } from "./reconcile";
 
 // Use test keys in development, production keys in production
@@ -1118,10 +1118,10 @@ export function registerRoutes(app: Express) {
         return res.status(404).json({ error: "Merchant not found" });
       }
 
-      await db
-        .update(users)
-        .set({ customPrice: parsed.data.customPrice })
-        .where(eq(users.id, id));
+      // Update the DB AND immediately reprice the live Stripe subscription for
+      // billable accounts (best-effort; reconcile is the safety net). Trial /
+      // charge-free / no-active-sub accounts are a no-op.
+      await applyCustomPrice(stripe, id, parsed.data.customPrice);
 
       res.json({ success: true, message: "Custom price updated" });
     } catch (error: any) {
@@ -1166,25 +1166,29 @@ export function registerRoutes(app: Express) {
       const { id } = req.params;
       const { subscriptionStatus } = req.body;
 
-      const allowedStatuses = ["active", "inactive", "trialing"];
+      const allowedStatuses = ["active", "inactive", "trialing"] as const;
       if (!allowedStatuses.includes(subscriptionStatus)) {
         return res.status(400).json({ error: "Invalid subscription status" });
       }
 
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, id))
-        .limit(1);
+      // Keep Stripe consistent with the override: cancel a live subscription when
+      // moving to a non-billing status, and refuse "active" when there is no
+      // subscription to make that status true. Never silently desync.
+      const result = await applyStatusChange(stripe, id, subscriptionStatus);
 
-      if (!user) {
+      if (result.notFound) {
         return res.status(404).json({ error: "Merchant not found" });
       }
-
-      await db
-        .update(users)
-        .set({ subscriptionStatus })
-        .where(eq(users.id, id));
+      if (result.badRequest) {
+        return res.status(400).json({ error: result.badRequest });
+      }
+      if (result.stripeError) {
+        console.error(`[Status] Failed to cancel Stripe subscription for ${id}:`, result.stripeError);
+        return res.status(502).json({
+          error:
+            "Could not cancel the merchant's Stripe subscription. No changes were made — please try again.",
+        });
+      }
 
       res.json({ success: true, message: `Status set to ${subscriptionStatus}` });
     } catch (error: any) {
@@ -1221,21 +1225,16 @@ export function registerRoutes(app: Express) {
         // we report as "charge-free". Only treat an already-gone subscription as success.
         if (user.stripeSubscriptionId) {
           try {
-            await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+            await cancelStripeSubscription(stripe, user.stripeSubscriptionId);
           } catch (stripeError: any) {
-            // Stripe returns `resource_missing` when the subscription is already
-            // canceled/deleted — that's the desired end state, so proceed.
-            const alreadyGone = stripeError?.code === "resource_missing";
-            if (!alreadyGone) {
-              console.error(
-                `[ChargeFree] Failed to cancel subscription ${user.stripeSubscriptionId}:`,
-                stripeError?.message || stripeError
-              );
-              return res.status(502).json({
-                error:
-                  "Could not cancel the merchant's Stripe subscription. No changes were made — please try again.",
-              });
-            }
+            console.error(
+              `[ChargeFree] Failed to cancel subscription ${user.stripeSubscriptionId}:`,
+              stripeError?.message || stripeError
+            );
+            return res.status(502).json({
+              error:
+                "Could not cancel the merchant's Stripe subscription. No changes were made — please try again.",
+            });
           }
         }
 
@@ -1257,14 +1256,22 @@ export function registerRoutes(app: Express) {
       }
 
       // Disabling charge-free returns the merchant to normal billing rules.
+      // Enabling charge-free cancels and clears their Stripe subscription, so
+      // there is nothing to "resume" — access now depends on an active
+      // subscription or trial again. We only flip the flag: no Stripe action, so
+      // there is no silent wrong charge and no silent "billing nothing" state.
+      // The merchant must re-subscribe (checkout) to be billed again.
       await db
         .update(users)
         .set({ chargeFree: false })
         .where(eq(users.id, id));
 
+      const needsResubscribe = !user.stripeSubscriptionId;
       return res.json({
         success: true,
-        message: `${user.shopName} returned to normal billing`,
+        message: needsResubscribe
+          ? `${user.shopName} returned to normal billing — they'll need to re-subscribe to be charged again.`
+          : `${user.shopName} returned to normal billing`,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to update charge-free status" });

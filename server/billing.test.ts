@@ -37,7 +37,10 @@ import {
   syncBillingFromStores,
   reconcileBilling,
   applyStoreUpdate,
+  applyCustomPrice,
+  applyStatusChange,
   type BillingStripe,
+  type CancelableStripe,
 } from "./billing";
 
 const BUNDLE = ["loyalty", "spin", "menu", "shift"];
@@ -116,6 +119,45 @@ function makeReconcileStripe(ourSubId: string, ourCurrentUnitAmount: number) {
   };
   const ourUpdates = () => updatesById.get(ourSubId) ?? [];
   return { stripe, ourUpdates };
+}
+
+// A Stripe spy for status changes: records cancel calls, reports a configurable
+// live Stripe status on retrieve (used by the "active" validation path), and can
+// simulate an already-gone subscription (resource_missing) or a hard failure on
+// either retrieve or cancel.
+function makeCancelSpy(
+  opts: {
+    throwCode?: string;
+    throwMessage?: string;
+    subStatus?: string;
+    retrieveThrowCode?: string;
+    retrieveThrowMessage?: string;
+  } = {},
+) {
+  const canceled: string[] = [];
+  const stripe: BillingStripe & CancelableStripe = {
+    subscriptions: {
+      retrieve: async (id: string) => {
+        if (opts.retrieveThrowCode || opts.retrieveThrowMessage) {
+          const err: any = new Error(opts.retrieveThrowMessage ?? "simulated retrieve failure");
+          if (opts.retrieveThrowCode) err.code = opts.retrieveThrowCode;
+          throw err;
+        }
+        return { id, status: opts.subStatus ?? "active", items: { data: [{ id: `si_${id}` }] } };
+      },
+      update: async () => ({}),
+      cancel: async (id: string) => {
+        if (opts.throwCode || opts.throwMessage) {
+          const err: any = new Error(opts.throwMessage ?? "simulated cancel failure");
+          if (opts.throwCode) err.code = opts.throwCode;
+          throw err;
+        }
+        canceled.push(id);
+        return {};
+      },
+    },
+  };
+  return { stripe, canceled };
 }
 
 let userId = "";
@@ -452,6 +494,197 @@ async function run() {
   const f4Result = await applyStoreUpdate(spyF4.stripe, userId, fThird.id + "-missing", { selectedProducts: ["menu"] });
   assertEqual(f4Result.notFound, true, "F4: unknown store id -> notFound");
   assertEqual(spyF4.calls.length, 0, "F4: unknown store id -> Stripe untouched");
+
+  // --- Scenario G: admin custom-price change reprices Stripe immediately ------
+  // applyCustomPrice is the core of PATCH /api/admin/merchants/:id/price. Setting
+  // or clearing a custom price must reprice a billable account's Stripe sub right
+  // away (no waiting for the nightly reconcile), and be a no-op otherwise.
+  console.log("\n=== G. Admin custom-price change syncs Stripe immediately ===");
+  await resetStores();
+  const g0 = Date.now();
+  await addStore("g-primary", ["loyalty"], g0); // standard base €19
+  await addStore("g-second", ["spin"], g0 + 1000); // +€5 -> standard €24
+
+  // G1: setting a custom price on an ACTIVE PAID sub reprices Stripe once.
+  await db
+    .update(users)
+    .set({
+      subscriptionStatus: "active",
+      stripeSubscriptionId: "sub_test_123",
+      chargeFree: false,
+      trialEndsAt: null,
+      customPrice: null,
+    })
+    .where(eq(users.id, userId));
+  await syncBillingFromStores(makeStripeSpy().stripe, userId, { syncStripe: false }); // mirror = loyalty, +1 store
+  const spyG1 = makeStripeSpy();
+  await applyCustomPrice(spyG1.stripe, userId, 999); // €9.99 override
+  assertEqual((await getUser()).customPrice, 999, "G1: custom price stored in DB");
+  assertEqual(spyG1.calls.length, 1, "G1: active sub -> Stripe repriced exactly once");
+  assertEqual(spyG1.calls[0]?.unitAmount, 999, "G1: Stripe charged the custom €9.99 immediately");
+
+  // G2: clearing the custom price reprices back to the standard calculated price.
+  const spyG2 = makeStripeSpy();
+  await applyCustomPrice(spyG2.stripe, userId, null);
+  assertEqual((await getUser()).customPrice, null, "G2: custom price cleared in DB");
+  assertEqual(spyG2.calls.length, 1, "G2: clearing custom price reprices once");
+  assertEqual(spyG2.calls[0]?.unitAmount, 2400, "G2: Stripe reverts to standard €24.00 (loyalty + 1 store)");
+
+  // G3: trial account -> DB updated, NO immediate reprice.
+  await db
+    .update(users)
+    .set({ trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) })
+    .where(eq(users.id, userId));
+  const spyG3 = makeStripeSpy();
+  await applyCustomPrice(spyG3.stripe, userId, 1500);
+  assertEqual((await getUser()).customPrice, 1500, "G3: trial account still stores the custom price");
+  assertEqual(spyG3.calls.length, 0, "G3: trial account -> no immediate Stripe reprice");
+
+  // G4: charge-free account -> DB updated, NO reprice.
+  await db
+    .update(users)
+    .set({ trialEndsAt: null, chargeFree: true })
+    .where(eq(users.id, userId));
+  const spyG4 = makeStripeSpy();
+  await applyCustomPrice(spyG4.stripe, userId, 1200);
+  assertEqual(spyG4.calls.length, 0, "G4: charge-free account -> no immediate Stripe reprice");
+
+  // G5: no active subscription -> DB updated, NO reprice.
+  await db
+    .update(users)
+    .set({ chargeFree: false, subscriptionStatus: "inactive", stripeSubscriptionId: null })
+    .where(eq(users.id, userId));
+  const spyG5 = makeStripeSpy();
+  await applyCustomPrice(spyG5.stripe, userId, 1100);
+  assertEqual(spyG5.calls.length, 0, "G5: no active sub -> no immediate Stripe reprice");
+
+  // G6: Stripe outage is best-effort — DB still updated for reconcile to fix.
+  await db
+    .update(users)
+    .set({ subscriptionStatus: "active", stripeSubscriptionId: "sub_test_123", customPrice: null })
+    .where(eq(users.id, userId));
+  await applyCustomPrice(makeThrowingStripe(), userId, 777);
+  assertEqual((await getUser()).customPrice, 777, "G6: DB custom price kept despite Stripe outage");
+
+  // --- Scenario H: admin status override keeps Stripe consistent --------------
+  // applyStatusChange is the core of PATCH /api/admin/merchants/:id/status.
+  console.log("\n=== H. Admin status override keeps Stripe in sync ===");
+  await resetStores();
+  const h0 = Date.now();
+  await addStore("h-primary", ["loyalty"], h0);
+
+  // H1: moving an active paid sub to "inactive" cancels Stripe and clears the id.
+  await db
+    .update(users)
+    .set({
+      subscriptionStatus: "active",
+      stripeSubscriptionId: "sub_status_h",
+      chargeFree: false,
+      trialEndsAt: null,
+      customPrice: null,
+    })
+    .where(eq(users.id, userId));
+  const spyH1 = makeCancelSpy();
+  const h1 = await applyStatusChange(spyH1.stripe, userId, "inactive");
+  assertEqual(spyH1.canceled, ["sub_status_h"], "H1: inactive -> live Stripe sub canceled");
+  assertEqual(h1.user?.subscriptionStatus, "inactive", "H1: status set to inactive");
+  assertEqual(h1.user?.stripeSubscriptionId, null, "H1: stripeSubscriptionId cleared so reconcile ignores it");
+
+  // H2: moving to "trialing" with a live sub also cancels billing.
+  await db
+    .update(users)
+    .set({ subscriptionStatus: "active", stripeSubscriptionId: "sub_status_h2" })
+    .where(eq(users.id, userId));
+  const spyH2 = makeCancelSpy();
+  const h2 = await applyStatusChange(spyH2.stripe, userId, "trialing");
+  assertEqual(spyH2.canceled, ["sub_status_h2"], "H2: trialing -> live Stripe sub canceled");
+  assertEqual(h2.user?.stripeSubscriptionId, null, "H2: stripeSubscriptionId cleared");
+
+  // H3: setting "active" WITHOUT a subscription is refused (would silently desync).
+  await db
+    .update(users)
+    .set({ subscriptionStatus: "inactive", stripeSubscriptionId: null })
+    .where(eq(users.id, userId));
+  const spyH3 = makeCancelSpy();
+  const h3 = await applyStatusChange(spyH3.stripe, userId, "active");
+  assertEqual(!!h3.badRequest, true, "H3: active with no sub -> refused with a clear message");
+  assertEqual(h3.user, undefined, "H3: no DB change on refusal");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "H3: status left untouched");
+
+  // H4: setting "active" WITH a genuinely live Stripe sub is allowed.
+  await db
+    .update(users)
+    .set({ subscriptionStatus: "inactive", stripeSubscriptionId: "sub_status_h4" })
+    .where(eq(users.id, userId));
+  const spyH4 = makeCancelSpy({ subStatus: "active" });
+  const h4 = await applyStatusChange(spyH4.stripe, userId, "active");
+  assertEqual(spyH4.canceled.length, 0, "H4: active with a live sub -> no cancel");
+  assertEqual(h4.user?.subscriptionStatus, "active", "H4: status set to active");
+  assertEqual(h4.user?.stripeSubscriptionId, "sub_status_h4", "H4: existing sub id preserved");
+
+  // H5: an already-gone Stripe sub (resource_missing) still succeeds.
+  await db
+    .update(users)
+    .set({ subscriptionStatus: "active", stripeSubscriptionId: "sub_status_h5" })
+    .where(eq(users.id, userId));
+  const spyH5 = makeCancelSpy({ throwCode: "resource_missing" });
+  const h5 = await applyStatusChange(spyH5.stripe, userId, "inactive");
+  assertEqual(h5.stripeError, undefined, "H5: already-gone sub treated as success");
+  assertEqual(h5.user?.subscriptionStatus, "inactive", "H5: status still set to inactive");
+  assertEqual(h5.user?.stripeSubscriptionId, null, "H5: sub id cleared");
+
+  // H6: a hard Stripe failure leaves the DB untouched (no non-billing desync).
+  await db
+    .update(users)
+    .set({ subscriptionStatus: "active", stripeSubscriptionId: "sub_status_h6" })
+    .where(eq(users.id, userId));
+  const spyH6 = makeCancelSpy({ throwMessage: "Stripe is down" });
+  const h6 = await applyStatusChange(spyH6.stripe, userId, "inactive");
+  assertEqual(!!h6.stripeError, true, "H6: hard Stripe failure surfaced as stripeError");
+  assertEqual((await getUser()).subscriptionStatus, "active", "H6: DB status unchanged on Stripe failure");
+  assertEqual((await getUser()).stripeSubscriptionId, "sub_status_h6", "H6: sub id preserved on Stripe failure");
+
+  // H7: moving to "inactive" with NO Stripe sub is a clean DB-only no-op cancel.
+  await db
+    .update(users)
+    .set({ subscriptionStatus: "trialing", stripeSubscriptionId: null })
+    .where(eq(users.id, userId));
+  const spyH7 = makeCancelSpy();
+  const h7 = await applyStatusChange(spyH7.stripe, userId, "inactive");
+  assertEqual(spyH7.canceled.length, 0, "H7: no sub -> nothing to cancel");
+  assertEqual(h7.user?.subscriptionStatus, "inactive", "H7: status set to inactive");
+
+  // H8: setting "active" with a STALE (canceled-in-Stripe) sub id is refused —
+  // an id in the DB is not proof of a live subscription.
+  await db
+    .update(users)
+    .set({ subscriptionStatus: "inactive", stripeSubscriptionId: "sub_status_h8" })
+    .where(eq(users.id, userId));
+  const spyH8 = makeCancelSpy({ subStatus: "canceled" });
+  const h8 = await applyStatusChange(spyH8.stripe, userId, "active");
+  assertEqual(!!h8.badRequest, true, "H8: active with a canceled Stripe sub -> refused");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "H8: DB status left untouched");
+
+  // H9: setting "active" when Stripe says the sub is gone (resource_missing) is refused.
+  await db
+    .update(users)
+    .set({ subscriptionStatus: "inactive", stripeSubscriptionId: "sub_status_h9" })
+    .where(eq(users.id, userId));
+  const spyH9 = makeCancelSpy({ retrieveThrowCode: "resource_missing" });
+  const h9 = await applyStatusChange(spyH9.stripe, userId, "active");
+  assertEqual(!!h9.badRequest, true, "H9: active with a missing Stripe sub -> refused");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "H9: DB status left untouched");
+
+  // H10: a hard Stripe failure while verifying the "active" sub is surfaced (502),
+  // not silently applied.
+  await db
+    .update(users)
+    .set({ subscriptionStatus: "inactive", stripeSubscriptionId: "sub_status_h10" })
+    .where(eq(users.id, userId));
+  const spyH10 = makeCancelSpy({ retrieveThrowMessage: "Stripe is down" });
+  const h10 = await applyStatusChange(spyH10.stripe, userId, "active");
+  assertEqual(!!h10.stripeError, true, "H10: active verify Stripe outage -> stripeError");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "H10: DB status unchanged on outage");
 }
 
 async function cleanup() {

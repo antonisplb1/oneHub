@@ -223,6 +223,154 @@ export function isBillableAccount(user: typeof users.$inferSelect): boolean {
   return !isChargeFree && !inTrial && hasActiveSub;
 }
 
+// Minimal Stripe surface for canceling a subscription. The real Stripe client
+// satisfies this; tests pass a spy.
+export interface CancelableStripe {
+  subscriptions: { cancel(id: string): Promise<any> };
+}
+
+// Cancel a Stripe subscription, treating an already-gone subscription as success.
+// Stripe returns `resource_missing` when the subscription was already
+// canceled/deleted — that's the desired end state, so we swallow only that and
+// re-throw everything else so callers can surface a real failure.
+export async function cancelStripeSubscription(
+  stripe: CancelableStripe,
+  subscriptionId: string,
+): Promise<void> {
+  try {
+    await stripe.subscriptions.cancel(subscriptionId);
+  } catch (err: any) {
+    if (err?.code === 'resource_missing') return;
+    throw err;
+  }
+}
+
+// Set (or clear) a merchant's custom price and immediately reflect it on their
+// live Stripe subscription for billable accounts.
+//
+// The new price is the same basis reconciliation uses (expectedPriceForUser):
+// the customPrice override wins, otherwise the store/product-derived price. The
+// Stripe call is best-effort — the DB is the source of truth, so a Stripe
+// failure is logged and left for the daily/on-demand reconcile to correct,
+// exactly like syncBillingFromStores. Trial / charge-free / no-active-sub
+// accounts are a guaranteed no-op (isBillableAccount gates the Stripe call).
+export async function applyCustomPrice(
+  stripe: BillingStripe,
+  userId: string,
+  customPrice: number | null,
+): Promise<typeof users.$inferSelect> {
+  const [updated] = await db
+    .update(users)
+    .set({ customPrice })
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (isBillableAccount(updated)) {
+    try {
+      await updateStripeSubscriptionPrice(
+        stripe,
+        updated.stripeSubscriptionId!,
+        expectedPriceForUser(updated),
+        getProductDescription(updated.selectedProducts ?? []),
+      );
+    } catch (stripeErr) {
+      console.error('[Billing] Custom-price Stripe sync failed (DB kept, will reconcile):', stripeErr);
+    }
+  }
+
+  return updated;
+}
+
+// Result of an admin subscription-status override.
+export interface StatusChangeResult {
+  notFound?: boolean;
+  // A status that cannot be made true in Stripe (e.g. "active" with no sub).
+  badRequest?: string;
+  // Stripe refused to cancel a live subscription — DB is left untouched so we
+  // never report a non-billing status while Stripe keeps charging.
+  stripeError?: string;
+  user?: typeof users.$inferSelect;
+}
+
+// Apply an admin's direct subscription-status override while keeping Stripe
+// consistent, so a manual status change can never leave a merchant billed at a
+// status that says they shouldn't be:
+//
+//   - "active"  -> refused unless a live Stripe subscription already exists. We
+//                  cannot create a real subscription (needs checkout + payment
+//                  method) from an admin toggle; marking "active" without one
+//                  would silently desync (app thinks they pay, Stripe bills
+//                  nothing).
+//   - "inactive"/"trialing" -> these must stop active billing. If a live Stripe
+//                  subscription exists we cancel it FIRST (confirming success)
+//                  and clear stripeSubscriptionId, so Stripe never keeps charging
+//                  a merchant we report as not actively billed. Because the sub
+//                  is cleared, reconcile correctly ignores the account.
+// Stripe subscription statuses that represent a genuinely live subscription we
+// can honestly mark our account "active" against.
+const LIVE_STRIPE_STATUSES = ['active', 'trialing', 'past_due'];
+
+export async function applyStatusChange(
+  stripe: BillingStripe & CancelableStripe,
+  userId: string,
+  status: 'active' | 'inactive' | 'trialing',
+): Promise<StatusChangeResult> {
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) return { notFound: true };
+
+  if (status === 'active') {
+    if (!user.stripeSubscriptionId) {
+      return {
+        badRequest:
+          'Cannot set status to "active": this merchant has no Stripe subscription. They must complete checkout (or be made charge-free) to gain paid access.',
+      };
+    }
+    // A subscription id in the DB is not proof of a live subscription — it can be
+    // stale (canceled in the Stripe dashboard, expired, etc.). Verify the live
+    // Stripe status before marking the account active, otherwise we'd grant paid
+    // access while Stripe bills nothing (a silent desync).
+    let stripeStatus: string | undefined;
+    try {
+      const sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+      stripeStatus = sub?.status;
+    } catch (err: any) {
+      if (err?.code === 'resource_missing') {
+        return {
+          badRequest:
+            'Cannot set status to "active": the merchant\'s Stripe subscription no longer exists. They must complete checkout again.',
+        };
+      }
+      return { stripeError: err?.message || String(err) };
+    }
+    if (!stripeStatus || !LIVE_STRIPE_STATUSES.includes(stripeStatus)) {
+      return {
+        badRequest: `Cannot set status to "active": the merchant's Stripe subscription is "${stripeStatus ?? 'unknown'}", not a live subscription. They must complete checkout again.`,
+      };
+    }
+    const [updated] = await db
+      .update(users)
+      .set({ subscriptionStatus: 'active' })
+      .where(eq(users.id, userId))
+      .returning();
+    return { user: updated };
+  }
+
+  // inactive | trialing — must not keep billing the merchant.
+  if (user.stripeSubscriptionId) {
+    try {
+      await cancelStripeSubscription(stripe, user.stripeSubscriptionId);
+    } catch (err: any) {
+      return { stripeError: err?.message || String(err) };
+    }
+  }
+  const [updated] = await db
+    .update(users)
+    .set({ subscriptionStatus: status, stripeSubscriptionId: null })
+    .where(eq(users.id, userId))
+    .returning();
+  return { user: updated };
+}
+
 export interface ReconciliationDrift {
   userId: string;
   email: string;
