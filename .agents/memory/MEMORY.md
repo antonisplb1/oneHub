@@ -2,3 +2,4 @@
 - [Per-store billing model](per-store-billing-model.md) — primary (oldest) store drives base price, +€5/extra store; `users.selectedProducts` is a mirror; call `syncBillingFromStores`.
 - [Billing reconciliation safety net](billing-reconciliation.md) — daily job + admin endpoint re-checks live Stripe price vs expected; gating must mirror `syncBillingFromStores` (`isBillableAccount`).
 - [Merchant pricing display precedence](pricing-display-precedence.md) — every merchant-facing price/billing-copy must resolve chargeFree > customPrice > calculated; audit ALL euro figures, not just the total.
+- [Active-store header leaks across logout](active-store-header-session.md) — login AND logout must clear localStorage.activeStoreId or the stale X-Store-Id header 403s the next account.

@@ -15,6 +15,10 @@ export async function signup(data: { email: string; password: string; confirmPas
 }
 
 export async function login(data: { email: string; password: string }) {
+  // Clear any active-store selection left over from a previous session so this
+  // login (and the requests right after it) never send another account's store
+  // id via the X-Store-Id header, which the server rejects as "Store not found".
+  localStorage.removeItem("activeStoreId");
   const response = await apiRequest<{ user: User }>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(data),
@@ -24,6 +28,8 @@ export async function login(data: { email: string; password: string }) {
 
 export async function logout() {
   await apiRequest("/api/auth/logout", { method: "POST" });
+  // Fully reset client-side auth/session state so the next login starts clean.
+  localStorage.removeItem("activeStoreId");
   queryClient.clear();
 }
 
