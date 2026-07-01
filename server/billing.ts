@@ -380,10 +380,25 @@ export interface ReconciliationDrift {
   error?: string;
 }
 
+// An account marked "active" in our DB whose Stripe subscription is NOT actually
+// live (canceled, expired, unpaid, or gone). Stripe is charging nothing, so the
+// account is corrected back to "inactive" and its stale subscription id cleared.
+export interface ReconciliationDeactivation {
+  userId: string;
+  email: string;
+  // The live Stripe subscription status we found ("canceled", "unpaid",
+  // "missing", "unknown", ...).
+  stripeStatus: string;
+  fixed: boolean;
+  error?: string;
+}
+
 export interface ReconciliationResult {
   checked: number;
   inSync: number;
   drift: ReconciliationDrift[];
+  // Accounts that were "active" here but dead in Stripe, and were corrected.
+  deactivated: ReconciliationDeactivation[];
 }
 
 // Detect (and optionally correct) accounts whose live Stripe subscription price
@@ -404,7 +419,7 @@ export async function reconcileBilling(
   opts: { dryRun?: boolean } = {},
 ): Promise<ReconciliationResult> {
   const { dryRun = false } = opts;
-  const result: ReconciliationResult = { checked: 0, inSync: 0, drift: [] };
+  const result: ReconciliationResult = { checked: 0, inSync: 0, drift: [], deactivated: [] };
 
   // Only pull candidates that could possibly be billable. The full per-account
   // gating still runs below; this just keeps us from scanning every row.
@@ -413,23 +428,73 @@ export async function reconcileBilling(
     .from(users)
     .where(and(eq(users.subscriptionStatus, 'active'), isNotNull(users.stripeSubscriptionId)));
 
+  // Correct an account that is "active" here but whose Stripe subscription is not
+  // actually live: mark it inactive and clear the stale id so we stop granting
+  // paid access for a subscription Stripe is not charging. (dryRun only reports.)
+  const deactivateDeadAccount = async (
+    user: typeof users.$inferSelect,
+    stripeStatus: string,
+  ) => {
+    const entry: ReconciliationDeactivation = {
+      userId: user.id,
+      email: user.email,
+      stripeStatus,
+      fixed: false,
+    };
+    if (!dryRun) {
+      try {
+        await db
+          .update(users)
+          .set({ subscriptionStatus: 'inactive', stripeSubscriptionId: null })
+          .where(eq(users.id, user.id));
+        entry.fixed = true;
+        console.warn(
+          `[Reconcile] Deactivated ${user.email}: Stripe subscription is "${stripeStatus}", not live (cleared stale id)`,
+        );
+      } catch (err) {
+        entry.error = err instanceof Error ? err.message : String(err);
+        console.error(`[Reconcile] Failed to deactivate ${user.email}: ${entry.error}`);
+      }
+    } else {
+      console.warn(
+        `[Reconcile] Would deactivate ${user.email}: Stripe subscription is "${stripeStatus}", not live`,
+      );
+    }
+    result.deactivated.push(entry);
+  };
+
   for (const user of candidates) {
     if (!isBillableAccount(user)) continue;
     result.checked++;
 
     const expectedCents = expectedPriceForUser(user);
 
-    let actualCents: number | null = null;
+    let sub: any;
     try {
-      const sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId!);
-      const amount = sub?.items?.data?.[0]?.price?.unit_amount;
-      actualCents = typeof amount === 'number' ? amount : null;
-    } catch (err) {
+      sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId!);
+    } catch (err: any) {
+      // The subscription no longer exists in Stripe — the account is not being
+      // billed at all. Heal the desync rather than reporting a phantom price.
+      if (err?.code === 'resource_missing') {
+        await deactivateDeadAccount(user, 'missing');
+        continue;
+      }
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[Reconcile] Failed to read Stripe subscription for ${user.email}: ${msg}`);
       result.drift.push({ userId: user.id, email: user.email, expectedCents, actualCents: null, fixed: false, error: msg });
       continue;
     }
+
+    // The subscription must be genuinely live. A canceled/expired/unpaid sub means
+    // Stripe is charging this "active" merchant nothing — correct the account.
+    const stripeStatus: string | undefined = sub?.status;
+    if (!stripeStatus || !LIVE_STRIPE_STATUSES.includes(stripeStatus)) {
+      await deactivateDeadAccount(user, stripeStatus ?? 'unknown');
+      continue;
+    }
+
+    const amount = sub?.items?.data?.[0]?.price?.unit_amount;
+    const actualCents: number | null = typeof amount === 'number' ? amount : null;
 
     if (actualCents === expectedCents) {
       result.inSync++;
@@ -462,10 +527,14 @@ export async function reconcileBilling(
     result.drift.push(entry);
   }
 
-  if (result.drift.length > 0) {
-    const fixedCount = result.drift.filter((d) => d.fixed).length;
+  if (result.drift.length > 0 || result.deactivated.length > 0) {
+    const fixedDrift = result.drift.filter((d) => d.fixed).length;
+    const fixedDead = result.deactivated.filter((d) => d.fixed).length;
     console.warn(
-      `[Reconcile] Finished: ${result.checked} checked, ${result.inSync} in sync, ${result.drift.length} drifted${dryRun ? ' (dry run, none changed)' : `, ${fixedCount} corrected`}`,
+      `[Reconcile] Finished: ${result.checked} checked, ${result.inSync} in sync, ` +
+        `${result.drift.length} price-drifted${dryRun ? '' : ` (${fixedDrift} corrected)`}, ` +
+        `${result.deactivated.length} dead subscription(s)${dryRun ? '' : ` (${fixedDead} deactivated)`}` +
+        `${dryRun ? ' (dry run, none changed)' : ''}`,
     );
   } else {
     console.log(`[Reconcile] Finished: ${result.checked} checked, all in sync`);

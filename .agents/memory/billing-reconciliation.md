@@ -27,8 +27,21 @@ reconciliation at all, so a single transient Stripe outage was permanent.
 - Expected price basis = `expectedPriceForUser` (customPrice override else
   `calculateProductPrice`), the SAME basis the admin merchants endpoint already used.
 
+**Reverse desync self-heal:** reconcile also checks subscription *liveness*, not just
+price. If an `active` account's sub returns `resource_missing` OR `sub.status` is not
+in `LIVE_STRIPE_STATUSES` (active/trialing/past_due) — e.g. canceled/unpaid/
+incomplete_expired — reconcile deactivates it (`subscriptionStatus='inactive'`,
+`stripeSubscriptionId=null`) and records it in `result.deactivated[]`. This is the
+ONE place reconcile writes the DB. **Critical guard:** any OTHER retrieve error
+(Stripe outage / api_connection_error) must stay in `drift.error` and NOT deactivate,
+or a single Stripe incident mass-deactivates every live paying merchant.
+
+**Why:** the DB (uniHub) is source of truth for what SHOULD be charged, but a sub
+canceled directly in the Stripe dashboard leaves the app "active" forever, granting
+free paid access. Only reconcile can catch that class of drift.
+
 **Testing gotcha:** `reconcileBilling` scans EVERY billable account in the shared dev
 DB, so test spies must be keyed by subscription id and assertions scoped to the test
 user's own sub — global update counts are polluted by other real accounts that drift.
-`reconcileBilling` never writes the DB (only Stripe), so it's safe to run against the
-shared DB in tests.
+The reconcile test spy (`makeReconcileStripe`) makes only OUR sub return the injected
+status/error; all other accounts look live so reconcile never deactivates them.

@@ -99,14 +99,29 @@ function makeThrowingStripe() {
 // every assertion focus on our account alone (via `ourUpdates`). Other accounts
 // that happen to drift just exercise the spy harmlessly — reconcileBilling never
 // writes to the DB, it only talks to (this fake) Stripe.
-function makeReconcileStripe(ourSubId: string, ourCurrentUnitAmount: number) {
+function makeReconcileStripe(
+  ourSubId: string,
+  ourCurrentUnitAmount: number,
+  opts: { ourStatus?: string; ourRetrieveThrowCode?: string } = {},
+) {
   const currentById = new Map<string, number>([[ourSubId, ourCurrentUnitAmount]]);
   const updatesById = new Map<string, number[]>();
   const stripe: BillingStripe = {
     subscriptions: {
-      retrieve: async (id: string) => ({
-        items: { data: [{ id: `si_${id}`, price: { unit_amount: currentById.get(id) ?? 0 } }] },
-      }),
+      retrieve: async (id: string) => {
+        if (id === ourSubId && opts.ourRetrieveThrowCode) {
+          const err: any = new Error("no such subscription");
+          err.code = opts.ourRetrieveThrowCode;
+          throw err;
+        }
+        // Other accounts in the shared test DB always look live so reconcile only
+        // ever acts on OUR configured subscription.
+        const status = id === ourSubId ? opts.ourStatus ?? "active" : "active";
+        return {
+          status,
+          items: { data: [{ id: `si_${id}`, price: { unit_amount: currentById.get(id) ?? 0 } }] },
+        };
+      },
       update: async (id: string, params: any) => {
         const amount = params.items[0].price_data.unit_amount;
         const arr = updatesById.get(id) ?? [];
@@ -435,6 +450,83 @@ async function run() {
   const freeResult = await reconcileBilling(recFree.stripe);
   assertEqual(freeResult.drift.some((d) => d.userId === userId), false, "charge-free: account skipped");
   assertEqual(recFree.ourUpdates().length, 0, "charge-free: our Stripe sub NOT touched");
+
+  // --- Scenario I: reconciliation heals "active here, dead in Stripe" ----------
+  // The reverse desync: our DB says active with a subscription id, but the live
+  // Stripe subscription was canceled/expired/gone (e.g. canceled in the Stripe
+  // dashboard). Reconcile must flip the account to inactive and clear the stale
+  // id so we stop granting paid access Stripe isn't billing for.
+  console.log("\n=== I. Reconciliation heals active-in-app but dead-in-Stripe ===");
+  const restoreActive = async () =>
+    db
+      .update(users)
+      .set({
+        subscriptionStatus: "active",
+        stripeSubscriptionId: ourSub,
+        chargeFree: false,
+        trialEndsAt: null,
+        customPrice: null,
+      })
+      .where(eq(users.id, userId)); // stores still expect €36.99 (bundle) from E
+
+  // I1: dry run reports a dead (canceled) subscription WITHOUT changing the DB.
+  await restoreActive();
+  const recDeadDry = makeReconcileStripe(ourSub, 3699, { ourStatus: "canceled" });
+  const deadDry = await reconcileBilling(recDeadDry.stripe, { dryRun: true });
+  const deadDryEntry = deadDry.deactivated.find((d) => d.userId === userId);
+  assertEqual(!!deadDryEntry, true, "I1: dry run flags the dead subscription");
+  assertEqual(deadDryEntry?.stripeStatus, "canceled", "I1: reports the live Stripe status");
+  assertEqual(deadDryEntry?.fixed, false, "I1: dry run changes nothing");
+  assertEqual((await getUser()).subscriptionStatus, "active", "I1: DB still active on dry run");
+  assertEqual((await getUser()).stripeSubscriptionId, ourSub, "I1: sub id untouched on dry run");
+
+  // I2: live run deactivates the account and clears the stale subscription id.
+  const recDead = makeReconcileStripe(ourSub, 3699, { ourStatus: "canceled" });
+  const deadFix = await reconcileBilling(recDead.stripe);
+  const deadEntry = deadFix.deactivated.find((d) => d.userId === userId);
+  assertEqual(deadEntry?.fixed, true, "I2: dead subscription healed");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "I2: DB flipped to inactive");
+  assertEqual((await getUser()).stripeSubscriptionId, null, "I2: stale sub id cleared");
+
+  // I3: a subscription that no longer exists in Stripe (resource_missing) is healed too.
+  await restoreActive();
+  const recGone = makeReconcileStripe(ourSub, 3699, { ourRetrieveThrowCode: "resource_missing" });
+  const goneFix = await reconcileBilling(recGone.stripe);
+  const goneEntry = goneFix.deactivated.find((d) => d.userId === userId);
+  assertEqual(goneEntry?.fixed, true, "I3: missing subscription healed");
+  assertEqual(goneEntry?.stripeStatus, "missing", "I3: reported as missing");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "I3: DB flipped to inactive");
+  assertEqual((await getUser()).stripeSubscriptionId, null, "I3: stale sub id cleared");
+
+  // I4: a still-live subscription (past_due counts as live) is NOT deactivated.
+  await restoreActive();
+  const recLive = makeReconcileStripe(ourSub, 3699, { ourStatus: "past_due" });
+  const liveResult = await reconcileBilling(recLive.stripe);
+  assertEqual(liveResult.deactivated.some((d) => d.userId === userId), false, "I4: live (past_due) sub NOT deactivated");
+  assertEqual((await getUser()).subscriptionStatus, "active", "I4: DB left active for a live sub");
+  assertEqual((await getUser()).stripeSubscriptionId, ourSub, "I4: sub id preserved for a live sub");
+
+  // I5: a transient Stripe outage (non-resource_missing error) must NOT deactivate.
+  // The account is reported as drift.error and left completely untouched, so a
+  // Stripe incident can never mass-deactivate live paying merchants.
+  await restoreActive();
+  const recOutage = makeReconcileStripe(ourSub, 3699, { ourRetrieveThrowCode: "api_connection_error" });
+  const outageResult = await reconcileBilling(recOutage.stripe);
+  assertEqual(outageResult.deactivated.some((d) => d.userId === userId), false, "I5: outage does NOT deactivate");
+  const outageDrift = outageResult.drift.find((d) => d.userId === userId);
+  assertEqual(!!outageDrift?.error, true, "I5: outage surfaced as drift error");
+  assertEqual((await getUser()).subscriptionStatus, "active", "I5: DB left active on outage");
+  assertEqual((await getUser()).stripeSubscriptionId, ourSub, "I5: sub id preserved on outage");
+
+  // I6: any other non-live status (e.g. unpaid) is treated as dead and healed.
+  await restoreActive();
+  const recUnpaid = makeReconcileStripe(ourSub, 3699, { ourStatus: "unpaid" });
+  const unpaidResult = await reconcileBilling(recUnpaid.stripe);
+  const unpaidEntry = unpaidResult.deactivated.find((d) => d.userId === userId);
+  assertEqual(unpaidEntry?.fixed, true, "I6: unpaid sub healed");
+  assertEqual(unpaidEntry?.stripeStatus, "unpaid", "I6: reports the unpaid status");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "I6: DB flipped to inactive");
+  assertEqual((await getUser()).stripeSubscriptionId, null, "I6: stale sub id cleared");
 
   // --- Scenario F: the owner PATCH route decision (applyStoreUpdate) ----------
   // These exercise the routing decision in PATCH /api/stores/:storeId itself:
