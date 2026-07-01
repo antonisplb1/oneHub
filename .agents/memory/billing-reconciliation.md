@@ -41,7 +41,6 @@ canceled directly in the Stripe dashboard leaves the app "active" forever, grant
 free paid access. Only reconcile can catch that class of drift.
 
 **Testing gotcha:** `reconcileBilling` scans EVERY billable account in the shared dev
-DB, so test spies must be keyed by subscription id and assertions scoped to the test
-user's own sub — global update counts are polluted by other real accounts that drift.
-The reconcile test spy (`makeReconcileStripe`) makes only OUR sub return the injected
-status/error; all other accounts look live so reconcile never deactivates them.
+DB, so any reconcile test must key its Stripe spy by subscription id and scope
+assertions to the test user's own sub — global update/deactivate counts are polluted
+by other real accounts that legitimately drift.

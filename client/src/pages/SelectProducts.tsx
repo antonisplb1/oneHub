@@ -183,7 +183,7 @@ export default function SelectProducts() {
         </div>
 
         {/* Bundle banner */}
-        {isBundleSelected && (
+        {isBundleSelected && user?.customPrice == null && !user?.chargeFree && (
           <div
             className="rounded-md p-4 mb-4"
             style={{ backgroundColor: GOLD_DIM, border: `1px solid ${GOLD_BORDER}` }}
@@ -211,9 +211,20 @@ export default function SelectProducts() {
           >
             <span className="text-sm font-medium text-white">Total</span>
             <span className="text-xl font-light text-white" data-testid="text-total-price">
-              €{calculateTotal()}/month
+              {user?.chargeFree
+                ? "No charge"
+                : `€${user?.customPrice != null ? (user.customPrice / 100).toFixed(2) : calculateTotal()}/month`}
             </span>
           </div>
+          {user?.chargeFree ? (
+            <p className="text-xs" style={{ color: MUTED }} data-testid="text-charge-free-note">
+              Your account has full access at no cost.
+            </p>
+          ) : user?.customPrice != null && (
+            <p className="text-xs" style={{ color: MUTED }} data-testid="text-admin-adjusted-price">
+              Price adjusted manually by admin.
+            </p>
+          )}
           <Button
             onClick={handleContinue}
             disabled={selectedProducts.length === 0 || selectProductsMutation.isPending}

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,6 +47,13 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const { activeStore, stores } = useStore();
   const isPrimaryStore = !!activeStore && stores[0]?.id === activeStore.id;
+  // An admin can override the monthly price (customPrice, in cents). It is the
+  // exact amount Stripe charges and overrides the product/store-derived price,
+  // so the merchant must see the admin-set amount, clearly labeled as such.
+  const hasCustomPrice = user?.customPrice != null;
+  const customPriceEuros = hasCustomPrice ? user!.customPrice! / 100 : null;
+  const effectiveMonthlyPrice = (products: string[], extraStores: number) =>
+    hasCustomPrice ? customPriceEuros! : calculatePrice(products, extraStores);
   const { toast } = useToast();
   const [displayName, setDisplayName] = useState(activeStore?.displayName || "");
   const [logoUrl, setLogoUrl] = useState(activeStore?.logo || "");
@@ -523,7 +531,11 @@ export default function SettingsPage() {
             </div>
           </div>
           <CardDescription className="mt-2">
-            {isPrimaryStore
+            {user?.chargeFree
+              ? "Choose which features this store includes. Your account has full access at no cost, so changing products won't create any charge."
+              : hasCustomPrice
+              ? `Choose which features this store includes. Your monthly price was set manually by an admin at €${customPriceEuros!.toFixed(2)}/month, so changing products or stores won't change your bill.`
+              : isPrimaryStore
               ? "Choose which features this store includes. This is your main store, so its products set your base subscription price. Updating them adjusts your subscription automatically."
               : "Choose which features this store includes. Extra stores are billed at a flat €5/month, so changing this store's products won't change your bill."}
           </CardDescription>
@@ -570,7 +582,7 @@ export default function SettingsPage() {
             );
           })}
 
-          {isPrimaryStore && selectedProducts.length === 4 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && selectedProducts.includes('shift') && (
+          {!user?.chargeFree && !hasCustomPrice && isPrimaryStore && selectedProducts.length === 4 && selectedProducts.includes('loyalty') && selectedProducts.includes('spin') && selectedProducts.includes('menu') && selectedProducts.includes('shift') && (
             <div className="p-4 bg-primary/5 border border-primary rounded-md">
               <div className="flex items-center justify-between">
                 <div>
@@ -589,7 +601,26 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {isPrimaryStore ? (
+          {user?.chargeFree ? (
+            <div className="flex items-center justify-between p-4 bg-muted rounded-md">
+              <span className="font-semibold">Your plan:</span>
+              <span className="text-xl font-bold" data-testid="text-total-price">
+                No charge
+              </span>
+            </div>
+          ) : hasCustomPrice ? (
+            <div className="flex items-center justify-between gap-3 p-4 bg-muted rounded-md">
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold">Your price:</span>
+                <Badge variant="secondary" data-testid="badge-admin-adjusted-price-products">
+                  Price adjusted manually by admin
+                </Badge>
+              </div>
+              <span className="text-xl font-bold" data-testid="text-total-price">
+                €{customPriceEuros!.toFixed(2)}/month
+              </span>
+            </div>
+          ) : isPrimaryStore ? (
             <div className="flex items-center justify-between p-4 bg-muted rounded-md">
               <span className="font-semibold">New Total:</span>
               <span className="text-xl font-bold" data-testid="text-total-price">
@@ -638,16 +669,22 @@ export default function SettingsPage() {
                 {!user?.chargeFree && user?.selectedProducts && user.selectedProducts.length > 0 && (
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">
-                      Current Plan: <span className="font-semibold text-foreground">
-                        €{calculatePrice(user.selectedProducts, user?.additionalStores ?? 0).toFixed(2)}/month
+                      Current Plan: <span className="font-semibold text-foreground" data-testid="text-current-plan-price">
+                        €{effectiveMonthlyPrice(user.selectedProducts, user?.additionalStores ?? 0).toFixed(2)}/month
                       </span>
                     </p>
-                    {(user?.additionalStores ?? 0) > 0 && (
-                      <div className="text-xs text-muted-foreground space-y-0.5 pl-1 border-l-2 border-muted ml-1">
-                        <p>Base plan: €{calculateBasePrice(user.selectedProducts).toFixed(2)}/month</p>
-                        <p>{user.additionalStores ?? 0} extra store{(user.additionalStores ?? 0) !== 1 ? 's' : ''}: €{((user.additionalStores ?? 0) * 5).toFixed(2)}/month</p>
-                        <p className="font-medium text-foreground">Total: €{calculatePrice(user.selectedProducts, user.additionalStores ?? 0).toFixed(2)}/month</p>
-                      </div>
+                    {hasCustomPrice ? (
+                      <Badge variant="secondary" data-testid="badge-admin-adjusted-price">
+                        Price adjusted manually by admin
+                      </Badge>
+                    ) : (
+                      (user?.additionalStores ?? 0) > 0 && (
+                        <div className="text-xs text-muted-foreground space-y-0.5 pl-1 border-l-2 border-muted ml-1">
+                          <p>Base plan: €{calculateBasePrice(user.selectedProducts).toFixed(2)}/month</p>
+                          <p>{user.additionalStores ?? 0} extra store{(user.additionalStores ?? 0) !== 1 ? 's' : ''}: €{((user.additionalStores ?? 0) * 5).toFixed(2)}/month</p>
+                          <p className="font-medium text-foreground">Total: €{calculatePrice(user.selectedProducts, user.additionalStores ?? 0).toFixed(2)}/month</p>
+                        </div>
+                      )
                     )}
                   </div>
                 )}
@@ -666,7 +703,7 @@ export default function SettingsPage() {
                 >
                   {subscribeMutation.isPending 
                     ? "Loading..." 
-                    : `Subscribe Now - €${calculatePrice(user.selectedProducts, user?.additionalStores ?? 0).toFixed(2)}/month`
+                    : `Subscribe Now - €${effectiveMonthlyPrice(user.selectedProducts, user?.additionalStores ?? 0).toFixed(2)}/month`
                   }
                 </Button>
               )}

@@ -55,7 +55,11 @@ export default function SubscriptionRequired() {
   const hasExpiredTrial = user?.trialEndsAt && new Date(user.trialEndsAt) <= new Date();
   const isTrialExpired = hasExpiredTrial && user?.subscriptionStatus !== "active";
 
-  const price = calculatePrice(selected);
+  // An admin can override the monthly price (customPrice, in cents). When set it
+  // is exactly what Stripe charges at checkout, so show that amount, labeled.
+  const hasCustomPrice = user?.customPrice != null;
+  const isChargeFree = user?.chargeFree === true;
+  const priceLabel = hasCustomPrice ? (user!.customPrice! / 100).toFixed(2) : String(calculatePrice(selected));
   const isBundle =
     selected.length === 4 &&
     selected.includes("loyalty") &&
@@ -175,7 +179,7 @@ export default function SubscriptionRequired() {
               })}
             </div>
 
-            {isBundle && (
+            {isBundle && !hasCustomPrice && !isChargeFree && (
               <div
                 className="rounded-md p-3 mb-5 flex items-center justify-between"
                 style={{ backgroundColor: GOLD_DIM, border: `1px solid ${GOLD_BORDER}` }}
@@ -197,9 +201,22 @@ export default function SubscriptionRequired() {
             >
               <span className="text-sm text-white font-medium">Total</span>
               <span className="text-xl font-light text-white" data-testid="text-total-price">
-                {selected.length === 0 ? "—" : `€${price}/month`}
+                {isChargeFree
+                  ? "No charge"
+                  : selected.length === 0 && !hasCustomPrice
+                  ? "—"
+                  : `€${priceLabel}/month`}
               </span>
             </div>
+            {isChargeFree ? (
+              <p className="text-xs mb-3 -mt-2" style={{ color: MUTED }} data-testid="text-charge-free-note">
+                Your account has full access at no cost.
+              </p>
+            ) : hasCustomPrice && (
+              <p className="text-xs mb-3 -mt-2" style={{ color: MUTED }} data-testid="text-admin-adjusted-price">
+                Price adjusted manually by admin.
+              </p>
+            )}
 
             <div className="flex flex-col gap-2.5">
               <button
@@ -214,7 +231,9 @@ export default function SubscriptionRequired() {
                   ? "Loading..."
                   : selected.length === 0
                   ? "Select a feature to continue"
-                  : `Subscribe — €${price}/month`}
+                  : isChargeFree
+                  ? "Continue"
+                  : `Subscribe — €${priceLabel}/month`}
               </button>
               <button
                 className="w-full py-2.5 rounded-lg text-sm transition-opacity hover:opacity-80"

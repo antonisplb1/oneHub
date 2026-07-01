@@ -1,3 +1,4 @@
 - [Admin vs merchant session collision](admin-merchant-session.md) — admin `req.session.adminId` gets wiped by Passport `req.login()` regeneration; fix with `{ keepSessionInfo: true }`.
 - [Per-store billing model](per-store-billing-model.md) — primary (oldest) store drives base price, +€5/extra store; `users.selectedProducts` is a mirror; call `syncBillingFromStores`.
 - [Billing reconciliation safety net](billing-reconciliation.md) — daily job + admin endpoint re-checks live Stripe price vs expected; gating must mirror `syncBillingFromStores` (`isBillableAccount`).
+- [Merchant pricing display precedence](pricing-display-precedence.md) — every merchant-facing price/billing-copy must resolve chargeFree > customPrice > calculated; audit ALL euro figures, not just the total.

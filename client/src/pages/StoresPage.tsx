@@ -93,8 +93,13 @@ export default function StoresPage() {
   const inTrial = user?.trialEndsAt && new Date(user.trialEndsAt) > new Date();
   const selectedProducts = user?.selectedProducts || [];
   const additionalStores = user?.additionalStores ?? 0;
-  const currentPrice = calculateTotalPrice(selectedProducts, additionalStores);
-  const newPrice = calculateTotalPrice(selectedProducts, additionalStores + 1);
+  // An admin can override the monthly price (customPrice, in cents). When set, it
+  // is the exact amount Stripe charges and it overrides product/store pricing —
+  // so adding stores or changing products does NOT change the bill.
+  const hasCustomPrice = user?.customPrice != null;
+  const customPriceEuros = hasCustomPrice ? user!.customPrice! / 100 : null;
+  const currentPrice = hasCustomPrice ? customPriceEuros! : calculateTotalPrice(selectedProducts, additionalStores);
+  const newPrice = hasCustomPrice ? customPriceEuros! : calculateTotalPrice(selectedProducts, additionalStores + 1);
   // The primary store is the oldest; GET /api/stores returns them ordered by
   // createdAt ascending, so stores[0] is the primary.
   const isEditingPrimary = !!editingStore && stores[0]?.id === editingStore.id;
@@ -218,6 +223,9 @@ export default function StoresPage() {
     if (isChargeFree) {
       return "You can add unlimited stores at no extra cost.";
     }
+    if (hasCustomPrice) {
+      return `Your monthly price was set manually by an admin at €${customPriceEuros!.toFixed(2)}/month. Adding this store won't change what you're charged.`;
+    }
     if (inTrial) {
       return `Free during your trial — when your trial ends you'll be billed €${newPrice.toFixed(2)}/month (your current plan €${currentPrice.toFixed(2)}/month + €5.00 for this extra store).`;
     }
@@ -272,9 +280,11 @@ export default function StoresPage() {
                   <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
                     <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <span>
-                      {inTrial
-                        ? `This extra store costs +€5.00/month. You'll be billed €${newPrice.toFixed(2)}/month when your trial ends.`
-                        : `Adding this store costs +€5.00/month, changing your bill to €${newPrice.toFixed(2)}/month.`}
+                      {hasCustomPrice
+                        ? `Your monthly price was set manually by an admin at €${customPriceEuros!.toFixed(2)}/month. Adding this store won't change it.`
+                        : inTrial
+                          ? `This extra store costs +€5.00/month. You'll be billed €${newPrice.toFixed(2)}/month when your trial ends.`
+                          : `Adding this store costs +€5.00/month, changing your bill to €${newPrice.toFixed(2)}/month.`}
                     </span>
                   </div>
                 )}
@@ -365,7 +375,7 @@ export default function StoresPage() {
                           <AlertDialogTitle>Delete store?</AlertDialogTitle>
                           <AlertDialogDescription>
                             This will permanently delete <strong>{store.displayName || store.shopName}</strong> and all its data. This cannot be undone.
-                            {!isChargeFree && additionalStores > 0 && (
+                            {!isChargeFree && !hasCustomPrice && additionalStores > 0 && (
                               <span className="block mt-2">Your monthly bill will decrease by €5.00 at the start of your next billing period.</span>
                             )}
                           </AlertDialogDescription>
@@ -553,15 +563,27 @@ export default function StoresPage() {
                     <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300" data-testid="notice-primary-billing">
                       <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
                       <span>
-                        This is your primary store, so its products set your base plan price.
-                        {editProducts.length > 0 && (
-                          <> Saving will change your plan to €{calculateTotalPrice(editProducts, additionalStores).toFixed(2)}/month{inTrial ? " when your trial ends" : ""}.</>
+                        {hasCustomPrice ? (
+                          <>Your monthly price was set manually by an admin at €{customPriceEuros!.toFixed(2)}/month. Changing products won't change what you're charged.</>
+                        ) : (
+                          <>
+                            This is your primary store, so its products set your base plan price.
+                            {editProducts.length > 0 && (
+                              <> Saving will change your plan to €{calculateTotalPrice(editProducts, additionalStores).toFixed(2)}/month{inTrial ? " when your trial ends" : ""}.</>
+                            )}
+                          </>
                         )}
                       </span>
                     </div>
                   )
                 ) : (
-                  <p className="text-xs text-muted-foreground">Changing products for an additional store doesn't change your bill — extra stores are a flat €5/month each.</p>
+                  !isChargeFree && (
+                    <p className="text-xs text-muted-foreground">
+                      {hasCustomPrice
+                        ? `Your monthly price was set manually by an admin at €${customPriceEuros!.toFixed(2)}/month. Changing products won't change what you're charged.`
+                        : "Changing products for an additional store doesn't change your bill — extra stores are a flat €5/month each."}
+                    </p>
+                  )
                 )}
               </div>
 
