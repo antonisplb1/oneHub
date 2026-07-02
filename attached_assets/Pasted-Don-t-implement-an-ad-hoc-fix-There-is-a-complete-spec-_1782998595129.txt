@@ -1,0 +1,53 @@
+Don't implement an ad-hoc fix. There is a complete spec covering this issue
+(Google class patching, the equivalent Apple Wallet branding propagation, and a
+pass design refresh). Its prerequisites (getClassId, APPLE_WALLET_AUTH_SECRET,
+notifyAppleWalletDevices) are now merged. Implement it exactly as written below.
+
+# Task: Wallet branding propagation + loyalty pass design refresh
+
+You are working on uniHub (Express + TypeScript + Drizzle + Neon Postgres). Prerequisite: the previous wallet-fix task (getClassId, APPLE_WALLET_AUTH_SECRET, notifyAppleWalletDevices helper) is already merged — reuse those pieces; if any is missing, stop and say so instead of re-implementing differently.
+
+Scope: `server/googleWallet.ts`, `server/appleWallet.ts`, `server/routes.ts`, `shared/schema.ts` + one migration, `package.json` (adding `sharp` only). Do not touch billing, auth, sessions, or anything else. `tsc --noEmit` and all billing tests must pass.
+
+**The bug being fixed:** when a merchant changes their card color or logo in settings AFTER customers have already added passes, neither wallet ever updates. Google: branding lives on the loyalty CLASS and `createLoyaltyClass` is get-or-create — nothing ever patches an existing class. Apple: the pass fetch route regenerates with current branding, but devices only re-fetch when pushed AND when the server reports a change newer than `passesUpdatedSince` / `If-Modified-Since`, which is currently derived only from `loyaltyCards.lastStampAt` — branding changes bump nothing and push nothing.
+
+---
+
+## PART A — Propagate branding changes to Google Wallet
+
+1. In `server/googleWallet.ts`, add `updateClassBranding(storeId, shopName, logoUrl, cardBackgroundColor)`: builds the classId via the existing `getClassId`, calls `loyaltyclass.get`; if 404 (no customer has ever saved a pass) return silently — nothing to update. Otherwise `loyaltyclass.patch` with: `hexBackgroundColor` (validated with the same regex as class creation), `programLogo.sourceUri.uri` (same logo URL resolution logic as class creation — extract that URL-resolution block into a shared private method so creation and patching cannot drift), `issuerName`/`programName` per Part C below. Errors are logged and swallowed (best-effort, like other wallet writes) — a Google outage must never fail a settings save.
+2. Call `updateClassBranding` (fire-and-forget, after the DB write succeeds) from every route that can change store branding. Audit routes.ts for all writes to `logo`, `cardBackgroundColor`, `displayName`/`shopName` on stores or users — at minimum: `PATCH /api/stores/:storeId` (~1727), the admin variant `PATCH /api/admin/merchants/:id/stores/:storeId` (~1399), and any user-level settings route that updates branding (find it; user-level branding applies to legacy single-store accounts — in that case update the class of each of the user's stores). List every hooked route in your final summary. Only trigger the call when a branding-relevant field actually changed in the request.
+
+## PART B — Propagate branding changes to Apple Wallet
+
+1. Migration: add nullable `brandingUpdatedAt` timestamp to `stores`.
+2. In the same routes hooked in Part A: when branding changes, set `stores.brandingUpdatedAt = now()` in the same DB write, then call the existing `notifyAppleWalletDevices`-style push for ALL devices belonging to that store. Add a store-level variant to the helper if needed (e.g. `notifyAppleWalletDevicesForStore(storeId)`), querying `appleWalletDevices` by `storeId`; rows with null `storeId` (older registrations) must be included via a join through `customers.storeId` — do not silently skip them.
+3. Update the pass-freshness logic to consider branding: in the `passesUpdatedSince` route and in the pass fetch route's `Last-Modified` / `If-Modified-Since` handling, the effective "pass last updated" timestamp becomes `max(loyaltyCards.lastStampAt, stores.brandingUpdatedAt)` (either may be null — handle that). The registrations route already joins per device; add the store lookup efficiently (one query per store, not per device, is fine at this scale).
+
+## PART C — Pass design refresh (both wallets)
+
+**Apple (`generatePass` in appleWallet.ts):**
+
+1. **Real logo.** Add `sharp` as a dependency. The merchant's logo (from `stores.logo` / `users.logo`, which may be a data URI or an https URL — reuse however the Google path resolves it) must be decoded, converted to PNG, and fitted (aspect-preserved, `fit: 'contain'` on a transparent canvas) into: `logo` at 160×50 (@1x) and 320×100 (@2x), and `icon` at 29×29 / 58×58 (center-cropped square is fine for the icon). Pass the logo into `AppleLoyaltyPassData` (extend the type; populate it at BOTH pass-generation call sites — initial issuance and the PassKit update fetch). If the logo is missing or fails to decode, fall back to the current solid-color `makePng` blocks and log a warning — pass generation must never fail because of a bad logo. When a real logo image is used, drop `logoText` (logo + logoText together gets cramped); keep `logoText` only in the fallback case.
+2. **Contrast-aware text.** Compute relative luminance of the background color (standard WCAG formula). If the background is light, use dark text (`rgb(15, 23, 42)` foreground, `rgb(71, 85, 105)` labels); if dark, keep white foreground with `rgb(226, 232, 240)` labels. Replace the hardcoded white/light-blue values. Put the luminance helper next to the existing `hexToRgb` helpers.
+3. **Visual stamp progress.** When `maxStamps <= 12`, the primary field value becomes filled/empty circles, e.g. `● ● ● ○ ○ ○ ○ ○ ○` (filled = collected), with label `Stamps · 3 of 9`. When `maxStamps > 12`, keep the current `3 / 15` numeric form. Keep the existing secondary (reward), auxiliary (status), and back fields exactly as they are — they're good.
+
+**Google (`googleWallet.ts`):**
+
+4. `programName`: use the store's display/shop name instead of the hardcoded `'Loyalty Program'`. `issuerName` stays the shop name as now.
+5. The class `textModulesData` "Rewards" module: body becomes the actual reward text when available (pass `rewardText` through to class creation and to `updateClassBranding`; fall back to the current generic sentence when absent). Note: reward text is per loyalty card config; use the store's current default reward text if one exists at the call site — if reward text is not cleanly available where classes are created/patched, keep the generic copy and say so in the summary rather than plumbing new queries through half the codebase.
+
+---
+
+## Definition of done
+
+- [ ] `tsc --noEmit` passes; billing tests pass; `sharp` is the only new dependency.
+- [ ] Changing a store's color or logo in settings: (a) patches the existing Google class (verify via a log line), (b) bumps `stores.brandingUpdatedAt`, (c) pushes all Apple devices for that store including legacy null-storeId registrations.
+- [ ] A branding change with NO stamp activity causes an iPhone to fetch and display the updated pass (the freshness logic uses the max of both timestamps).
+- [ ] Apple passes show the merchant's real logo, readable text on both light and dark brand colors, and circle-style stamps for cards with ≤12 stamps; a missing/corrupt logo falls back gracefully.
+- [ ] Google passes show the shop name as the program name.
+- [ ] Final summary lists: every branding route hooked, both pass-generation call sites updated with the logo, and any place the reward-text plumbing was skipped per C5.
+- [ ] Settings saves never fail or slow down because a wallet API errored (all wallet writes fire-and-forget after the DB write).
+
+Additionally, in the same commit: add these lines to .gitignore (this has been
+deferred twice): .env, .env.*, *.pem, *.key, *.p12, *.csr
