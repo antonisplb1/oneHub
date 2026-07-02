@@ -91,7 +91,7 @@ function relativeLuminance(hex: string): number {
 
 // Load a merchant logo (data URI or http/https URL) into a raw image Buffer, or
 // null when there is no logo / it can't be fetched. Never throws.
-async function loadLogoBuffer(logo?: string | null): Promise<Buffer | null> {
+export async function loadLogoBuffer(logo?: string | null): Promise<Buffer | null> {
   if (!logo) return null;
   try {
     if (logo.startsWith('data:')) {
@@ -115,7 +115,7 @@ async function loadLogoBuffer(logo?: string | null): Promise<Buffer | null> {
 }
 
 // Fit the logo, aspect-preserved, onto a transparent canvas of the given size.
-async function makeLogoPng(src: Buffer, width: number, height: number): Promise<Buffer> {
+export async function makeLogoPng(src: Buffer, width: number, height: number): Promise<Buffer> {
   return sharp(src)
     .resize(width, height, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png()
@@ -123,7 +123,7 @@ async function makeLogoPng(src: Buffer, width: number, height: number): Promise<
 }
 
 // Center-crop the logo into a square icon of the given size.
-async function makeIconPng(src: Buffer, size: number): Promise<Buffer> {
+export async function makeIconPng(src: Buffer, size: number): Promise<Buffer> {
   return sharp(src)
     .resize(size, size, { fit: 'cover' })
     .png()
