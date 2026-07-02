@@ -729,7 +729,9 @@ export default function MenuBuilder() {
                     <FormControl>
                       <Input
                         type="number"
-                        step="0.01"
+                        step="any"
+                        min="0"
+                        inputMode="decimal"
                         placeholder="0.00"
                         data-testid="input-item-price"
                         {...field}
