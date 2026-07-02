@@ -1,0 +1,111 @@
+Task: Fix 3 pre-launch issues (past_due grace handling, trial-end conversion flow, login rate limiting)
+
+You are working on uniHub (Express + TypeScript + Drizzle + Neon Postgres + React/Vite). Make ONLY the three fixes below. Do not refactor, rename, restyle, or "improve" anything else. Match the existing code style and comment style. All existing tests in server/billing.test.ts (137 as of the last change) must still pass, and tsc --noEmit must pass, before you are done.
+
+Note: line numbers below are approximate (the codebase has changed recently) — locate code by function/route name, not line number.
+
+
+FIX 1 — Stop locking out past_due merchants; align access gating with the reconciler
+
+Files: server/routes.ts (requireSubscription middleware), server/billing.ts, server/billing.test.ts, plus a small client banner (see req. 6).
+
+The bug: When a merchant's card payment fails once, Stripe sets the subscription to past_due and fires customer.subscription.updated. The webhook writes that status verbatim into users.subscriptionStatus. The requireSubscription middleware checks subscriptionStatus === "active", so the merchant is locked out of their entire dashboard immediately — even though Stripe's dunning is still automatically retrying the card and usually recovers it. Meanwhile LIVE_STRIPE_STATUSES in server/billing.ts (['active', 'trialing', 'past_due']) already treats past_due as live, so the app's gate and the reconciler currently disagree about what "live" means.
+
+The intended model: past_due = grace state. Access stays ON, the merchant sees a payment-failed warning, and lockout happens only when Stripe gives up and transitions the subscription to canceled or unpaid (those statuses arrive via the existing webhooks — no new logic needed for them).
+
+Requirements:
+
+
+In server/billing.ts, add an exported pure helper:
+
+
+ts   // Whether this account's subscription status grants access to the app.
+   // past_due is a grace state: Stripe dunning is still retrying the card, so
+   // access stays on. Lockout happens only when Stripe gives up (canceled/unpaid).
+   export function hasAccessGrantingSubscription(status: string | null | undefined): boolean
+
+It must return true exactly when the status is in LIVE_STRIPE_STATUSES. Reuse the existing constant — do not define a second list. This one function becomes the single source of truth for "does this subscription status grant access."
+2. In server/routes.ts, change requireSubscription to use hasAccessGrantingSubscription(req.user!.subscriptionStatus) instead of the === "active" comparison. Keep the chargeFree and trial checks exactly as they are.
+3. Audit EVERY other subscriptionStatus === 'active' (and === "active") comparison in server/routes.ts, server/billing.ts, and client/src/ and classify each one:
+
+
+Access gating (deciding whether the user may use the product) → switch to the helper.
+Billing gating (isBillableAccount, syncBillingFromStores's hasActiveSub check, reconciler candidate queries) → these decide whether to touch Stripe pricing. A past_due subscription is still a real Stripe subscription that should be repriced when products change, and should still be drift-checked by the reconciler. Update these to accept any LIVE_STRIPE_STATUSES status (paired with stripeSubscriptionId present) rather than only 'active'. The reconciler's candidate query (eq(users.subscriptionStatus, 'active')) must become an inArray(users.subscriptionStatus, LIVE_STRIPE_STATUSES) so past_due accounts aren't invisible to drift correction.
+Display only → update the UI as described in req. 6.
+List every site you changed (file + function) in your final summary.
+
+
+
+Reconciler promotion pass interaction (critical): the recently added promotion pass in reconcileBilling promotes inactive-in-DB accounts that have a live Stripe subscription. Ensure it sets subscriptionStatus to the subscription's ACTUAL Stripe status (e.g. past_due if that's what Stripe reports), never hardcoded 'active'. Also ensure a user whose DB status is past_due is NOT treated as a promotion candidate (their status already grants access and matches Stripe) — the promotion pass must only target accounts whose status is outside LIVE_STRIPE_STATUSES or whose stripeSubscriptionId is missing. Adjust its candidate query and tests accordingly.
+Webhook handlers: leave them writing the raw Stripe status (that is now correct behavior). Do not change them.
+Client banner: in the dashboard layout (the shared layout wrapping all /dashboard/* pages), when the logged-in user's subscriptionStatus === 'past_due' (the user object from /api/auth/me already includes it — verify, and expose it if not), render a dismissible-per-session warning banner: "Your last payment failed. Please update your payment method to avoid losing access." with a button that calls the existing POST /api/stripe/create-portal-session flow and redirects to the returned Stripe portal URL (the account/billing page already does this — reuse that code path). Style it as a warning (amber/yellow) consistent with the existing shadcn/ui components.
+Tests (in server/billing.test.ts, existing style):
+
+hasAccessGrantingSubscription: true for active, trialing, past_due; false for canceled, unpaid, incomplete, inactive, null, undefined.
+isBillableAccount (or its updated equivalent): a past_due user with a stripeSubscriptionId IS billable for repricing purposes; canceled/inactive is not; chargeFree/trial exclusions unchanged.
+Reconciler: a past_due account with price drift gets drift-corrected; a past_due account is NOT picked up by the promotion pass; an account Stripe reports as past_due that is inactive in the DB gets promoted to past_due (not active).
+
+
+
+
+
+
+FIX 2 — Trial-end conversion flow (reminder email + in-app countdown + trial-ended email)
+
+Files: shared/schema.ts + new migration, server/email.ts, a new server/trialReminders.ts, server/index.ts (cron wiring), client dashboard layout.
+
+The gap: The 3-day trial (set at email verification) expires silently. There is no reminder email, no in-app countdown, and the merchant just slams into the subscription-required wall mid-workflow. Nothing in server/email.ts mentions trials.
+
+Requirements:
+
+
+Schema/migration: add two nullable timestamp columns to users: trialReminderSentAt and trialEndedEmailSentAt. Generate a proper Drizzle migration. No data backfill needed.
+Emails (in server/email.ts, matching the existing Resend email functions' style and HTML structure):
+
+sendTrialEndingSoonEmail(user) — subject like "Your uniHub trial ends tomorrow". Body: trial ends on {date}, keep your loyalty cards / menus / schedules running by subscribing, one clear CTA button linking to the app's account/billing page (https://unihub.live/dashboard/account). Friendly, short, no pressure tactics.
+sendTrialEndedEmail(user) — subject like "Your uniHub trial has ended". Body: trial has ended, your data is safe, subscribe to pick up right where you left off, same CTA.
+
+
+
+Scheduler (new server/trialReminders.ts, mirroring the structure of server/reconcile.ts — a startTrialReminderService() using node-cron):
+
+Runs daily at 9:00 AM (deliberately far from the 2 AM cleanup and 3 AM reconciliation crons; also a humane time for email delivery).
+Ending-soon pass: users where trialEndsAt is in the future but within the next 24 hours, trialReminderSentAt IS NULL, emailVerified = true, chargeFree = false, and subscriptionStatus is NOT in LIVE_STRIPE_STATUSES (already-subscribed users must never get trial nags). Send the ending-soon email, then set trialReminderSentAt = now(). Set the flag ONLY after a successful send; if Resend throws, log and leave the flag null so tomorrow's run retries.
+Ended pass: users where trialEndsAt is in the past (within the last 48 hours, to avoid emailing ancient accounts on first deploy), trialEndedEmailSentAt IS NULL, same verified/chargeFree/not-subscribed conditions. Send the trial-ended email, set trialEndedEmailSentAt = now() on success only.
+Each user is processed independently: one failed send must not abort the loop. Log a per-run summary line in the same style as the reconciler's logs.
+Wire startTrialReminderService() in server/index.ts next to the existing cron service startups.
+
+
+
+In-app countdown: in the dashboard layout, when the user is in an active trial (trialEndsAt in the future) AND has no access-granting subscription AND is not chargeFree, show a slim persistent banner: "Trial: X day(s) left — Subscribe now" (compute days client-side from trialEndsAt, ceil, minimum "less than 1 day left" wording on the final day). The subscribe link goes to the account/billing page. Do not show it to subscribed or chargeFree users. Keep it visually light (informational tone until the last day, warning tone on the last day).
+Do NOT change trial length, trialEndsAt assignment, requireSubscription, or the subscription-required page.
+
+
+
+FIX 3 — Rate-limit the merchant login endpoint
+
+File: server/routes.ts.
+
+The gap: signupLimiter and pinValidationLimiter exist (via express-rate-limit) and admin login has DB-backed lockout, but POST /api/auth/login has no protection at all — merchant accounts (customer data + billing access) are brute-forceable at full speed.
+
+Requirements:
+
+
+Add a loginLimiter next to the existing limiters, matching their configuration style: window 15 minutes, max 10 attempts per IP, skipSuccessfulRequests: true (so legitimate users who log in successfully are never throttled — only failed attempts count), and a JSON error message consistent with the existing limiters (e.g. "Too many login attempts. Please try again in 15 minutes.").
+Apply it to POST /api/auth/login only. Do NOT touch POST /api/admin/login (it already has its own DB-backed lockout in adminSecurity) and do NOT touch the existing signup/PIN limiters.
+Verify the client login page surfaces the 429 error message to the user rather than a generic failure (check how it handles error responses; adjust the error display only if a 429 would currently render as something misleading).
+
+
+
+Definition of done (verify ALL before finishing)
+
+
+ All pre-existing billing tests pass PLUS the new gating/reconciler tests from FIX 1.
+ tsc --noEmit passes with zero errors.
+ A user with subscriptionStatus = 'past_due' can use the full dashboard, sees the payment-failed banner, and the banner's button opens the Stripe billing portal. A canceled or unpaid user is still locked out exactly as before.
+ The reconciler drift-checks past_due accounts, does not "promote" them, and when promoting a stale-inactive account writes the real Stripe status.
+ Migration adds trialReminderSentAt / trialEndedEmailSentAt; the 9 AM cron sends each email at most once per user, never to subscribed/chargeFree/unverified users, and retries next day on send failure.
+ Trial countdown banner shows for trial users only, with correct day math on the final day.
+ 11th failed login within 15 minutes from one IP returns 429 with a clear message; successful logins never count toward the limit; admin login untouched.
+ Final summary lists every === 'active' comparison site that was changed and how it was classified (access vs billing vs display).
+ No changes to: pricing values, webhook handlers, trial length, session handling, store logic, or anything not listed above.

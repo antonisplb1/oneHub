@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -31,8 +31,11 @@ import {
   Loader2,
   Store,
   ChevronDown,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { hasAccessGrantingSubscription } from "@/lib/subscription";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plus } from "lucide-react";
@@ -242,11 +245,40 @@ export default function DashboardLayout({ children, requiredProduct }: Dashboard
     !!activeStore &&
     !(activeStore.selectedProducts || []).includes(requiredProduct);
 
-  // Check if user has active subscription OR active trial (charge-free bypasses billing)
+  // Check if user has an access-granting subscription OR active trial (charge-free
+  // bypasses billing). "past_due" counts as access-granting so a merchant with a
+  // temporarily failing card keeps working during Stripe's retry grace window.
   const isChargeFree = user && user.chargeFree === true;
   const hasActiveTrial = user && user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
-  const hasActiveSubscription = user && user.subscriptionStatus === "active";
+  const hasActiveSubscription = user && hasAccessGrantingSubscription(user.subscriptionStatus);
+  const isPastDue = user && user.subscriptionStatus === "past_due";
   const hasAccess = isChargeFree || hasActiveSubscription || hasActiveTrial;
+
+  // Per-browser-session dismissal of the past-due banner so it doesn't nag on
+  // every page, but reappears on the next login until payment is fixed.
+  const [pastDueDismissed, setPastDueDismissed] = useState(
+    () => sessionStorage.getItem("pastDueBannerDismissed") === "true",
+  );
+
+  // Send the merchant to the Stripe customer portal to update their card.
+  const portalMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest<{ url: string }>('/api/stripe/create-portal-session', {
+        method: 'POST',
+      });
+      return res;
+    },
+    onSuccess: (data) => {
+      window.open(data.url, '_blank');
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Couldn't open billing portal",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // Upgrade mutation - creates checkout session with existing products
   const upgradeMutation = useMutation({
@@ -341,6 +373,52 @@ export default function DashboardLayout({ children, requiredProduct }: Dashboard
             </Button>
           </header>
           
+          {/* Past-due Banner: card payment is failing but Stripe is still
+              retrying, so the merchant keeps access while we nudge them to fix it. */}
+          {!isChargeFree && isPastDue && !pastDueDismissed && (
+            <Alert variant="destructive" className="mx-4 mt-4" data-testid="alert-past-due">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Your last payment didn't go through</span>
+                  <span className="text-sm">
+                    Please update your payment method to keep your subscription active.
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => portalMutation.mutate()}
+                    disabled={portalMutation.isPending}
+                    data-testid="button-update-payment"
+                  >
+                    {portalMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Update payment <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => {
+                      sessionStorage.setItem("pastDueBannerDismissed", "true");
+                      setPastDueDismissed(true);
+                    }}
+                    data-testid="button-dismiss-past-due"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Trial Status Banner */}
           {!isChargeFree && hasActiveTrial && !hasActiveSubscription && user.trialEndsAt && (
             <Alert className="mx-4 mt-4 border-primary/50 bg-primary/5" data-testid="alert-trial-status">
@@ -348,7 +426,12 @@ export default function DashboardLayout({ children, requiredProduct }: Dashboard
               <AlertDescription className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">
-                    Free Trial: {Math.ceil((new Date(user.trialEndsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining
+                    {(() => {
+                      const msLeft = new Date(user.trialEndsAt).getTime() - new Date().getTime();
+                      const days = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+                      if (msLeft < 1000 * 60 * 60 * 24) return "Free Trial: less than 1 day remaining";
+                      return `Free Trial: ${days} days remaining`;
+                    })()}
                   </span>
                   <span className="text-sm text-muted-foreground">
                     Subscribe now to continue using uniHub after your trial ends

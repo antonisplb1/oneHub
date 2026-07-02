@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { getCurrentUser, login, logout, signup } from "@/lib/api";
+import { hasAccessGrantingSubscription } from "@/lib/subscription";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -33,7 +34,7 @@ export function useAuth() {
       // Check if user has active subscription OR active trial (charge-free bypasses billing)
       const isChargeFree = user.chargeFree === true;
       const hasActiveTrial = user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
-      const hasActiveSubscription = user.subscriptionStatus === "active";
+      const hasActiveSubscription = hasAccessGrantingSubscription(user.subscriptionStatus);
       
       if (!isChargeFree && !hasActiveSubscription && !hasActiveTrial) {
         setLocation("/subscription-required");

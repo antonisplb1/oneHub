@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { hasAccessGrantingSubscription } from "@/lib/subscription";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +40,7 @@ export default function SelectProducts() {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
   const hasActiveTrial = user?.trialEndsAt && new Date(user.trialEndsAt) > new Date();
-  const hasActiveSubscription = user?.subscriptionStatus === "active";
+  const hasActiveSubscription = hasAccessGrantingSubscription(user?.subscriptionStatus);
 
   const selectProductsMutation = useMutation({
     mutationFn: async (products: string[]) => {

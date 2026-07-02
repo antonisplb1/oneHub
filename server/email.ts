@@ -89,6 +89,68 @@ export async function sendPasswordResetEmail(
   }
 }
 
+export async function sendTrialEndingSoonEmail(
+  email: string,
+  shopName: string,
+) {
+  try {
+    const { client, fromEmail } = getResendClient();
+    const accountUrl = `${getBaseUrl()}/dashboard/account`;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: email,
+      subject: "Your uniHub free trial ends soon",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #333;">Your free trial ends soon</h1>
+          <p style="color: #666; font-size: 16px;">Hi ${shopName},</p>
+          <p style="color: #666; font-size: 16px;">Your uniHub free trial ends in less than 24 hours. Subscribe now to keep your loyalty cards, spin wheel, menu, and shift tools running without interruption.</p>
+          <div style="margin: 30px 0;">
+            <a href="${accountUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Subscribe Now</a>
+          </div>
+          <p style="color: #999; font-size: 14px;">Or copy this link: ${accountUrl}</p>
+          <p style="color: #999; font-size: 14px;">Thanks for trying uniHub!</p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("Error sending trial-ending-soon email:", error);
+    throw new Error("Failed to send trial-ending-soon email");
+  }
+}
+
+export async function sendTrialEndedEmail(
+  email: string,
+  shopName: string,
+) {
+  try {
+    const { client, fromEmail } = getResendClient();
+    const accountUrl = `${getBaseUrl()}/dashboard/account`;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: email,
+      subject: "Your uniHub free trial has ended",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #333;">Your free trial has ended</h1>
+          <p style="color: #666; font-size: 16px;">Hi ${shopName},</p>
+          <p style="color: #666; font-size: 16px;">Your uniHub free trial has ended. Subscribe now to restore access to your dashboard and pick up right where you left off — your data is safe and waiting for you.</p>
+          <div style="margin: 30px 0;">
+            <a href="${accountUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Subscribe Now</a>
+          </div>
+          <p style="color: #999; font-size: 14px;">Or copy this link: ${accountUrl}</p>
+          <p style="color: #999; font-size: 14px;">We'd love to have you back!</p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("Error sending trial-ended email:", error);
+    throw new Error("Failed to send trial-ended email");
+  }
+}
+
 export async function sendSubuserInvitationEmail(
   email: string,
   shopName: string,

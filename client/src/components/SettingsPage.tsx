@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { hasAccessGrantingSubscription } from "@/lib/subscription";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -661,9 +662,11 @@ export default function SettingsPage() {
                   Status: <span className="font-semibold text-lg text-foreground">
                     {user?.chargeFree
                       ? "Charge-Free"
-                      : user?.subscriptionStatus === "active"
-                        ? "Active"
-                        : "Inactive"}
+                      : user?.subscriptionStatus === "past_due"
+                        ? "Payment Due"
+                        : hasAccessGrantingSubscription(user?.subscriptionStatus)
+                          ? "Active"
+                          : "Inactive"}
                   </span>
                 </p>
                 {!user?.chargeFree && user?.selectedProducts && user.selectedProducts.length > 0 && (
@@ -694,7 +697,7 @@ export default function SettingsPage() {
                   </p>
                 )}
               </div>
-              {!user?.chargeFree && user?.subscriptionStatus !== "active" && user?.selectedProducts && user.selectedProducts.length > 0 && (
+              {!user?.chargeFree && !hasAccessGrantingSubscription(user?.subscriptionStatus) && user?.selectedProducts && user.selectedProducts.length > 0 && (
                 <Button 
                   size="lg" 
                   onClick={() => subscribeMutation.mutate()}
@@ -707,7 +710,7 @@ export default function SettingsPage() {
                   }
                 </Button>
               )}
-              {!user?.chargeFree && user?.subscriptionStatus === "active" && (
+              {!user?.chargeFree && hasAccessGrantingSubscription(user?.subscriptionStatus) && (
                 <Button 
                   size="lg" 
                   variant="outline" 

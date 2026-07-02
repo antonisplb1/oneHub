@@ -28,6 +28,10 @@ export const users = pgTable("users", {
   chargeFree: boolean("charge_free").default(false),
   additionalStores: integer("additional_stores").default(0),
   lastLoginAt: timestamp("last_login_at"),
+  // Trial reminder bookkeeping: set once each corresponding email is sent so the
+  // daily job never double-emails a merchant.
+  trialReminderSentAt: timestamp("trial_reminder_sent_at"),
+  trialEndedEmailSentAt: timestamp("trial_ended_email_sent_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

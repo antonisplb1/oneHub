@@ -892,6 +892,64 @@ async function run() {
   assertEqual(!!jDupEntry?.error, true, "J6: duplicate live subs -> error entry");
   assertEqual(jDupEntry?.fixed, false, "J6: duplicate subs -> not auto-fixed");
   assertEqual((await getUser()).subscriptionStatus, "inactive", "J6: DB unchanged on duplicate subs");
+
+  // --- Scenario K: past_due grace access in the reconciler (FIX 1) -------------
+  // "past_due" is a live, access-granting status: Stripe is still retrying the
+  // payment, so we keep the merchant working. The reconciler must (a) heal a
+  // missed-webhook payment to the ACTUAL live status rather than forcing
+  // "active", and (b) never re-promote an account already reflected as past_due.
+  console.log("\n=== K. Reconcile respects past_due grace status (FIX 1) ===");
+
+  // K1: promotion persists the real live status. A missed webhook left the
+  // account inactive; Stripe reports the sub is past_due, so we promote to
+  // past_due (not "active") and store the subscription id.
+  await setInactivePaid();
+  const kPastDueSpy = makePromoteStripe(jCustomer, [{ id: jSub, status: "past_due" }]);
+  const kPastDue = await reconcileBilling(kPastDueSpy.stripe);
+  const kPastDueEntry = kPastDue.promoted.find((p) => p.userId === userId);
+  assertEqual(kPastDueEntry?.fixed, true, "K1: past_due sub promoted");
+  assertEqual((await getUser()).subscriptionStatus, "past_due", "K1: DB set to the actual past_due status");
+  assertEqual((await getUser()).stripeSubscriptionId, jSub, "K1: stored the live subscription id");
+
+  // K2: an account ALREADY reflected as past_due with its subscription id on file
+  // is in sync with Stripe and must NOT be treated as a promotion candidate (so
+  // it is never needlessly re-promoted / re-queried against Stripe).
+  await db
+    .update(users)
+    .set({
+      subscriptionStatus: "past_due",
+      stripeSubscriptionId: jSub,
+      stripeCustomerId: jCustomer,
+      chargeFree: false,
+    })
+    .where(eq(users.id, userId));
+  const kSyncedSpy = makePromoteStripe(jCustomer, [{ id: jSub, status: "active" }]);
+  const kSynced = await reconcileBilling(kSyncedSpy.stripe);
+  assertEqual(kSynced.promoted.some((p) => p.userId === userId), false, "K2: past_due account not re-promoted");
+  assertEqual(kSyncedSpy.listedCustomers.includes(jCustomer), false, "K2: synced past_due account not re-queried against Stripe");
+  assertEqual((await getUser()).subscriptionStatus, "past_due", "K2: DB stays past_due");
+  assertEqual((await getUser()).stripeSubscriptionId, jSub, "K2: sub id preserved");
+
+  // K3: a DB account marked past_due whose Stripe sub is actually dead is now a
+  // demotion candidate (the candidate scan covers all live statuses, not just
+  // "active") and gets healed to inactive.
+  await db
+    .update(users)
+    .set({
+      subscriptionStatus: "past_due",
+      stripeSubscriptionId: ourSub,
+      stripeCustomerId: null,
+      chargeFree: false,
+      trialEndsAt: null,
+      customPrice: null,
+    })
+    .where(eq(users.id, userId));
+  const kDeadSpy = makeReconcileStripe(ourSub, 3699, { ourStatus: "canceled" });
+  const kDead = await reconcileBilling(kDeadSpy.stripe);
+  const kDeadEntry = kDead.deactivated.find((d) => d.userId === userId);
+  assertEqual(kDeadEntry?.fixed, true, "K3: dead sub on a past_due account healed");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "K3: DB flipped to inactive");
+  assertEqual((await getUser()).stripeSubscriptionId, null, "K3: stale sub id cleared");
 }
 
 async function cleanup() {

@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupAuth } from "./auth";
 import { startCleanupService } from "./cleanup";
+import { startTrialReminderService } from "./trialReminders";
 import { seedAdminPassword } from "./adminSeed";
 import { seedDemoAccount } from "./demoSeed";
 import { runStoreMigration } from "./storeMigration";
@@ -76,6 +77,9 @@ app.use((req, res, next) => {
 
   // Start cleanup service for unverified accounts
   startCleanupService();
+
+  // Start daily trial reminder emails (ending-soon + ended follow-up)
+  startTrialReminderService();
 
   if (app.get("env") === "development") {
     await setupVite(app, server);

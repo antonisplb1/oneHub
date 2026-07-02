@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { hasAccessGrantingSubscription } from "@/lib/subscription";
 import { AlertCircle, Ticket, Gift, UtensilsCrossed, Calendar, Loader2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -53,7 +54,7 @@ export default function SubscriptionRequired() {
   }, [user]);
 
   const hasExpiredTrial = user?.trialEndsAt && new Date(user.trialEndsAt) <= new Date();
-  const isTrialExpired = hasExpiredTrial && user?.subscriptionStatus !== "active";
+  const isTrialExpired = hasExpiredTrial && !hasAccessGrantingSubscription(user?.subscriptionStatus);
 
   // An admin can override the monthly price (customPrice, in cents). When set it
   // is exactly what Stripe charges at checkout, so show that amount, labeled.

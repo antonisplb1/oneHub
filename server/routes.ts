@@ -50,7 +50,7 @@ import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { requirePermission, ownerOnly } from "./permissions";
-import { calculateProductPrice, getProductDescription, syncBillingFromStores as syncBillingFromStoresImpl, reconcileBilling, applyStoreUpdate, applyCustomPrice, applyStatusChange, cancelStripeSubscription } from "./billing";
+import { calculateProductPrice, getProductDescription, syncBillingFromStores as syncBillingFromStoresImpl, reconcileBilling, applyStoreUpdate, applyCustomPrice, applyStatusChange, cancelStripeSubscription, hasAccessGrantingSubscription } from "./billing";
 import { startReconciliationService } from "./reconcile";
 
 // Use test keys in development, production keys in production
@@ -109,7 +109,7 @@ function requireSubscription(req: Request, res: Response, next: Function) {
   }
 
   const isChargeFree = req.user!.chargeFree === true;
-  const hasActiveSubscription = req.user!.subscriptionStatus === "active";
+  const hasActiveSubscription = hasAccessGrantingSubscription(req.user!.subscriptionStatus);
   const hasActiveTrial = req.user!.trialEndsAt && new Date(req.user!.trialEndsAt) > new Date();
 
   if (isChargeFree || hasActiveSubscription || hasActiveTrial) {
@@ -204,6 +204,19 @@ const signupLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   // Skip rate limiting for successful signups (only count failed attempts)
+  skipSuccessfulRequests: true,
+});
+
+// Rate limiter for login endpoint - throttles credential-stuffing / brute-force
+// password guessing. Successful logins are not counted, so a legitimate merchant
+// logging in normally is never blocked; only repeated failed attempts add up.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 failed login attempts per windowMs
+  message: { error: "Too many login attempts from this IP, please try again after 15 minutes" },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Only count failed logins toward the limit.
   skipSuccessfulRequests: true,
 });
 
@@ -353,7 +366,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/auth/login", (req, res, next) => {
+  app.post("/api/auth/login", loginLimiter, (req, res, next) => {
     try {
       loginSchema.parse(req.body);
     } catch (error: any) {

@@ -6,7 +6,22 @@
 // touching the live Stripe API.
 import { db } from "./db";
 import { users, stores } from "@shared/schema";
-import { eq, asc, and, isNotNull, isNull, ne, or } from "drizzle-orm";
+import { eq, asc, and, isNotNull, isNull, or, inArray, notInArray } from "drizzle-orm";
+
+// Stripe subscription statuses that represent a genuinely live subscription:
+// one Stripe is still honoring, so we grant the merchant paid access. "past_due"
+// is intentionally included — Stripe keeps retrying a failed payment for a grace
+// window, and cutting the merchant off the moment a card fails (before Stripe has
+// given up) would lock out a paying customer over a transient billing hiccup.
+const LIVE_STRIPE_STATUSES = ['active', 'trialing', 'past_due'];
+
+// True when a subscription status should grant the merchant paid access. This is
+// the single source of truth shared by access gating (requireSubscription),
+// billing gating (isBillableAccount / syncBillingFromStores) and the reconciler,
+// so all three agree on exactly which statuses count as "live".
+export function hasAccessGrantingSubscription(status: string | null | undefined): boolean {
+  return !!status && LIVE_STRIPE_STATUSES.includes(status);
+}
 
 // Product pricing configuration (cents)
 export const PRODUCT_PRICES = {
@@ -130,7 +145,7 @@ export async function syncBillingFromStores(
   if (syncStripe) {
     const isChargeFree = updatedUser.chargeFree === true;
     const inTrial = updatedUser.trialEndsAt && new Date(updatedUser.trialEndsAt) > new Date();
-    const hasActiveSub = updatedUser.subscriptionStatus === 'active' && updatedUser.stripeSubscriptionId;
+    const hasActiveSub = hasAccessGrantingSubscription(updatedUser.subscriptionStatus) && updatedUser.stripeSubscriptionId;
     if (!isChargeFree && !inTrial && hasActiveSub) {
       try {
         const newPrice = updatedUser.customPrice ?? calculateProductPrice(baseProducts, additionalStores);
@@ -220,7 +235,7 @@ export function expectedPriceForUser(user: typeof users.$inferSelect): number {
 export function isBillableAccount(user: typeof users.$inferSelect): boolean {
   const isChargeFree = user.chargeFree === true;
   const inTrial = !!user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
-  const hasActiveSub = user.subscriptionStatus === 'active' && !!user.stripeSubscriptionId;
+  const hasActiveSub = hasAccessGrantingSubscription(user.subscriptionStatus) && !!user.stripeSubscriptionId;
   return !isChargeFree && !inTrial && hasActiveSub;
 }
 
@@ -307,10 +322,6 @@ export interface StatusChangeResult {
 //                  and clear stripeSubscriptionId, so Stripe never keeps charging
 //                  a merchant we report as not actively billed. Because the sub
 //                  is cleared, reconcile correctly ignores the account.
-// Stripe subscription statuses that represent a genuinely live subscription we
-// can honestly mark our account "active" against.
-const LIVE_STRIPE_STATUSES = ['active', 'trialing', 'past_due'];
-
 export async function applyStatusChange(
   stripe: BillingStripe & CancelableStripe,
   userId: string,
@@ -442,7 +453,7 @@ export async function reconcileBilling(
   const candidates = await db
     .select()
     .from(users)
-    .where(and(eq(users.subscriptionStatus, 'active'), isNotNull(users.stripeSubscriptionId)));
+    .where(and(inArray(users.subscriptionStatus, LIVE_STRIPE_STATUSES), isNotNull(users.stripeSubscriptionId)));
 
   // Correct an account that is "active" here but whose Stripe subscription is not
   // actually live: mark it inactive and clear the stale id so we stop granting
@@ -555,7 +566,12 @@ export async function reconcileBilling(
     .where(
       and(
         isNotNull(users.stripeCustomerId),
-        or(ne(users.subscriptionStatus, 'active'), isNull(users.stripeSubscriptionId)),
+        // A merchant already reflected as live (active / trialing / past_due) with
+        // a subscription id on file is in sync with Stripe and must NOT be treated
+        // as a promotion candidate — otherwise a past_due grace account would be
+        // needlessly re-promoted. Only accounts NOT reflected as live, or missing
+        // their subscription id, are candidates for missed-webhook healing.
+        or(notInArray(users.subscriptionStatus, LIVE_STRIPE_STATUSES), isNull(users.stripeSubscriptionId)),
       ),
     );
 
@@ -600,6 +616,10 @@ export async function reconcileBilling(
     }
 
     const subscriptionId: string = live[0].id;
+    // Persist the ACTUAL live Stripe status (active / trialing / past_due) rather
+    // than assuming "active" — a missed webhook can leave us behind on a sub that
+    // is genuinely past_due or trialing, and forcing "active" would misreport it.
+    const liveStatus: string = live[0].status;
     const entry: ReconciliationPromotion = {
       userId: user.id,
       email: user.email,
@@ -611,11 +631,11 @@ export async function reconcileBilling(
       try {
         await db
           .update(users)
-          .set({ subscriptionStatus: 'active', stripeSubscriptionId: subscriptionId })
+          .set({ subscriptionStatus: liveStatus, stripeSubscriptionId: subscriptionId })
           .where(eq(users.id, user.id));
         entry.fixed = true;
         console.warn(
-          `[Reconcile] Promoted ${user.email}: live Stripe subscription "${subscriptionId}" found but account was inactive (webhook likely missed)`,
+          `[Reconcile] Promoted ${user.email}: live Stripe subscription "${subscriptionId}" (${liveStatus}) found but account was not reflected as live (webhook likely missed)`,
         );
       } catch (err) {
         entry.error = err instanceof Error ? err.message : String(err);
