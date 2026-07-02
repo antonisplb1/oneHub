@@ -2,11 +2,11 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users, subusers, insertUserSchema, type User as SelectUser, type Subuser } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq } from "drizzle-orm";
 
 export function generateToken(): string {
@@ -14,7 +14,7 @@ export function generateToken(): string {
 }
 
 const scryptAsync = promisify(scrypt);
-const MemoryStore = createMemoryStore(session);
+const PgStore = connectPgSimple(session);
 
 export type User = SelectUser;
 
@@ -58,8 +58,21 @@ export async function comparePasswords(
 }
 
 export function setupAuth(app: Express) {
+  // Sessions are persisted in Postgres (via connect-pg-simple on the SAME pool the
+  // app already uses) so they survive server restarts/redeploys — frequent on
+  // Replit hosting. An in-memory store would log every merchant/subuser/admin out
+  // on every restart.
+  const isProduction = app.get("env") === "production" || process.env.NODE_ENV === "production";
+  const sessionSecret = process.env.SESSION_SECRET;
+  // Fail fast in production: a missing secret must never silently fall back to a
+  // known string, or anyone could forge a valid session cookie for any user.
+  if (isProduction && !sessionSecret) {
+    throw new Error(
+      "SESSION_SECRET must be set in production. Refusing to start with an insecure fallback secret.",
+    );
+  }
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "merchant-hub-secret-key-change-in-production",
+    secret: sessionSecret || "merchant-hub-dev-only-secret",
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -68,8 +81,10 @@ export function setupAuth(app: Express) {
       sameSite: "lax",
       secure: app.get("env") === "production",
     },
-    store: new MemoryStore({
-      checkPeriod: 86400000,
+    store: new PgStore({
+      pool,
+      tableName: "sessions",
+      createTableIfMissing: false, // the table already exists via the Drizzle schema
     }),
   };
 

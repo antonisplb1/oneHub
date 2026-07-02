@@ -1,0 +1,1 @@
+ALTER TABLE "menu_items" ALTER COLUMN "price" SET DATA TYPE integer USING ROUND("price" * 100)::integer;

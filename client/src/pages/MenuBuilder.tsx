@@ -36,7 +36,17 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 type CategoryFormValues = z.infer<typeof insertMenuCategorySchema>;
-type ItemFormValues = z.infer<typeof insertMenuItemSchema>;
+// The merchant types a euro decimal (e.g. "9.99") into the form; it is converted
+// to integer cents on submit. The stored/API value (MenuItemPayload) is always
+// integer cents.
+const itemFormSchema = insertMenuItemSchema.extend({
+  price: z
+    .string()
+    .min(1, "Price is required")
+    .refine((v) => !Number.isNaN(parseFloat(v)) && parseFloat(v) >= 0, "Enter a valid price"),
+});
+type ItemFormValues = z.infer<typeof itemFormSchema>;
+type MenuItemPayload = z.infer<typeof insertMenuItemSchema>;
 
 interface SortableItemProps {
   item: MenuItem;
@@ -80,7 +90,7 @@ function SortableItem({ item, onEdit, onDelete }: SortableItemProps) {
             {item.name}
           </h4>
           <span className="text-sm font-semibold text-primary" data-testid={`item-price-${item.id}`}>
-            €{item.price.toFixed(2)}
+            €{(item.price / 100).toFixed(2)}
           </span>
         </div>
         {item.description && (
@@ -133,12 +143,12 @@ export default function MenuBuilder() {
   });
 
   const itemForm = useForm<ItemFormValues>({
-    resolver: zodResolver(insertMenuItemSchema),
+    resolver: zodResolver(itemFormSchema),
     defaultValues: {
       categoryId: "",
       name: "",
       description: "",
-      price: 0,
+      price: "",
       imageUrl: "",
       displayOrder: 0,
     },
@@ -232,7 +242,7 @@ export default function MenuBuilder() {
   });
 
   const createItemMutation = useMutation({
-    mutationFn: async (data: ItemFormValues) => {
+    mutationFn: async (data: MenuItemPayload) => {
       return apiRequest("/api/menu-items", {
         method: "POST",
         body: JSON.stringify(data),
@@ -257,7 +267,7 @@ export default function MenuBuilder() {
   });
 
   const updateItemMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: ItemFormValues }) => {
+    mutationFn: async ({ id, data }: { id: string; data: MenuItemPayload }) => {
       return apiRequest(`/api/menu-items/${id}`, {
         method: "PUT",
         body: JSON.stringify(data),
@@ -357,7 +367,7 @@ export default function MenuBuilder() {
       categoryId,
       name: "",
       description: "",
-      price: 0,
+      price: "",
       imageUrl: "",
       displayOrder: nextDisplayOrder,
     });
@@ -371,7 +381,7 @@ export default function MenuBuilder() {
       categoryId: item.categoryId,
       name: item.name,
       description: item.description || "",
-      price: item.price,
+      price: (item.price / 100).toFixed(2),
       imageUrl: item.imageUrl || "",
       displayOrder: item.displayOrder || 0,
     });
@@ -387,10 +397,15 @@ export default function MenuBuilder() {
   };
 
   const onItemSubmit = (data: ItemFormValues) => {
+    // Convert the euro-decimal input to integer cents at the edge.
+    const payload: MenuItemPayload = {
+      ...data,
+      price: Math.round(parseFloat(data.price) * 100),
+    };
     if (editingItem) {
-      updateItemMutation.mutate({ id: editingItem.id, data });
+      updateItemMutation.mutate({ id: editingItem.id, data: payload });
     } else {
-      createItemMutation.mutate(data);
+      createItemMutation.mutate(payload);
     }
   };
 
@@ -718,7 +733,6 @@ export default function MenuBuilder() {
                         placeholder="0.00"
                         data-testid="input-item-price"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormMessage />

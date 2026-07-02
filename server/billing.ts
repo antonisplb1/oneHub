@@ -6,7 +6,7 @@
 // touching the live Stripe API.
 import { db } from "./db";
 import { users, stores } from "@shared/schema";
-import { eq, asc, and, isNotNull } from "drizzle-orm";
+import { eq, asc, and, isNotNull, isNull, ne, or } from "drizzle-orm";
 
 // Product pricing configuration (cents)
 export const PRODUCT_PRICES = {
@@ -61,6 +61,7 @@ export interface BillingStripe {
   subscriptions: {
     retrieve(id: string): Promise<any>;
     update(id: string, params: any): Promise<any>;
+    list(params: any): Promise<any>;
   };
 }
 
@@ -393,12 +394,27 @@ export interface ReconciliationDeactivation {
   error?: string;
 }
 
+// A paid account that stayed "inactive" here because a Stripe webhook was missed
+// (network failure, deploy during delivery, ...). Stripe shows a live
+// subscription the DB never recorded, so the account is healed to "active".
+export interface ReconciliationPromotion {
+  userId: string;
+  email: string;
+  // The live Stripe subscription id we found (empty when it could not be applied,
+  // e.g. duplicate live subscriptions requiring human review).
+  subscriptionId: string;
+  fixed: boolean;
+  error?: string;
+}
+
 export interface ReconciliationResult {
   checked: number;
   inSync: number;
   drift: ReconciliationDrift[];
   // Accounts that were "active" here but dead in Stripe, and were corrected.
   deactivated: ReconciliationDeactivation[];
+  // Accounts that were paid in Stripe but stuck "inactive" here, and were healed.
+  promoted: ReconciliationPromotion[];
 }
 
 // Detect (and optionally correct) accounts whose live Stripe subscription price
@@ -419,7 +435,7 @@ export async function reconcileBilling(
   opts: { dryRun?: boolean } = {},
 ): Promise<ReconciliationResult> {
   const { dryRun = false } = opts;
-  const result: ReconciliationResult = { checked: 0, inSync: 0, drift: [], deactivated: [] };
+  const result: ReconciliationResult = { checked: 0, inSync: 0, drift: [], deactivated: [], promoted: [] };
 
   // Only pull candidates that could possibly be billable. The full per-account
   // gating still runs below; this just keeps us from scanning every row.
@@ -527,13 +543,102 @@ export async function reconcileBilling(
     result.drift.push(entry);
   }
 
-  if (result.drift.length > 0 || result.deactivated.length > 0) {
+  // Promotion pass — heal the OTHER direction. The demotion loop above can only
+  // pull "active" accounts. If a merchant PAID but the checkout.session.completed
+  // webhook was missed (network failure, deploy during delivery, ...), they stay
+  // "inactive" with no stripeSubscriptionId forever. Here we look for accounts
+  // that have a Stripe customer but are not reflected as active, and promote them
+  // when Stripe confirms a genuinely live subscription.
+  const promotionCandidates = await db
+    .select()
+    .from(users)
+    .where(
+      and(
+        isNotNull(users.stripeCustomerId),
+        or(ne(users.subscriptionStatus, 'active'), isNull(users.stripeSubscriptionId)),
+      ),
+    );
+
+  for (const user of promotionCandidates) {
+    // Charge-free accounts must never be promoted into billing.
+    if (user.chargeFree === true) continue;
+
+    let subs: any;
+    try {
+      subs = await stripe.subscriptions.list({
+        customer: user.stripeCustomerId!,
+        status: 'all',
+        limit: 10,
+      });
+    } catch (err) {
+      // Transient-error guard: a Stripe outage must never cause mass changes.
+      // Log and skip WITHOUT touching the account.
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Reconcile] Failed to list Stripe subscriptions for ${user.email}: ${msg}`);
+      continue;
+    }
+
+    const live = ((subs?.data ?? []) as any[]).filter(
+      (s) => typeof s?.status === 'string' && LIVE_STRIPE_STATUSES.includes(s.status),
+    );
+    if (live.length === 0) continue;
+
+    // Duplicate live subscriptions on one customer must never be auto-fixed — a
+    // human has to resolve which one is correct.
+    if (live.length > 1) {
+      console.error(
+        `[Reconcile] ${user.email} has ${live.length} live Stripe subscriptions — refusing to auto-promote, needs manual review`,
+      );
+      result.promoted.push({
+        userId: user.id,
+        email: user.email,
+        subscriptionId: '',
+        fixed: false,
+        error: `Multiple live Stripe subscriptions (${live.length}) — manual review required`,
+      });
+      continue;
+    }
+
+    const subscriptionId: string = live[0].id;
+    const entry: ReconciliationPromotion = {
+      userId: user.id,
+      email: user.email,
+      subscriptionId,
+      fixed: false,
+    };
+
+    if (!dryRun) {
+      try {
+        await db
+          .update(users)
+          .set({ subscriptionStatus: 'active', stripeSubscriptionId: subscriptionId })
+          .where(eq(users.id, user.id));
+        entry.fixed = true;
+        console.warn(
+          `[Reconcile] Promoted ${user.email}: live Stripe subscription "${subscriptionId}" found but account was inactive (webhook likely missed)`,
+        );
+      } catch (err) {
+        entry.error = err instanceof Error ? err.message : String(err);
+        console.error(`[Reconcile] Failed to promote ${user.email}: ${entry.error}`);
+      }
+    } else {
+      console.warn(
+        `[Reconcile] Would promote ${user.email}: live Stripe subscription "${subscriptionId}" found but account was inactive`,
+      );
+    }
+
+    result.promoted.push(entry);
+  }
+
+  if (result.drift.length > 0 || result.deactivated.length > 0 || result.promoted.length > 0) {
     const fixedDrift = result.drift.filter((d) => d.fixed).length;
     const fixedDead = result.deactivated.filter((d) => d.fixed).length;
+    const fixedPromoted = result.promoted.filter((p) => p.fixed).length;
     console.warn(
       `[Reconcile] Finished: ${result.checked} checked, ${result.inSync} in sync, ` +
         `${result.drift.length} price-drifted${dryRun ? '' : ` (${fixedDrift} corrected)`}, ` +
-        `${result.deactivated.length} dead subscription(s)${dryRun ? '' : ` (${fixedDead} deactivated)`}` +
+        `${result.deactivated.length} dead subscription(s)${dryRun ? '' : ` (${fixedDead} deactivated)`}, ` +
+        `${result.promoted.length} promotable${dryRun ? '' : ` (${fixedPromoted} promoted)`}` +
         `${dryRun ? ' (dry run, none changed)' : ''}`,
     );
   } else {

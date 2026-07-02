@@ -195,7 +195,7 @@ export const menuItems = pgTable("menu_items", {
   categoryId: varchar("category_id").references(() => menuCategories.id, { onDelete: "cascade" }).notNull(),
   name: text("name").notNull(),
   description: text("description"),
-  price: real("price").notNull(),
+  price: integer("price").notNull(), // euro cents (e.g. €9.99 -> 999)
   imageUrl: text("image_url"),
   imageStorageKey: text("image_storage_key"),
   displayOrder: integer("display_order").default(0),
@@ -294,7 +294,9 @@ export const insertMenuCategorySchema = createInsertSchema(menuCategories).omit(
   createdAt: true,
 });
 
-export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
+export const insertMenuItemSchema = createInsertSchema(menuItems, {
+  price: z.number().int().min(0), // price is euro cents, never a float
+}).omit({
   id: true,
   userId: true,
   storeId: true,

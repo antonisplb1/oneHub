@@ -74,6 +74,7 @@ function makeStripeSpy() {
         });
         return {};
       },
+      list: async () => ({ data: [] }),
     },
   };
   return { stripe, calls };
@@ -86,6 +87,9 @@ function makeThrowingStripe() {
     subscriptions: {
       retrieve: async () => ({ items: { data: [{ id: "si_test_item" }] } }),
       update: async () => {
+        throw new Error("simulated Stripe outage");
+      },
+      list: async () => {
         throw new Error("simulated Stripe outage");
       },
     },
@@ -130,6 +134,9 @@ function makeReconcileStripe(
         currentById.set(id, amount);
         return {};
       },
+      // No promotion candidates in these scenarios — return an empty list so the
+      // promotion pass is a guaranteed no-op for every account.
+      list: async () => ({ data: [] }),
     },
   };
   const ourUpdates = () => updatesById.get(ourSubId) ?? [];
@@ -161,6 +168,7 @@ function makeCancelSpy(
         return { id, status: opts.subStatus ?? "active", items: { data: [{ id: `si_${id}` }] } };
       },
       update: async () => ({}),
+      list: async () => ({ data: [] }),
       cancel: async (id: string) => {
         if (opts.throwCode || opts.throwMessage) {
           const err: any = new Error(opts.throwMessage ?? "simulated cancel failure");
@@ -173,6 +181,36 @@ function makeCancelSpy(
     },
   };
   return { stripe, canceled };
+}
+
+// A Stripe spy for the reconciler's PROMOTION pass. It returns a configurable set
+// of subscriptions for OUR customer id (and an empty list for every other account
+// in the shared test DB) so assertions focus on our account alone. `listThrow`
+// simulates a Stripe outage on subscriptions.list. `listedCustomers` records which
+// customers were actually queried (used to prove charge-free accounts are never
+// queried). retrieve/update exist only to satisfy the demotion loop harmlessly.
+function makePromoteStripe(
+  ourCustomerId: string,
+  ourSubs: { id: string; status: string }[],
+  opts: { listThrow?: boolean } = {},
+) {
+  const listedCustomers: string[] = [];
+  const stripe: BillingStripe = {
+    subscriptions: {
+      retrieve: async (id: string) => ({
+        status: "active",
+        items: { data: [{ id: `si_${id}`, price: { unit_amount: 0 } }] },
+      }),
+      update: async () => ({}),
+      list: async (params: any) => {
+        listedCustomers.push(params.customer);
+        if (opts.listThrow) throw new Error("simulated Stripe list outage");
+        if (params.customer === ourCustomerId) return { data: ourSubs };
+        return { data: [] };
+      },
+    },
+  };
+  return { stripe, listedCustomers };
 }
 
 let userId = "";
@@ -777,6 +815,83 @@ async function run() {
   const h10 = await applyStatusChange(spyH10.stripe, userId, "active");
   assertEqual(!!h10.stripeError, true, "H10: active verify Stripe outage -> stripeError");
   assertEqual((await getUser()).subscriptionStatus, "inactive", "H10: DB status unchanged on outage");
+
+  // --- Scenario J: reconciler promotion pass (heal missed-webhook payments) ---
+  // A merchant who PAID but whose checkout webhook was missed stays "inactive"
+  // with no stripeSubscriptionId. The reconciler must promote them when Stripe
+  // confirms a live subscription, and must never do so on charge-free accounts,
+  // on Stripe outages, or when duplicate live subscriptions exist.
+  console.log("\n=== J. Reconcile promotion pass (missed-webhook healing) ===");
+  const jCustomer = `cus_${slugPrefix}`;
+  const jSub = `sub_promote_${slugPrefix}`;
+  const setInactivePaid = async (extra: Partial<typeof users.$inferInsert> = {}) => {
+    await db
+      .update(users)
+      .set({
+        subscriptionStatus: "inactive",
+        stripeSubscriptionId: null,
+        stripeCustomerId: jCustomer,
+        chargeFree: false,
+        ...extra,
+      })
+      .where(eq(users.id, userId));
+  };
+
+  // J1: dryRun reports the promotable account but changes nothing in the DB.
+  await setInactivePaid();
+  const jDrySpy = makePromoteStripe(jCustomer, [{ id: jSub, status: "active" }]);
+  const jDry = await reconcileBilling(jDrySpy.stripe, { dryRun: true });
+  const jDryEntry = jDry.promoted.find((p) => p.userId === userId);
+  assertEqual(!!jDryEntry, true, "J1: dry run flags the promotable account");
+  assertEqual(jDryEntry?.subscriptionId, jSub, "J1: reports the live subscription id");
+  assertEqual(jDryEntry?.fixed, false, "J1: dry run marks it not-fixed");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "J1: DB still inactive on dry run");
+  assertEqual((await getUser()).stripeSubscriptionId, null, "J1: sub id still null on dry run");
+
+  // J2: a live run promotes the account and stores the found subscription id.
+  await setInactivePaid();
+  const jFixSpy = makePromoteStripe(jCustomer, [{ id: jSub, status: "active" }]);
+  const jFix = await reconcileBilling(jFixSpy.stripe);
+  const jFixEntry = jFix.promoted.find((p) => p.userId === userId);
+  assertEqual(jFixEntry?.fixed, true, "J2: promotion applied");
+  assertEqual((await getUser()).subscriptionStatus, "active", "J2: DB flipped to active");
+  assertEqual((await getUser()).stripeSubscriptionId, jSub, "J2: stored the live subscription id");
+
+  // J3: only non-live subscriptions (e.g. canceled) -> not promoted, DB unchanged.
+  await setInactivePaid();
+  const jNoneSpy = makePromoteStripe(jCustomer, [{ id: jSub, status: "canceled" }]);
+  const jNone = await reconcileBilling(jNoneSpy.stripe);
+  assertEqual(jNone.promoted.some((p) => p.userId === userId), false, "J3: no live sub -> not promoted");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "J3: DB unchanged with no live sub");
+
+  // J4: charge-free accounts are never promoted AND never even queried in Stripe.
+  await setInactivePaid({ chargeFree: true });
+  const jFreeSpy = makePromoteStripe(jCustomer, [{ id: jSub, status: "active" }]);
+  const jFree = await reconcileBilling(jFreeSpy.stripe);
+  assertEqual(jFree.promoted.some((p) => p.userId === userId), false, "J4: charge-free never promoted");
+  assertEqual(jFreeSpy.listedCustomers.includes(jCustomer), false, "J4: charge-free never queried against Stripe");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "J4: charge-free DB unchanged");
+
+  // J5: a Stripe outage on subscriptions.list leaves the account untouched.
+  await setInactivePaid();
+  const jThrowSpy = makePromoteStripe(jCustomer, [{ id: jSub, status: "active" }], { listThrow: true });
+  const jThrow = await reconcileBilling(jThrowSpy.stripe);
+  assertEqual(jThrow.promoted.some((p) => p.userId === userId), false, "J5: list outage -> not promoted");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "J5: DB unchanged on list outage");
+  assertEqual((await getUser()).stripeSubscriptionId, null, "J5: sub id still null on list outage");
+
+  // J6: two live subscriptions on one customer -> error entry, never auto-fixed.
+  await setInactivePaid();
+  const jSub2 = `sub_promote2_${slugPrefix}`;
+  const jDupSpy = makePromoteStripe(jCustomer, [
+    { id: jSub, status: "active" },
+    { id: jSub2, status: "active" },
+  ]);
+  const jDup = await reconcileBilling(jDupSpy.stripe);
+  const jDupEntry = jDup.promoted.find((p) => p.userId === userId);
+  assertEqual(!!jDupEntry?.error, true, "J6: duplicate live subs -> error entry");
+  assertEqual(jDupEntry?.fixed, false, "J6: duplicate subs -> not auto-fixed");
+  assertEqual((await getUser()).subscriptionStatus, "inactive", "J6: DB unchanged on duplicate subs");
 }
 
 async function cleanup() {

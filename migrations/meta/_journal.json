@@ -15,6 +15,13 @@
       "when": 1782822369263,
       "tag": "0001_stormy_thena",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782978649315,
+      "tag": "0002_menu_price_cents",
+      "breakpoints": true
     }
   ]
 }

@@ -98,10 +98,11 @@ export default function PublicMenu() {
   });
 
   const formatPrice = (price: number) => {
+    // price is integer euro cents (e.g. 999 -> €9.99)
     return new Intl.NumberFormat('en-IE', {
       style: 'currency',
       currency: 'EUR',
-    }).format(price);
+    }).format(price / 100);
   };
 
   // Set initial active category
