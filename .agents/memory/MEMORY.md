@@ -5,3 +5,4 @@
 - [past_due grace access](past-due-grace-access.md) — past_due is access-granting; every access gate (server + client) must use hasAccessGrantingSubscription, never `=== "active"`.
 - [Active-store header leaks across logout](active-store-header-session.md) — login AND logout must clear localStorage.activeStoreId or the stale X-Store-Id header 403s the next account.
 - [Wallet logo fetch asymmetry](wallet-logo-fetch.md) — Google servers fetch the logo URL, but our backend fetches it for Apple passes; keep the Apple loader https-only + placeholder fallback (SSRF).
+- [Google Wallet class patch review-status](google-wallet-class-patch.md) — every loyaltyclass patch must resend reviewStatus 'UNDER_REVIEW' or Google rejects it and branding silently never updates.

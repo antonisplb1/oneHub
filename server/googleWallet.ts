@@ -192,6 +192,10 @@ export class GoogleWalletService {
 
     const patchBody: any = {
       id: classId,
+      // A class that is already APPROVED cannot be re-submitted as APPROVED;
+      // any write must (re)set a settable review status, otherwise Google
+      // rejects the patch with "Invalid review status 'APPROVED'".
+      reviewStatus: 'UNDER_REVIEW',
       issuerName: shopName,
       programName: displayName || shopName,
       programLogo: {
