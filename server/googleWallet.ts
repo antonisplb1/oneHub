@@ -16,6 +16,17 @@ export interface LoyaltyPassData {
   customerQrCode: string;
 }
 
+// Thrown by sendMessage when a store's loyalty class does not exist yet — i.e.
+// no customer has added the store's pass to Google Wallet, so there is no one to
+// notify. Callers use this to return a friendly 400 instead of a raw 500.
+export class LoyaltyClassNotFoundError extends Error {
+  readonly noWalletHolders = true;
+  constructor(classId: string) {
+    super(`Loyalty class ${classId} not found`);
+    this.name = 'LoyaltyClassNotFoundError';
+  }
+}
+
 export class GoogleWalletService {
   private issuerId: string;
   private credentials: ServiceAccountCredentials;
@@ -62,9 +73,16 @@ export class GoogleWalletService {
     });
   }
 
+  // The single source of truth for loyalty classIds. The sanitization rule
+  // (hyphens -> underscores) must never change — classes already registered in
+  // Google's system were created with it.
+  getClassId(storeId: string): string {
+    return `${this.issuerId}.loyalty_${storeId.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+  }
+
   async createLoyaltyClass(storeId: string, shopName: string, logoUrl?: string | null, cardBackgroundColor?: string | null) {
     // Class is scoped per store — one Google Wallet class per store
-    const classId = `${this.issuerId}.loyalty_${storeId.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+    const classId = this.getClassId(storeId);
 
     try {
       await this.client.loyaltyclass.get({ resourceId: classId });
@@ -248,6 +266,17 @@ export class GoogleWalletService {
 
     if (header) {
       message.header = header;
+    }
+
+    // A message can only be added to a class that already exists, i.e. at least
+    // one customer has saved this store's pass. Otherwise Google returns 404.
+    try {
+      await this.client.loyaltyclass.get({ resourceId: classId });
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        throw new LoyaltyClassNotFoundError(classId);
+      }
+      throw err;
     }
 
     try {

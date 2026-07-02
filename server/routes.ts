@@ -42,8 +42,9 @@ import passport from "passport";
 import { nanoid } from "nanoid";
 import Stripe from "stripe";
 import QRCode from "qrcode";
-import { GoogleWalletService, type LoyaltyPassData } from "./googleWallet";
-import { AppleWalletService, isAppleWalletConfigured, getPassSerialNumber, generatePassAuthToken, sendApnsWalletPush, type AppleLoyaltyPassData } from "./appleWallet";
+import crypto from "crypto";
+import { GoogleWalletService, LoyaltyClassNotFoundError, type LoyaltyPassData } from "./googleWallet";
+import { AppleWalletService, isAppleWalletConfigured, generatePassAuthToken, notifyAppleWalletDevices, type AppleLoyaltyPassData } from "./appleWallet";
 import { sendVerificationEmail, sendPasswordResetEmail, sendSubuserInvitationEmail } from "./email";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
@@ -2230,21 +2231,8 @@ export function registerRoutes(app: Express) {
         }
       }
 
-      // Apple Wallet PassKit push (non-blocking)
-      if (isAppleWalletConfigured()) {
-        const appleSerialNumber = getPassSerialNumber(customer.id);
-        db.select()
-          .from(appleWalletDevices)
-          .where(eq(appleWalletDevices.serialNumber, appleSerialNumber))
-          .then((devices) => {
-            for (const device of devices) {
-              sendApnsWalletPush(device.pushToken).catch((err) =>
-                console.error(`[Apple Wallet] APNs push failed for ${device.deviceLibraryIdentifier}:`, err)
-              );
-            }
-          })
-          .catch((err) => console.error('[Apple Wallet] Device lookup failed:', err));
-      }
+      // Apple Wallet PassKit push (non-blocking, fire-and-forget)
+      notifyAppleWalletDevices(customer.id);
 
       res.json({ 
         success: true, 
@@ -2308,6 +2296,9 @@ export function registerRoutes(app: Express) {
         }
       }
 
+      // Apple Wallet PassKit push (non-blocking, fire-and-forget)
+      notifyAppleWalletDevices(card.customerId);
+
       res.json(updatedCard);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -2341,6 +2332,7 @@ export function registerRoutes(app: Express) {
           stamps: 0,
           isRedeemable: false,
           totalRewards: card.totalRewards + 1,
+          lastStampAt: new Date(),
         })
         .where(eq(loyaltyCards.id, req.params.cardId))
         .returning();
@@ -2363,6 +2355,9 @@ export function registerRoutes(app: Express) {
           console.error('Google Wallet update failed (non-blocking):', walletError);
         }
       }
+
+      // Apple Wallet PassKit push (non-blocking, fire-and-forget)
+      notifyAppleWalletDevices(card.customerId);
 
       res.json(updatedCard);
     } catch (error: any) {
@@ -3103,7 +3098,12 @@ export function registerRoutes(app: Express) {
     if (!authHeader.startsWith('ApplePass ')) return false;
     const token = authHeader.slice('ApplePass '.length).trim();
     const customerId = serialNumber.substring(0, 36);
-    return token === generatePassAuthToken(customerId);
+    const expected = generatePassAuthToken(customerId);
+    const tokenBuf = Buffer.from(token);
+    const expectedBuf = Buffer.from(expected);
+    // timingSafeEqual throws on unequal lengths — guard first; unequal = invalid.
+    if (tokenBuf.length !== expectedBuf.length) return false;
+    return crypto.timingSafeEqual(tokenBuf, expectedBuf);
   }
 
   // Register a device to receive push notifications for a pass
@@ -3111,7 +3111,10 @@ export function registerRoutes(app: Express) {
     const { deviceLibraryIdentifier, passTypeIdentifier, serialNumber } = req.params;
     const { pushToken } = req.body;
 
-    if (!validateApplePassAuth(req, serialNumber)) return res.status(401).send();
+    if (!validateApplePassAuth(req, serialNumber)) {
+      console.warn(`[PassKit] 401 on device register for serial ${serialNumber} (stale/invalid auth token)`);
+      return res.status(401).send();
+    }
     if (!pushToken) return res.status(400).send();
 
     const customerId = serialNumber.substring(0, 36);
@@ -3144,7 +3147,10 @@ export function registerRoutes(app: Express) {
   app.delete('/api/apple-wallet/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber', async (req, res) => {
     const { deviceLibraryIdentifier, passTypeIdentifier, serialNumber } = req.params;
 
-    if (!validateApplePassAuth(req, serialNumber)) return res.status(401).send();
+    if (!validateApplePassAuth(req, serialNumber)) {
+      console.warn(`[PassKit] 401 on device unregister for serial ${serialNumber} (stale/invalid auth token)`);
+      return res.status(401).send();
+    }
 
     try {
       await db.delete(appleWalletDevices).where(and(
@@ -3204,7 +3210,10 @@ export function registerRoutes(app: Express) {
   app.get('/api/apple-wallet/v1/passes/:passTypeIdentifier/:serialNumber', async (req, res) => {
     const { passTypeIdentifier, serialNumber } = req.params;
 
-    if (!validateApplePassAuth(req, serialNumber)) return res.status(401).send();
+    if (!validateApplePassAuth(req, serialNumber)) {
+      console.warn(`[PassKit] 401 on pass fetch for serial ${serialNumber} (stale/invalid auth token)`);
+      return res.status(401).send();
+    }
 
     const customerId = serialNumber.substring(0, 36);
 
@@ -3256,16 +3265,19 @@ export function registerRoutes(app: Express) {
       const validatedData = sendMessageSchema.parse(req.body);
       const user = req.user!;
 
+      if (!req.storeId) {
+        return res.status(400).json({ error: "No store selected" });
+      }
+
       const customerList = await db
         .select()
         .from(customers)
-        .where(req.storeId
-          ? eq(customers.storeId, req.storeId)
-          : eq(customers.userId, user.id));
-
-      const classId = `${process.env.GOOGLE_WALLET_ISSUER_ID}.loyalty_${req.storeId || user.id}`;
+        .where(eq(customers.storeId, req.storeId));
 
       if (googleWalletService) {
+        // classId must come from the same source of truth used to create the
+        // class, otherwise the message silently targets a non-existent class.
+        const classId = googleWalletService.getClassId(req.storeId);
         await googleWalletService.sendMessage(
           classId,
           validatedData.header || null,
@@ -3278,19 +3290,24 @@ export function registerRoutes(app: Express) {
       const [message] = await db
         .insert(messages)
         .values({
-          storeId: req.storeId || null,
+          storeId: req.storeId,
           userId: user.id,
           header: validatedData.header || null,
           body: validatedData.body,
           displayStartTime: validatedData.displayStartTime,
           displayEndTime: validatedData.displayEndTime,
           messageType: "TEXT_AND_NOTIFY",
+          // TODO: this counts ALL store customers, not just Google Wallet pass
+          // holders who actually receive the push, so it overstates reach.
           recipientCount: customerList.length,
         })
         .returning();
 
       res.json({ success: true, message });
     } catch (error: any) {
+      if (error instanceof LoyaltyClassNotFoundError) {
+        return res.status(400).json({ error: "No customers have added your loyalty card to Google Wallet yet, so there is no one to notify." });
+      }
       res.status(500).json({ error: error.message || "Failed to send message" });
     }
   });

@@ -1,0 +1,55 @@
+# Task: Fix Google Wallet notifications + Apple Wallet auth/update bugs
+
+You are working on uniHub (Express + TypeScript + Drizzle + Neon Postgres). Make ONLY the fixes below, in `server/googleWallet.ts`, `server/appleWallet.ts`, and `server/routes.ts`. Do not refactor anything else. `tsc --noEmit` must pass and all existing billing tests must still pass before you are done. Line numbers are approximate — locate code by function/route name.
+
+---
+
+## PART A — Google Wallet: "Send Customer Notification" always fails
+
+**The bug:** the feature fails with `Wallet Object Class ... not found` for every store. Root cause: two different classId constructions. `createLoyaltyClass` in `server/googleWallet.ts` sanitizes the store ID (`storeId.replace(/[^a-zA-Z0-9_]/g, '_')` — UUID hyphens become underscores), but `POST /api/messages` in `server/routes.ts` hand-builds the classId WITHOUT sanitization (`${process.env.GOOGLE_WALLET_ISSUER_ID}.loyalty_${req.storeId || user.id}`), so it targets a hyphenated class name that has never existed in Google's system.
+
+**Requirements:**
+
+1. In `server/googleWallet.ts`, add a single public method on the service: `getClassId(storeId: string): string` returning `${this.issuerId}.loyalty_${storeId.replace(/[^a-zA-Z0-9_]/g, '_')}`. Refactor `createLoyaltyClass` to use it internally so exactly ONE place builds loyalty classIds. Do NOT change the sanitization rule — classes already existing in Google's system use it.
+2. In `POST /api/messages` (routes.ts ~3241): delete the hand-built classId line and use `googleWalletService.getClassId(req.storeId)`. If `req.storeId` is absent, return 400 (classes are store-scoped; a `user.id`-based class never exists — remove that fallback).
+3. In `sendMessage` in `server/googleWallet.ts`: before calling `loyaltyclass.addmessage`, check the class exists via `loyaltyclass.get`. On 404, throw a distinguishable error (custom error class or a flagged property); the `/api/messages` route must catch it and return **400** with the message: "No customers have added your loyalty card to Google Wallet yet, so there is no one to notify." All other errors keep current behavior (500 with the error message).
+4. `recipientCount` in the same route currently counts ALL customers of the store, not wallet holders. If an accurate Google Wallet holder count is not cheaply available, leave the value as-is and add a `// TODO` comment noting it overstates reach — do NOT substitute a guess from an unrelated table.
+
+---
+
+## PART B — Apple Wallet: derivable auth secret (security fix)
+
+**The bug:** `generatePassAuthToken` in `server/appleWallet.ts` derives its HMAC secret as `sha256("passkit-auth-" + APPLE_WALLET_PASS_TYPE_ID)`. The pass type ID is public (embedded in every issued .pkpass), so anyone who knows a customer's UUID — which is often displayed as the QR code on the pass itself — can compute a valid authentication token, fetch that customer's pass, and unregister their devices.
+
+**Requirements:**
+
+1. Introduce a new required env var `APPLE_WALLET_AUTH_SECRET`. `generatePassAuthToken` becomes `createHmac('sha256', process.env.APPLE_WALLET_AUTH_SECRET!).update(customerId).digest('hex')`. Remove the derived-from-pass-type-ID secret entirely. Existing passes' tokens do NOT need to stay valid (see req. 5).
+2. Fail fast: in `isAppleWalletConfigured()` (or wherever Apple Wallet config is validated), treat a missing `APPLE_WALLET_AUTH_SECRET` the same as missing certificates — Apple Wallet features disabled with a clear startup log line. In production, if the other Apple Wallet env vars ARE set but this one is missing, log an explicit error naming the variable.
+3. In `validateApplePassAuth` (routes.ts ~3088), replace the `===` comparison with `crypto.timingSafeEqual` on equal-length buffers (guard the length check first — `timingSafeEqual` throws on unequal lengths; unequal length simply returns false).
+4. Add a `console.warn` in the 401 path of the PassKit routes including the serial number, so stale-token passes (issued under the old scheme) are visible in logs.
+5. **Known consequence (accepted):** passes issued before this change carry old tokens and will get 401s — they stop receiving updates until re-added to Wallet. This is acceptable pre-launch. State it clearly in your final summary so the operator re-adds any demo/test passes.
+6. Generate a strong random value and instruct the operator (in your final summary) to set `APPLE_WALLET_AUTH_SECRET` in Replit Secrets — do NOT hardcode any fallback value in code.
+
+---
+
+## PART C — Apple Wallet: redemptions never update the pass
+
+**The bug:** Google's `updateLoyaltyPoints` is called in three places in routes.ts (the QR stamp path ~2210, a second update path ~2288, and the redeem path ~2344), but the Apple Wallet APNs push block exists ONLY in the stamp path (~2220). When a reward is redeemed and the card resets, Apple Wallet holders keep seeing stale stamps. Additionally, the PassKit update protocol relies on `loyaltyCards.lastStampAt`: both the `passesUpdatedSince` route and the pass fetch's `Last-Modified` header compare against it. If redeem does not bump that timestamp, a push alone is useless — the device will ask "what changed?" and be told "nothing."
+
+**Requirements:**
+
+1. Extract the existing non-blocking Apple push block (device lookup by serial + `sendApnsWalletPush` per device, with the existing error logging) into a helper: `notifyAppleWalletDevices(customerId: string): void` — fire-and-forget, never throws, no-op when `!isAppleWalletConfigured()`. Replace the inline block in the stamp path with a call to it.
+2. Call the helper in EVERY code path where `googleWalletService.updateLoyaltyPoints` is called — audit routes.ts for all call sites (there are at least three) and list them in your final summary. Google and Apple holders must learn about card changes at the same moments.
+3. Verify whether the redeem path (and any other path from step 2) updates `loyaltyCards.lastStampAt`. Wherever a card's visible state changes (stamps reset on redeem, manual adjustments) WITHOUT `lastStampAt` being set to `now()`, add that update in the same DB write — otherwise the push produces no visible change on the device. Do not rename the column.
+4. Optional polish, only if trivial: in the pass fetch route (`GET .../passes/:passTypeIdentifier/:serialNumber`), honor the `If-Modified-Since` request header — if the card's `lastStampAt` is not newer, return 304 with no body instead of regenerating and re-signing the pass. Skip this if it complicates anything.
+
+---
+
+## Definition of done
+
+- [ ] `tsc --noEmit` passes; all existing billing tests pass (no billing code should change at all).
+- [ ] `POST /api/messages` uses `getClassId` (sanitized, store-scoped); sending to a store with saved Google Wallet passes succeeds; sending for a store with none returns the friendly 400, not a raw Google error.
+- [ ] `generatePassAuthToken` uses `APPLE_WALLET_AUTH_SECRET`; no derived or hardcoded fallback secret exists anywhere; comparison is timing-safe.
+- [ ] Every `updateLoyaltyPoints` call site also triggers `notifyAppleWalletDevices`, and each such state change bumps `lastStampAt` in the same write.
+- [ ] Final summary lists: (a) all `updateLoyaltyPoints` call sites found and updated, (b) whether redeem previously bumped `lastStampAt`, (c) the reminder to set `APPLE_WALLET_AUTH_SECRET` in Replit Secrets and to re-add any existing test passes to Apple Wallet.
+- [ ] Nothing outside `googleWallet.ts`, `appleWallet.ts`, and the wallet/message sections of `routes.ts` is modified.

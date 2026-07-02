@@ -2,6 +2,9 @@ import { Template } from '@walletpass/pass-js';
 import { createHash, createHmac } from 'crypto';
 import zlib from 'zlib';
 import http2 from 'http2';
+import { db } from './db';
+import { appleWalletDevices } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 export interface AppleLoyaltyPassData {
   customerId: string;
@@ -88,10 +91,12 @@ export function getPassSerialNumber(customerId: string): string {
 }
 
 export function generatePassAuthToken(customerId: string): string {
-  const secret = createHash('sha256')
-    .update(`passkit-auth-${process.env.APPLE_WALLET_PASS_TYPE_ID ?? 'pass.live.unihub.loyalty'}`)
+  // Secret comes from APPLE_WALLET_AUTH_SECRET (Replit Secrets). It must NOT be
+  // derived from the pass type ID, which is public (embedded in every issued
+  // .pkpass) — deriving from it lets anyone holding a pass forge a valid token.
+  return createHmac('sha256', process.env.APPLE_WALLET_AUTH_SECRET!)
+    .update(customerId)
     .digest('hex');
-  return createHmac('sha256', secret).update(customerId).digest('hex');
 }
 
 export async function sendApnsWalletPush(pushToken: string): Promise<void> {
@@ -129,6 +134,24 @@ export async function sendApnsWalletPush(pushToken: string): Promise<void> {
 
     req.on('error', (err) => { clearTimeout(timer); client.destroy(); reject(err); });
   });
+}
+
+// Fire-and-forget: tell every device holding this customer's pass to re-fetch it.
+// Never throws; no-ops when Apple Wallet is not configured.
+export function notifyAppleWalletDevices(customerId: string): void {
+  if (!isAppleWalletConfigured()) return;
+  const serialNumber = getPassSerialNumber(customerId);
+  db.select()
+    .from(appleWalletDevices)
+    .where(eq(appleWalletDevices.serialNumber, serialNumber))
+    .then((devices) => {
+      for (const device of devices) {
+        sendApnsWalletPush(device.pushToken).catch((err) =>
+          console.error(`[Apple Wallet] APNs push failed for ${device.deviceLibraryIdentifier}:`, err)
+        );
+      }
+    })
+    .catch((err) => console.error('[Apple Wallet] Device lookup failed:', err));
 }
 
 export class AppleWalletService {
@@ -234,6 +257,23 @@ export function isAppleWalletConfigured(): boolean {
     process.env.APPLE_WALLET_PASS_TYPE_ID &&
     process.env.APPLE_WALLET_TEAM_ID &&
     process.env.APPLE_WALLET_PRIVATE_KEY_PEM &&
+    process.env.APPLE_WALLET_CERT_PEM &&
+    process.env.APPLE_WALLET_AUTH_SECRET
+  );
+}
+
+// Startup check: a missing auth secret disables Apple Wallet entirely (every pass
+// would otherwise 401). Surface it clearly at boot instead of failing silently.
+if (!process.env.APPLE_WALLET_AUTH_SECRET) {
+  const otherAppleVarsSet = !!(
+    process.env.APPLE_WALLET_PASS_TYPE_ID &&
+    process.env.APPLE_WALLET_TEAM_ID &&
+    process.env.APPLE_WALLET_PRIVATE_KEY_PEM &&
     process.env.APPLE_WALLET_CERT_PEM
   );
+  if (otherAppleVarsSet && process.env.NODE_ENV === 'production') {
+    console.error('[Apple Wallet] APPLE_WALLET_AUTH_SECRET is not set — Apple Wallet features are DISABLED. Set APPLE_WALLET_AUTH_SECRET in Replit Secrets.');
+  } else {
+    console.log('[Apple Wallet] Disabled: APPLE_WALLET_AUTH_SECRET is not set.');
+  }
 }
