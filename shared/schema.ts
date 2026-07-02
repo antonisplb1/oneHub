@@ -44,6 +44,7 @@ export const stores = pgTable("stores", {
   logo: text("logo"),
   menuBannerImage: text("menu_banner_image"),
   cardBackgroundColor: text("card_background_color").default("#4285F4"),
+  brandingUpdatedAt: timestamp("branding_updated_at"),
   shiftAccessPin: text("shift_access_pin"),
   selectedProducts: text("selected_products").array().default(sql`ARRAY[]::text[]`),
   createdAt: timestamp("created_at").defaultNow(),

@@ -44,7 +44,7 @@ import Stripe from "stripe";
 import QRCode from "qrcode";
 import crypto from "crypto";
 import { GoogleWalletService, LoyaltyClassNotFoundError, type LoyaltyPassData } from "./googleWallet";
-import { AppleWalletService, isAppleWalletConfigured, generatePassAuthToken, notifyAppleWalletDevices, type AppleLoyaltyPassData } from "./appleWallet";
+import { AppleWalletService, isAppleWalletConfigured, generatePassAuthToken, notifyAppleWalletDevices, notifyAppleWalletDevicesForStore, type AppleLoyaltyPassData } from "./appleWallet";
 import { sendVerificationEmail, sendPasswordResetEmail, sendSubuserInvitationEmail } from "./email";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
@@ -88,6 +88,42 @@ try {
   googleWalletService = new GoogleWalletService();
 } catch (error) {
   console.warn('Google Wallet service not initialized:', error);
+}
+
+// Later of two nullable dates (null when both are null). Used to compute a pass's
+// effective "last updated" time from stamp activity and branding changes.
+function maxDate(a: Date | null | undefined, b: Date | null | undefined): Date | null {
+  if (a && b) return a > b ? a : b;
+  return a ?? b ?? null;
+}
+
+// Fire-and-forget: after a store's branding is saved, propagate it to both
+// wallets. Patches the existing Google loyalty class (no-op if no pass saved)
+// and pushes every Apple device for the store. Never blocks or fails the caller.
+function propagateStoreBranding(storeId: string): void {
+  db.select()
+    .from(stores)
+    .where(eq(stores.id, storeId))
+    .limit(1)
+    .then(([store]) => {
+      if (!store) return;
+      if (googleWalletService) {
+        // Reward text is per-loyalty-card, not per-store, so there is no clean
+        // store-level default to thread here — the class keeps the generic copy.
+        googleWalletService
+          .updateClassBranding(
+            storeId,
+            store.shopName,
+            store.logo,
+            store.cardBackgroundColor,
+            undefined,
+            store.displayName,
+          )
+          .catch((err) => console.error('[Google Wallet] Branding patch failed (non-blocking):', err));
+      }
+      notifyAppleWalletDevicesForStore(storeId);
+    })
+    .catch((err) => console.error('[Wallet] Branding propagation lookup failed (non-blocking):', err));
 }
 
 function requireAuth(req: Request, res: Response, next: Function) {
@@ -1454,6 +1490,13 @@ export function registerRoutes(app: Express) {
         updates.shopName = parsed.data.shopName;
       }
 
+      // Wallet-relevant branding changed (display name or shop name). PIN and
+      // product selection are unrelated to wallet passes.
+      const brandingChanged = updates.displayName !== undefined || updates.shopName !== undefined;
+      if (brandingChanged) {
+        updates.brandingUpdatedAt = new Date();
+      }
+
       if (Object.keys(updates).length > 0) {
         try {
           await db
@@ -1477,6 +1520,11 @@ export function registerRoutes(app: Express) {
       // an active subscription). Non-primary product changes never affect billing.
       if (isPrimary && parsed.data.selectedProducts !== undefined) {
         await syncBillingFromStores(id);
+      }
+
+      // Fire-and-forget: propagate branding to Google/Apple wallets.
+      if (brandingChanged) {
+        propagateStoreBranding(storeId);
       }
 
       res.json({ success: true, message: "Store updated" });
@@ -1630,6 +1678,13 @@ export function registerRoutes(app: Express) {
         userUpdateData.cardBackgroundColor = cardBackgroundColor;
       }
 
+      // Wallet-relevant branding changed (display name via shopName, logo, or
+      // card color) — not menu banner, which is unrelated to wallet passes.
+      const brandingChanged = !!shopName || logo !== undefined || !!cardBackgroundColor;
+      if (brandingChanged) {
+        storeUpdateData.brandingUpdatedAt = new Date();
+      }
+
       // Update active store branding if storeId is resolved
       let updatedStore = null;
       if (req.storeId && Object.keys(storeUpdateData).length > 0) {
@@ -1638,6 +1693,11 @@ export function registerRoutes(app: Express) {
           .set(storeUpdateData)
           .where(and(eq(stores.id, req.storeId), eq(stores.userId, req.user!.id)))
           .returning();
+
+        // Fire-and-forget: propagate branding to Google/Apple wallets.
+        if (updatedStore && brandingChanged) {
+          propagateStoreBranding(req.storeId);
+        }
       }
 
       // Also update users table for backward compat
@@ -1742,11 +1802,25 @@ export function registerRoutes(app: Express) {
     try {
       const validatedData = updateStoreSchema.parse(req.body);
 
+      // Wallet-relevant branding changed (display name, logo, or card color).
+      const brandingChanged =
+        validatedData.displayName !== undefined ||
+        validatedData.logo !== undefined ||
+        validatedData.cardBackgroundColor !== undefined;
+      const update = brandingChanged
+        ? { ...validatedData, brandingUpdatedAt: new Date() }
+        : validatedData;
+
       // The billing routing decision (primary product change -> reprice;
       // non-primary or non-product edit -> leave the bill alone) lives in
       // applyStoreUpdate so it can be unit tested with a Stripe spy.
-      const result = await applyStoreUpdate(stripe, req.user!.id, req.params.storeId, validatedData);
+      const result = await applyStoreUpdate(stripe, req.user!.id, req.params.storeId, update);
       if (result.notFound) return res.status(404).json({ error: "Store not found" });
+
+      // Fire-and-forget: propagate branding to Google/Apple wallets.
+      if (brandingChanged) {
+        propagateStoreBranding(req.params.storeId);
+      }
 
       res.json(result.store);
     } catch (error: any) {
@@ -3056,6 +3130,7 @@ export function registerRoutes(app: Express) {
         rewardText: result.card.rewardText || 'Loyalty Reward',
         customerQrCode: result.customer.customerQrCode || result.customer.id,
         cardBackgroundColor: result.store?.cardBackgroundColor || result.user.cardBackgroundColor,
+        logo: result.store?.logo || result.user.logo,
       };
 
       const appleWalletService = new AppleWalletService();
@@ -3181,15 +3256,41 @@ export function registerRoutes(app: Express) {
 
       const serialNumbers: string[] = [];
       const now = new Date();
+      const since = passesUpdatedSince ? new Date(passesUpdatedSince) : null;
+      // Cache each store's branding timestamp so we look it up once per store,
+      // not once per device.
+      const brandingByStore = new Map<string, Date | null>();
 
       for (const device of devices) {
-        if (passesUpdatedSince) {
-          const since = new Date(passesUpdatedSince);
-          const [card] = await db.select({ lastStampAt: loyaltyCards.lastStampAt })
+        if (since) {
+          // Resolve the store either from the device's own storeId or, for legacy
+          // registrations with a null storeId, from the customer's store.
+          const [card] = await db.select({
+            lastStampAt: loyaltyCards.lastStampAt,
+            storeId: customers.storeId,
+          })
             .from(loyaltyCards)
+            .leftJoin(customers, eq(loyaltyCards.customerId, customers.id))
             .where(eq(loyaltyCards.customerId, device.customerId))
             .limit(1);
-          if (card?.lastStampAt && card.lastStampAt > since) {
+
+          const storeId = device.storeId ?? card?.storeId ?? null;
+          let branding: Date | null = null;
+          if (storeId) {
+            if (brandingByStore.has(storeId)) {
+              branding = brandingByStore.get(storeId)!;
+            } else {
+              const [store] = await db.select({ brandingUpdatedAt: stores.brandingUpdatedAt })
+                .from(stores)
+                .where(eq(stores.id, storeId))
+                .limit(1);
+              branding = store?.brandingUpdatedAt ?? null;
+              brandingByStore.set(storeId, branding);
+            }
+          }
+
+          const effective = maxDate(card?.lastStampAt, branding);
+          if (effective && effective > since) {
             serialNumbers.push(device.serialNumber);
           }
         } else {
@@ -3229,6 +3330,21 @@ export function registerRoutes(app: Express) {
 
       if (!result || !result.customer || !result.user) return res.status(404).send();
 
+      // Effective "pass last updated" = latest of stamp activity and branding change.
+      const lastModified = maxDate(result.card.lastStampAt, result.store?.brandingUpdatedAt) || new Date();
+
+      // Honor iOS's conditional fetch: HTTP dates have second precision, so
+      // compare truncated to seconds and 304 when nothing is newer.
+      const ims = req.headers['if-modified-since'];
+      if (typeof ims === 'string') {
+        const since = new Date(ims);
+        if (!Number.isNaN(since.getTime()) &&
+            Math.floor(lastModified.getTime() / 1000) <= Math.floor(since.getTime() / 1000)) {
+          res.setHeader('Last-Modified', lastModified.toUTCString());
+          return res.status(304).send();
+        }
+      }
+
       const passData: AppleLoyaltyPassData = {
         customerId: result.customer.id,
         customerName: result.customer.name!,
@@ -3238,12 +3354,12 @@ export function registerRoutes(app: Express) {
         rewardText: result.card.rewardText || 'Loyalty Reward',
         customerQrCode: result.customer.customerQrCode || result.customer.id,
         cardBackgroundColor: result.store?.cardBackgroundColor || result.user.cardBackgroundColor,
+        logo: result.store?.logo || result.user.logo,
       };
 
       const appleWalletService = new AppleWalletService();
       const passBuffer = await appleWalletService.generatePass(passData);
 
-      const lastModified = result.card.lastStampAt || new Date();
       res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
       res.setHeader('Last-Modified', lastModified.toUTCString());
       console.log(`[PassKit] Serving updated pass for customer ${customerId}, stamps: ${result.card.stamps}`);

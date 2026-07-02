@@ -1,0 +1,1 @@
+ALTER TABLE "stores" ADD COLUMN "branding_updated_at" timestamp;

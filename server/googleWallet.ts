@@ -27,6 +27,31 @@ export class LoyaltyClassNotFoundError extends Error {
   }
 }
 
+// Shared branding helpers — used by both class creation and class patching so the
+// resolution rules never drift between the two paths.
+
+// Resolve a merchant logo into an https URL Google Wallet can fetch: https logos
+// pass through, data-URI logos are served via the store-scoped logo endpoint, and
+// anything else falls back to Google's default logo.
+export function resolveGoogleLogoUrl(storeId: string, logoUrl?: string | null): string {
+  const defaultLogoUrl = 'https://www.gstatic.com/images/branding/product/1x/googleg_64dp.png';
+  if (logoUrl && logoUrl.startsWith('https://')) return logoUrl;
+  if (logoUrl && logoUrl.startsWith('data:')) {
+    const domain = process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+      : 'http://localhost:5000';
+    return `${domain}/api/logo/store/${storeId}`;
+  }
+  return defaultLogoUrl;
+}
+
+// Validate a hex background color, falling back to the Google default.
+export function validateGoogleBackgroundColor(cardBackgroundColor?: string | null): string {
+  return (cardBackgroundColor && /^#[0-9A-Fa-f]{6}$/.test(cardBackgroundColor))
+    ? cardBackgroundColor
+    : '#4285F4';
+}
+
 export class GoogleWalletService {
   private issuerId: string;
   private credentials: ServiceAccountCredentials;
@@ -80,7 +105,14 @@ export class GoogleWalletService {
     return `${this.issuerId}.loyalty_${storeId.replace(/[^a-zA-Z0-9_]/g, '_')}`;
   }
 
-  async createLoyaltyClass(storeId: string, shopName: string, logoUrl?: string | null, cardBackgroundColor?: string | null) {
+  async createLoyaltyClass(
+    storeId: string,
+    shopName: string,
+    logoUrl?: string | null,
+    cardBackgroundColor?: string | null,
+    rewardText?: string | null,
+    displayName?: string | null,
+  ) {
     // Class is scoped per store — one Google Wallet class per store
     const classId = this.getClassId(storeId);
 
@@ -93,28 +125,16 @@ export class GoogleWalletService {
       }
     }
 
-    const defaultLogoUrl = 'https://www.gstatic.com/images/branding/product/1x/googleg_64dp.png';
-    let validLogoUrl = defaultLogoUrl;
-    
-    if (logoUrl && logoUrl.startsWith('https://')) {
-      validLogoUrl = logoUrl;
-    } else if (logoUrl && logoUrl.startsWith('data:')) {
-      const domain = process.env.REPLIT_DOMAINS 
-        ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}` 
-        : 'http://localhost:5000';
-      // Use store-scoped logo endpoint for data-URI logos
-      validLogoUrl = `${domain}/api/logo/store/${storeId}`;
-    }
-
-    const validBackgroundColor = (cardBackgroundColor && /^#[0-9A-Fa-f]{6}$/.test(cardBackgroundColor)) 
-      ? cardBackgroundColor 
-      : '#4285F4';
+    const validLogoUrl = resolveGoogleLogoUrl(storeId, logoUrl);
+    const validBackgroundColor = validateGoogleBackgroundColor(cardBackgroundColor);
 
     const loyaltyClass: any = {
       id: classId,
       issuerName: shopName,
       reviewStatus: 'UNDER_REVIEW',
-      programName: 'Loyalty Program',
+      // Program name is the merchant-facing brand: prefer the friendly display
+      // name, fall back to the shop name.
+      programName: displayName || shopName,
       programLogo: {
         sourceUri: {
           uri: validLogoUrl
@@ -124,7 +144,7 @@ export class GoogleWalletService {
       textModulesData: [
         {
           header: 'Rewards',
-          body: 'Collect stamps to earn rewards'
+          body: rewardText || 'Collect stamps to earn rewards'
         }
       ],
       classTemplateInfo: {
@@ -149,8 +169,55 @@ export class GoogleWalletService {
     return classId;
   }
 
+  // Patch branding (logo, background color, program name, reward text) onto an
+  // EXISTING loyalty class so changes made after customers saved their passes
+  // actually propagate. No-ops when the class doesn't exist yet (no pass saved).
+  async updateClassBranding(
+    storeId: string,
+    shopName: string,
+    logoUrl?: string | null,
+    cardBackgroundColor?: string | null,
+    rewardText?: string | null,
+    displayName?: string | null,
+  ): Promise<void> {
+    const classId = this.getClassId(storeId);
+
+    try {
+      await this.client.loyaltyclass.get({ resourceId: classId });
+    } catch (err: any) {
+      // Nobody has saved this store's pass yet — nothing to patch.
+      if (err.response?.status === 404) return;
+      throw err;
+    }
+
+    const patchBody: any = {
+      id: classId,
+      issuerName: shopName,
+      programName: displayName || shopName,
+      programLogo: {
+        sourceUri: {
+          uri: resolveGoogleLogoUrl(storeId, logoUrl)
+        }
+      },
+      hexBackgroundColor: validateGoogleBackgroundColor(cardBackgroundColor),
+      textModulesData: [
+        {
+          header: 'Rewards',
+          body: rewardText || 'Collect stamps to earn rewards'
+        }
+      ],
+    };
+
+    await this.client.loyaltyclass.patch({
+      resourceId: classId,
+      requestBody: patchBody,
+    });
+
+    console.log(`[Google Wallet] Patched branding for class ${classId}`);
+  }
+
   async createLoyaltyPass(passData: LoyaltyPassData, storeId: string, logoUrl?: string | null, cardBackgroundColor?: string | null): Promise<string> {
-    const classId = await this.createLoyaltyClass(storeId, passData.shopName, logoUrl, cardBackgroundColor);
+    const classId = await this.createLoyaltyClass(storeId, passData.shopName, logoUrl, cardBackgroundColor, passData.rewardText);
     const objectId = `${this.issuerId}.customer_${passData.customerId}`;
 
     try {
