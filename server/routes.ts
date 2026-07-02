@@ -36,7 +36,7 @@ import {
   createStoreSchema,
   updateStoreSchema,
 } from "@shared/schema";
-import { eq, and, desc, asc, gt, gte, lte } from "drizzle-orm";
+import { eq, and, desc, asc, gt, gte, lte, sql } from "drizzle-orm";
 import { hashPassword, generateToken, comparePasswords } from "./auth";
 import passport from "passport";
 import { nanoid } from "nanoid";
@@ -97,6 +97,30 @@ function maxDate(a: Date | null | undefined, b: Date | null | undefined): Date |
   return a ?? b ?? null;
 }
 
+// The Google Wallet loyalty class is per-store, but reward text is stored
+// per-loyalty-card. Derive a single store-level default reward text by picking
+// the most common non-empty rewardText across the store's cards, so the class
+// copy reflects what merchants actually configured.
+async function deriveStoreRewardText(storeId: string): Promise<string | undefined> {
+  const rows = await db
+    .select({
+      rewardText: loyaltyCards.rewardText,
+      count: sql<number>`count(*)`,
+    })
+    .from(loyaltyCards)
+    .where(
+      and(
+        eq(loyaltyCards.storeId, storeId),
+        sql`${loyaltyCards.rewardText} IS NOT NULL AND ${loyaltyCards.rewardText} <> ''`,
+      ),
+    )
+    .groupBy(loyaltyCards.rewardText)
+    .orderBy(desc(sql`count(*)`))
+    .limit(1);
+
+  return rows[0]?.rewardText ?? undefined;
+}
+
 // Fire-and-forget: after a store's branding is saved, propagate it to both
 // wallets. Patches the existing Google loyalty class (no-op if no pass saved)
 // and pushes every Apple device for the store. Never blocks or fails the caller.
@@ -105,18 +129,17 @@ function propagateStoreBranding(storeId: string): void {
     .from(stores)
     .where(eq(stores.id, storeId))
     .limit(1)
-    .then(([store]) => {
+    .then(async ([store]) => {
       if (!store) return;
       if (googleWalletService) {
-        // Reward text is per-loyalty-card, not per-store, so there is no clean
-        // store-level default to thread here — the class keeps the generic copy.
+        const rewardText = await deriveStoreRewardText(storeId);
         googleWalletService
           .updateClassBranding(
             storeId,
             store.shopName,
             store.logo,
             store.cardBackgroundColor,
-            undefined,
+            rewardText,
             store.displayName,
           )
           .catch((err) => console.error('[Google Wallet] Branding patch failed (non-blocking):', err));
