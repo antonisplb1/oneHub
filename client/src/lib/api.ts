@@ -52,6 +52,22 @@ export async function getLoyaltyCards() {
   return apiRequest<LoyaltyCardWithCustomer[]>("/api/loyalty-cards");
 }
 
+export interface LoyaltySettings {
+  rewardText: string;
+  maxStamps: number;
+}
+
+export async function getLoyaltySettings() {
+  return apiRequest<LoyaltySettings>("/api/loyalty-settings");
+}
+
+export async function updateLoyaltySettings(data: LoyaltySettings) {
+  return apiRequest<LoyaltySettings>("/api/loyalty-settings", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function addStamp(cardId: string) {
   return apiRequest<LoyaltyCard>(`/api/loyalty-cards/${cardId}/stamp`, {
     method: "POST",

@@ -44,6 +44,8 @@ export const stores = pgTable("stores", {
   logo: text("logo"),
   menuBannerImage: text("menu_banner_image"),
   cardBackgroundColor: text("card_background_color").default("#4285F4"),
+  rewardText: varchar("reward_text", { length: 100 }).default("Free Coffee"),
+  maxStamps: integer("max_stamps").default(10),
   brandingUpdatedAt: timestamp("branding_updated_at"),
   shiftAccessPin: text("shift_access_pin"),
   selectedProducts: text("selected_products").array().default(sql`ARRAY[]::text[]`),
@@ -436,6 +438,15 @@ export const updateStoreSchema = z.object({
   shiftAccessPin: z.string().optional().nullable(),
   selectedProducts: z.array(z.enum(["loyalty", "spin", "menu", "shift"])).min(1, "Select at least one product").optional(),
 });
+
+// Store-level loyalty card settings a merchant can configure (reward wording
+// and stamps required). These are the store defaults applied to new cards and
+// pushed onto existing cards + wallet passes when saved.
+export const loyaltySettingsSchema = z.object({
+  rewardText: z.string().trim().min(1, "Reward description is required").max(100),
+  maxStamps: z.coerce.number().int().min(1, "At least 1 stamp is required").max(20, "Maximum 20 stamps"),
+});
+export type LoyaltySettings = z.infer<typeof loyaltySettingsSchema>;
 
 // Admin schemas
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({

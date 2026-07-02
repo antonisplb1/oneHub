@@ -36,6 +36,13 @@
       "when": 1782999306399,
       "tag": "0004_unique_trauma",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783009413533,
+      "tag": "0005_low_dazzler",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Plus, QrCode, Users, Scan, Gift, Bell } from "lucide-react";
-import { getLoyaltyCards, addStamp, getShopQRCode } from "@/lib/api";
+import { getLoyaltyCards, addStamp, getShopQRCode, getLoyaltySettings, updateLoyaltySettings } from "@/lib/api";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,18 @@ export default function LoyaltyCardsSection() {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+
+  const { data: loyaltySettings } = useQuery({
+    queryKey: ["/api", "loyalty-settings"],
+    queryFn: getLoyaltySettings,
+  });
+
+  useEffect(() => {
+    if (loyaltySettings) {
+      setMaxStamps(String(loyaltySettings.maxStamps));
+      setRewardText(loyaltySettings.rewardText);
+    }
+  }, [loyaltySettings]);
 
   const notificationForm = useForm<NotificationFormValues>({
     resolver: zodResolver(notificationSchema),
@@ -95,10 +107,46 @@ export default function LoyaltyCardsSection() {
     },
   });
 
+  const saveSettingsMutation = useMutation({
+    mutationFn: updateLoyaltySettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api", "loyalty-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api", "loyalty-cards"] });
+      toast({
+        title: "Settings saved",
+        description: "Your loyalty card settings have been updated.",
+      });
+      setIsSettingsOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save settings",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Settings saved:", { maxStamps, rewardText });
-    setIsSettingsOpen(false);
+    const parsedMaxStamps = parseInt(maxStamps, 10);
+    if (!rewardText.trim()) {
+      toast({
+        title: "Error",
+        description: "Reward description is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!Number.isFinite(parsedMaxStamps) || parsedMaxStamps < 1 || parsedMaxStamps > 20) {
+      toast({
+        title: "Error",
+        description: "Stamps required must be between 1 and 20",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveSettingsMutation.mutate({ rewardText: rewardText.trim(), maxStamps: parsedMaxStamps });
   };
 
   const onNotificationSubmit = (values: NotificationFormValues) => {
@@ -155,8 +203,8 @@ export default function LoyaltyCardsSection() {
                   placeholder="e.g., Free Coffee, 10% Off"
                 />
               </div>
-              <Button type="submit" className="w-full" size="lg" data-testid="button-save-settings">
-                Save Settings
+              <Button type="submit" className="w-full" size="lg" disabled={saveSettingsMutation.isPending} data-testid="button-save-settings">
+                {saveSettingsMutation.isPending ? "Saving..." : "Save Settings"}
               </Button>
             </form>
           </DialogContent>

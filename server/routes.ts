@@ -35,6 +35,7 @@ import {
   stores,
   createStoreSchema,
   updateStoreSchema,
+  loyaltySettingsSchema,
 } from "@shared/schema";
 import { eq, and, desc, asc, gt, gte, lte, sql } from "drizzle-orm";
 import { hashPassword, generateToken, comparePasswords } from "./auth";
@@ -97,11 +98,21 @@ function maxDate(a: Date | null | undefined, b: Date | null | undefined): Date |
   return a ?? b ?? null;
 }
 
-// The Google Wallet loyalty class is per-store, but reward text is stored
-// per-loyalty-card. Derive a single store-level default reward text by picking
-// the most common non-empty rewardText across the store's cards, so the class
-// copy reflects what merchants actually configured.
+// The Google Wallet loyalty class is per-store. Reward text is configured at the
+// store level (stores.rewardText) when the merchant saves loyalty settings, and
+// falls back to the most common non-empty rewardText across the store's cards
+// (e.g. legacy stores that never saved settings) so the class copy always
+// reflects what merchants actually configured.
 async function deriveStoreRewardText(storeId: string): Promise<string | undefined> {
+  const [store] = await db
+    .select({ rewardText: stores.rewardText })
+    .from(stores)
+    .where(eq(stores.id, storeId))
+    .limit(1);
+  if (store?.rewardText && store.rewardText.trim() !== "") {
+    return store.rewardText;
+  }
+
   const rows = await db
     .select({
       rewardText: loyaltyCards.rewardText,
@@ -2018,6 +2029,14 @@ export function registerRoutes(app: Express) {
 
       const customerQrCode = nanoid(12);
 
+      // New cards inherit the store's configured loyalty settings (reward wording
+      // and stamps required) so the wallet pass shows the merchant's wording.
+      const [storeSettings] = await db
+        .select({ rewardText: stores.rewardText, maxStamps: stores.maxStamps })
+        .from(stores)
+        .where(eq(stores.id, targetStoreId))
+        .limit(1);
+
       const [newCustomer] = await db
         .insert(customers)
         .values({
@@ -2037,8 +2056,8 @@ export function registerRoutes(app: Express) {
           userId: targetUserId,
           customerId: newCustomer.id,
           stamps: 0,
-          maxStamps: 10,
-          rewardText: "Free Reward",
+          maxStamps: storeSettings?.maxStamps ?? 10,
+          rewardText: storeSettings?.rewardText ?? "Free Reward",
         })
         .returning();
 
@@ -2051,7 +2070,15 @@ export function registerRoutes(app: Express) {
   app.post("/api/customers", requireSubscription, requirePermission('loyalty'), async (req, res) => {
     try {
       const customerQrCode = nanoid(12);
-      
+
+      // Fall back to the store's configured loyalty settings when the request
+      // doesn't specify per-card values, so new cards use the merchant's wording.
+      const [storeSettings] = await db
+        .select({ rewardText: stores.rewardText, maxStamps: stores.maxStamps })
+        .from(stores)
+        .where(eq(stores.id, req.storeId!))
+        .limit(1);
+
       const [newCustomer] = await db
         .insert(customers)
         .values({
@@ -2071,12 +2098,72 @@ export function registerRoutes(app: Express) {
           userId: req.user!.id,
           customerId: newCustomer.id,
           stamps: 0,
-          maxStamps: req.body.maxStamps || 10,
-          rewardText: req.body.rewardText || "Free Reward",
+          maxStamps: req.body.maxStamps || storeSettings?.maxStamps || 10,
+          rewardText: req.body.rewardText || storeSettings?.rewardText || "Free Reward",
         })
         .returning();
 
       res.json({ customer: newCustomer, loyaltyCard });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Loyalty settings (reward wording + stamps required) are configured per store
+  // and applied to new cards at creation time. GET returns the active store's
+  // current values so the settings form can pre-fill them.
+  app.get("/api/loyalty-settings", requireSubscription, requirePermission('loyalty'), async (req, res) => {
+    try {
+      const [store] = await db
+        .select({ rewardText: stores.rewardText, maxStamps: stores.maxStamps })
+        .from(stores)
+        .where(eq(stores.id, req.storeId!))
+        .limit(1);
+      if (!store) return res.status(404).json({ error: "Store not found" });
+
+      res.json({
+        rewardText: store.rewardText ?? "Free Coffee",
+        maxStamps: store.maxStamps ?? 10,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Persist the store's loyalty settings, apply them to every existing card for
+  // the store (so pass display and dashboard stay consistent), and propagate the
+  // reward wording to Google/Apple wallet passes.
+  app.patch("/api/loyalty-settings", requireSubscription, requirePermission('loyalty'), async (req, res) => {
+    try {
+      const parsed = loyaltySettingsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid settings" });
+      }
+      const { rewardText, maxStamps } = parsed.data;
+
+      const [updatedStore] = await db
+        .update(stores)
+        .set({ rewardText, maxStamps })
+        .where(and(eq(stores.id, req.storeId!), eq(stores.userId, req.user!.id)))
+        .returning({ id: stores.id });
+      if (!updatedStore) return res.status(404).json({ error: "Store not found" });
+
+      // Apply the new wording and stamp goal to every existing card, recomputing
+      // redeemability against the new goal so a raised/lowered threshold takes
+      // effect immediately.
+      await db
+        .update(loyaltyCards)
+        .set({
+          rewardText,
+          maxStamps,
+          isRedeemable: sql`${loyaltyCards.stamps} >= ${maxStamps}`,
+        })
+        .where(eq(loyaltyCards.storeId, req.storeId!));
+
+      // Fire-and-forget: refresh wallet passes with the new reward wording.
+      propagateStoreBranding(req.storeId!);
+
+      res.json({ rewardText, maxStamps });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
