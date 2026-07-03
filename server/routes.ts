@@ -498,8 +498,25 @@ export function registerRoutes(app: Express) {
   });
 
   app.post("/api/auth/logout", (req, res) => {
-    req.logout(() => {
-      res.json({ success: true });
+    // keepSessionInfo: true stops Passport from regenerating/clearing the whole
+    // session on logout. An admin and a merchant can be signed in from the same
+    // browser (they can even share an email); without this, logging out of the
+    // merchant dashboard wipes req.session.adminId and breaks every admin action.
+    req.logout({ keepSessionInfo: true }, (err) => {
+      if (err) {
+        return res.status(500).json({ error: "Logout failed" });
+      }
+      // Remove only merchant/subuser state; leave any admin session intact.
+      req.session.isSubuser = undefined;
+      req.session.subuserId = undefined;
+      req.session.permissions = undefined;
+      req.session.subuserStoreIds = undefined;
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          return res.status(500).json({ error: "Logout failed" });
+        }
+        res.json({ success: true });
+      });
     });
   });
 
