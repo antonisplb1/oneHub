@@ -4,9 +4,12 @@
 // framework. This module is the ONLY outbound integration for support chat.
 // Secrets come from env only and message bodies are never logged.
 
-const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
-const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
+// Trim env values at load: secrets pasted into a dashboard commonly pick up a
+// trailing newline/space, which would silently break the admin-chat comparison
+// and the secret-token check (both are exact-match).
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN?.trim();
+const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
 
 const BASE_URL = `https://api.telegram.org/bot${TOKEN}`;
 

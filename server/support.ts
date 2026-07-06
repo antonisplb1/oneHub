@@ -268,13 +268,30 @@ async function getOrCreateOpenConversation(userId: string) {
 // Inbound: Telegram -> dashboard
 // ---------------------------------------------------------------------------
 
+// Normalize any id for comparison: Telegram sends numeric ids, the admin id
+// comes from an env string, and either can carry surrounding whitespace.
+function normalizeId(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+// Every id field that can legitimately carry the operator's id, regardless of
+// whether the update is a message or a callback_query, and whether the bot
+// lives in a private chat or a group.
+function adminCandidateIds(update: TelegramUpdate): string[] {
+  return [
+    update.message?.chat.id,
+    update.message?.from?.id,
+    update.callback_query?.from.id,
+    update.callback_query?.message?.chat.id,
+  ]
+    .filter((id): id is number => id != null)
+    .map(normalizeId);
+}
+
 function isFromAdminChat(update: TelegramUpdate): boolean {
-  const adminId = getAdminChatId();
+  const adminId = normalizeId(getAdminChatId());
   if (!adminId) return false;
-  const chatId =
-    update.message?.chat.id ?? update.callback_query?.message?.chat.id;
-  const fromId = update.message?.from?.id ?? update.callback_query?.from.id;
-  return String(chatId) === String(adminId) || String(fromId) === String(adminId);
+  return adminCandidateIds(update).includes(adminId);
 }
 
 async function closeConversation(conversationId: number, systemNote: string): Promise<void> {
@@ -354,6 +371,10 @@ async function handleTelegramUpdate(update: TelegramUpdate): Promise<void> {
         .limit(1);
       if (conv && conv.status === "open") {
         await closeConversation(conv.id, "This conversation was closed by our support team.");
+        console.log(
+          `[Support][webhook] callback close applied conversation=${conv.id} ` +
+            `shortCode=${shortCode} — SSE 'status' emitted`,
+        );
       }
       try {
         await answerCallbackQuery(cq.id, conv ? `Closed ${shortCode}` : "Conversation not found");
@@ -441,6 +462,10 @@ async function handleTelegramUpdate(update: TelegramUpdate): Promise<void> {
   }
 
   emitSupportEvent(target.id, { type: "message", message: agentMsg });
+  console.log(
+    `[Support][webhook] agent reply inserted conversation=${target.id} ` +
+      `message_id=${agentMsg.id} — SSE 'message' emitted`,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -456,6 +481,14 @@ async function claimUpdateId(updateId: number): Promise<boolean> {
     .insert(telegramWebhookState)
     .values({ id: "singleton", lastUpdateId: 0 })
     .onConflictDoNothing();
+  const [current] = await db
+    .select({ lastUpdateId: telegramWebhookState.lastUpdateId })
+    .from(telegramWebhookState)
+    .where(eq(telegramWebhookState.id, "singleton"))
+    .limit(1);
+  console.log(
+    `[Support][webhook] dedup incoming_update_id=${updateId} stored_max=${current?.lastUpdateId ?? "none"}`,
+  );
   const updated = await db
     .update(telegramWebhookState)
     .set({ lastUpdateId: updateId })
@@ -637,7 +670,12 @@ export function registerSupportRoutes(app: Express, requireAuth: Middleware): vo
 
   // Telegram webhook — unauthenticated but secured by the secret-token header.
   app.post("/api/webhooks/telegram", async (req, res) => {
+    const body = req.body as Partial<TelegramUpdate> | undefined;
+    const updateId =
+      body && typeof body.update_id === "number" ? String(body.update_id) : "unknown";
+
     if (!validWebhookSecret(req)) {
+      console.warn(`[Support][webhook] rejected reason=bad_secret update_id=${updateId}`);
       return res.status(401).json({ error: "Unauthorized" });
     }
     // Always ack quickly so Telegram doesn't retry a request we did receive.
@@ -645,13 +683,37 @@ export function registerSupportRoutes(app: Express, requireAuth: Middleware): vo
 
     try {
       const update = req.body as TelegramUpdate;
-      if (!update || typeof update.update_id !== "number") return;
-      if (!isFromAdminChat(update)) return; // ignore anyone but the operator
+      if (!update || typeof update.update_id !== "number") {
+        console.warn(`[Support][webhook] ignored reason=unsupported_update_type update_id=${updateId}`);
+        return;
+      }
+      if (!update.message && !update.callback_query) {
+        console.warn(
+          `[Support][webhook] ignored reason=unsupported_update_type update_id=${update.update_id}`,
+        );
+        return;
+      }
+      if (!isFromAdminChat(update)) {
+        // Log the extracted candidate ids vs the expected admin id (numeric
+        // chat ids are not secrets) so an admin-id misconfiguration is
+        // immediately diagnosable from production logs.
+        console.warn(
+          `[Support][webhook] ignored reason=wrong_chat update_id=${update.update_id} ` +
+            `candidates=[${adminCandidateIds(update).join(",")}] expected=${normalizeId(getAdminChatId())}`,
+        );
+        return;
+      }
       const isNew = await claimUpdateId(update.update_id);
-      if (!isNew) return; // duplicate delivery
+      if (!isNew) {
+        console.warn(
+          `[Support][webhook] ignored reason=duplicate_update_id update_id=${update.update_id}`,
+        );
+        return;
+      }
       await handleTelegramUpdate(update);
+      console.log(`[Support][webhook] processed update_id=${update.update_id} — passed all gates`);
     } catch (err) {
-      console.error("[Support] webhook processing error:", err);
+      console.error(`[Support][webhook] processing error update_id=${updateId}:`, err);
     }
   });
 }
