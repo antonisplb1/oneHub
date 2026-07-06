@@ -1,0 +1,215 @@
+Round 5 — Live Chat Support Bubble bridged to Telegram
+
+Part A — Manual setup you (Anto) do BEFORE running the prompt (~2 minutes)
+
+
+Create the bot: In Telegram, message @BotFather → /newbot → pick a name (e.g. "uniHub Support") and a username (e.g. unihub_support_bot). Copy the bot token it gives you.
+Get your chat ID: Send any message (e.g. "hi") to your new bot, then open in a browser:
+https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates
+Find "chat":{"id": 123456789, ...} in the response — that number is your admin chat ID.
+Invent a webhook secret: any long random string (e.g. from a password generator).
+Add Replit Secrets:
+
+TELEGRAM_BOT_TOKEN — from step 1
+TELEGRAM_ADMIN_CHAT_ID — from step 2
+TELEGRAM_WEBHOOK_SECRET — from step 3
+
+
+
+After deploy (Part C): register the webhook by opening once in a browser (or curl):
+https://api.telegram.org/bot<YOUR_TOKEN>/setWebhook?url=https://<your-domain>/api/webhooks/telegram&secret_token=<YOUR_WEBHOOK_SECRET>&allowed_updates=["message","callback_query"]
+It should return {"ok":true,"result":true,"description":"Webhook was set"}.
+
+
+That's the entire setup. No phone numbers, no approvals, no messaging windows, no per-message fees.
+
+
+Part B — Replit Agent prompt (copy-paste everything below)
+
+
+Implement a live chat support feature for uniHub: a chat bubble in the merchant dashboard whose messages are relayed two-way to the operator's personal Telegram via a Telegram bot (Bot API). Follow this spec exactly. Do not install any third-party chat SDK or Telegram framework (no telegraf, no node-telegram-bot-api) — use plain fetch against https://api.telegram.org. Build it on the existing Express + Drizzle + React stack. Telegram is the ONLY outbound integration for this feature — do not add or use email, SMS, WhatsApp, or any other notification service.
+
+0. Discovery first
+
+Before writing code, locate and reuse existing patterns: the authenticated session middleware, the Drizzle schema file and migration workflow, the existing scheduled-job mechanism (the one the billing reconciler uses on the Reserved VM), and how existing API routes are registered. Match existing code style and error-handling conventions. Do not restructure unrelated code.
+
+1. Database (Drizzle schema + migration)
+
+Create two tables:
+
+support_conversations
+
+
+id serial PK
+shortCode varchar(8) unique, generated server-side, format S- + 4 uppercase alphanumerics (e.g. S-4F7K)
+userId FK → users, not null
+status varchar: open | closed, default open
+createdAt, lastMessageAt timestamps
+
+
+support_messages
+
+
+id serial PK
+conversationId FK → support_conversations, not null, indexed
+sender varchar: user | agent | system
+body text not null
+telegramMessageId bigint nullable, indexed — the Telegram message_id of this message as sent to / received from the admin chat; used for reply-quote routing
+deliveredToAgent boolean default false — set true when the relay to Telegram succeeds; system messages and agent messages are inserted with true
+readByUser boolean default false (for the agent→user unread badge)
+createdAt timestamp
+
+
+Use the project's existing migration mechanism. Do not use db push if migrations are the established pattern; check first.
+
+2. Telegram service module (server/services/telegram.ts)
+
+Base URL: https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}.
+
+
+sendMessage(text: string, opts?: { replyMarkup?: object }): Promise<number> — POST /sendMessage with { chat_id: TELEGRAM_ADMIN_CHAT_ID, text, reply_markup: opts?.replyMarkup }. Return result.message_id. Throw on ok: false with description included in the error. Do not use Markdown/HTML parse mode (avoids escaping bugs with user-supplied text) — plain text only.
+answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> — POST /answerCallbackQuery.
+Fail fast at startup with a clear console warning (not a crash) if any TELEGRAM_* env var is missing; in that case the chat feature must degrade gracefully: customer messages are stored with deliveredToAgent = false and no Telegram call is attempted (the retry sweep picks them up once secrets exist).
+
+
+3. Customer-facing API (authenticated, reuse existing session auth middleware)
+
+
+POST /api/support/conversations — create (or return the user's existing open) conversation. Response includes id, shortCode, status. On creation, insert an automated greeting as the first message (sender = 'system'): "Hi! 👋 Tell me what you need help with — describe your issue and include the store it relates to if relevant. I'll reply here as soon as possible." The greeting is local only (stored + shown in the widget); it is never relayed to Telegram and is excluded from the auto-close inactivity calculation (see §6).
+GET /api/support/conversations/current — the user's open conversation with its messages (ascending), or 404 if none.
+POST /api/support/conversations/:id/messages — body { body: string }, max 2000 chars, trim, reject empty. Verify the conversation belongs to the session user and is open (if closed, 409 — the client then creates a new conversation). Persist the message, then trigger the relay (§5). Rate limit: max 10 messages per minute per user, reusing the existing rate-limit approach from the login limiter.
+POST /api/support/conversations/:id/read — marks agent messages as readByUser.
+GET /api/support/conversations/:id/events — SSE endpoint (text/event-stream). Pushes an event whenever a new agent or system message is inserted for that conversation, and when the conversation's status changes. In-process EventEmitter keyed by conversationId (single Reserved VM instance, so in-process is fine). Heartbeat comment every 25s. Verify ownership before subscribing.
+
+
+4. Context header (first relay of a conversation)
+
+When relaying the FIRST user message of a conversation to Telegram, prepend a context block. Gather from the DB:
+
+
+user email
+store names associated with the user (comma-separated; truncate to 5 with "+N more")
+subscription plan/status if trivially available from existing helpers (e.g. hasAccessGrantingSubscription)
+number of previous support conversations by this user
+
+
+Format (plain text):
+
+🆕 [S-4F7K] New support chat
+👤 merchant@email.com
+🏪 Store One, Store Two
+💳 active (Pro)
+💬 Previous chats: 2
+━━━━━━━━━━
+<the user's message>
+
+Attach an inline keyboard to this first message: one button ✅ Close S-4F7K with callback_data: "close:S-4F7K" (callback_data must stay under 64 bytes — this format is fine).
+
+Subsequent messages in the same conversation are relayed as:
+
+[S-4F7K] <message body>
+
+(no inline keyboard needed on subsequent messages).
+
+5. Relay logic (user → Telegram)
+
+On each new user message:
+
+
+Call sendMessage immediately — there is no messaging-window concept in Telegram; the bot can always message the admin.
+On success, save the returned message_id into telegramMessageId and set deliveredToAgent = true.
+On failure: retry up to 3 times with exponential backoff (1s/5s/15s), then leave the row deliveredToAgent = false — the sweep (§6) retries it. Never surface the failure to the customer; their POST still returns 200 and the message appears in their chat.
+
+
+6. Scheduled sweep — auto-close + retry (reuse the existing job scheduler)
+
+Run every 15 minutes, idempotent, safe to run concurrently with webhook processing:
+
+
+Auto-close: find open conversations where the most recent user or agent message (ignore system messages) is older than 24 hours → set status = 'closed', insert a system message "This conversation was automatically closed due to inactivity. Start a new chat if you still need help.", emit the SSE event so an open widget updates live. Do not notify Telegram about auto-closes (noise).
+Retry queue: for messages with deliveredToAgent = false in open conversations, oldest first, attempt the relay again (including the context header if it is still the conversation's first user message). Cap at 20 sends per sweep run to respect Telegram rate limits.
+
+
+7. Webhook (Telegram → user) — POST /api/webhooks/telegram
+
+
+Auth: verify the X-Telegram-Bot-Api-Secret-Token header equals TELEGRAM_WEBHOOK_SECRET using a timing-safe comparison (follow the same timing-safe pattern used for Apple Wallet auth in Round 3). Reject mismatches with 401. Additionally, ignore any update whose sender/chat id is not TELEGRAM_ADMIN_CHAT_ID. Normal express.json() body parsing is fine — no raw-body/HMAC handling needed, so this route must NOT touch the Stripe webhook's raw-body setup in any way.
+Always return 200 quickly for updates you ignore (otherwise Telegram keeps retrying).
+Deduplicate by update_id: keep the highest processed update_id (a tiny single-row table or key-value row is fine) and skip any update with an id ≤ it.
+
+
+Handle message updates (agent replies):
+Routing, in priority order:
+
+
+If the message has reply_to_message (agent used swipe-to-reply) → look up support_messages by telegramMessageId = reply_to_message.message_id → that conversation.
+Else if text matches ^[#\[]?(S-[A-Z0-9]{4}) → that shortCode's conversation. Strip the code prefix from the stored body.
+Else → the single most-recently-active open conversation (max(lastMessageAt)). If NO open conversation exists, sendMessage back: "No open conversation found — reply (quote) the message you want to answer."
+
+
+Commands (agent messages starting with /):
+
+
+/close (routed as above, or /close S-4F7K) → close that conversation: set status = 'closed', insert a system message "This conversation has been closed. Start a new chat if you need anything else.", emit SSE, confirm to the agent via sendMessage ("Closed S-4F7K ✅").
+
+
+Otherwise insert the routed text as sender = 'agent', deliveredToAgent = true, store the inbound message_id in telegramMessageId, update lastMessageAt, emit the SSE event. Non-text agent messages (photos, stickers, voice): reply to the agent "Only text messages are relayed to the customer." and do not insert anything.
+
+Handle callback_query updates (inline button):
+
+
+Parse callback_data matching ^close:(S-[A-Z0-9]{4})$ → close that conversation exactly like /close (idempotent if already closed), then answerCallbackQuery with "Closed S-4F7K ✅" (or "Already closed").
+
+
+8. Frontend — chat bubble widget (React, existing dashboard)
+
+
+Floating button bottom-right, visible on all authenticated dashboard pages, matching the app's existing design system/theme. Unread count badge (agent messages with readByUser = false).
+Clicking opens a panel (≈360×520 desktop, full-screen sheet on mobile): header "uniHub Support" with status dot, scrollable message list (user right-aligned, agent left-aligned, system messages centered in a muted/pill style, timestamps), input + send button, Enter to send.
+On open: fetch current conversation (create on first send if none — but create eagerly on first panel open so the greeting shows immediately), subscribe to the SSE endpoint, mark as read.
+Optimistic append of sent messages; subtle "not delivered — retry" state on client-side POST failure.
+If conversation is closed (including via SSE status event), show the closed system message and a "Start new conversation" button which creates a fresh one.
+Reconnect SSE with backoff if dropped. No polling loops while SSE is connected.
+One self-contained component + a small hook; do not add a state-management library.
+
+
+9. Constraints
+
+
+Do not modify Stripe, wallet, session, or auth code beyond registering the new routes.
+All secrets from env only. No tokens or chat IDs hardcoded or logged. Do not log message bodies in production logs.
+TypeScript strict; no any on the Telegram update payload — define a minimal typed interface for the fields actually used (update_id, message.message_id, message.text, message.reply_to_message.message_id, message.chat.id, callback_query.id, callback_query.data, callback_query.from.id).
+No new dependencies for Telegram (plain fetch), no socket.io (SSE only).
+
+
+10. Definition of done — report each item explicitly
+
+
+Drizzle migration created and applied; both tables (plus the update_id dedupe row) exist with the specified indexes.
+Widget renders on the dashboard; opening it creates a conversation showing the system greeting; sending a message persists and survives reload.
+First message relays to Telegram with the full context header (email, stores, plan, previous chat count) plus the inline ✅ Close button; telegramMessageId is stored.
+Webhook rejects requests with a missing/incorrect X-Telegram-Bot-Api-Secret-Token (401, timing-safe) and ignores updates from any chat other than the admin's.
+Swipe-to-reply routing: quoting a forwarded message in Telegram delivers the reply into the correct conversation and it appears in the widget via SSE without refresh.
+#S-XXXX prefix routing works; fallback most-recent-open routing works; no-open-conversation case sends the guidance message back to the agent.
+/close command AND the inline Close button both close the conversation; widget shows closed state + "Start new conversation"; button is idempotent when already closed.
+Telegram send failure (simulate by temporarily unsetting the token) → customer still gets 200, message shows in the widget, row stays deliveredToAgent = false, and the sweep delivers it once the token is restored.
+Duplicate webhook delivery (same update_id) does not create a duplicate message.
+Auto-close: an open conversation whose last user/agent message is >24h old (simulate via DB) is closed by the sweep, gets the system auto-close message, and the widget reflects it live; the greeting alone does not prevent or trigger anything.
+Non-text agent message (e.g. a sticker) triggers the "only text" notice and inserts nothing.
+Rate limit verified (11th customer message within a minute rejected with 429).
+npm run build / type-check passes; no unrelated files changed — list every file touched. Confirm no email/SMS/WhatsApp/third-party notification code paths were added and no Telegram framework dependency was installed.
+
+
+Report completion with the checklist above, item by item, including the exact file paths changed.
+
+
+Part C — Post-deploy checklist (after the agent finishes)
+
+
+Register the webhook (Part A step 5) and confirm the {"ok":true} response. You can sanity-check with https://api.telegram.org/bot<TOKEN>/getWebhookInfo — last_error_message should be empty.
+Open the dashboard as a test merchant, open the bubble (greeting should appear), send a message, confirm it lands in your Telegram with the context header and Close button.
+Swipe-reply from Telegram and confirm it appears in the bubble live without refresh.
+Tap the ✅ Close button; confirm the widget shows the closed state. Then test /close on a second conversation.
+Backdate lastMessageAt on a test conversation in the DB and confirm the sweep auto-closes it within 15 minutes.
+Add the three TELEGRAM_* secrets to your launch-checklist doc alongside APPLE_WALLET_AUTH_SECRET.
+Turn on Telegram notifications for the bot chat on your phone (and consider pinning it) — this is now your support inbox.

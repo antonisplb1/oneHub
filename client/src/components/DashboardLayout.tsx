@@ -42,6 +42,7 @@ import { Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useStore } from "@/contexts/StoreContext";
+import SupportChatWidget from "@/components/SupportChatWidget";
 import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
 
 const menuItems = [
@@ -485,6 +486,7 @@ export default function DashboardLayout({ children, requiredProduct }: Dashboard
           </main>
         </div>
       </div>
+      <SupportChatWidget />
     </SidebarProvider>
   );
 }

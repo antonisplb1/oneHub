@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, real, unique, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, real, unique, index, jsonb, serial, bigint } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -390,6 +390,45 @@ export const appleWalletDevices = pgTable('apple_wallet_devices', {
 }));
 
 export type AppleWalletDevice = typeof appleWalletDevices.$inferSelect;
+
+// Live support chat — merchant dashboard bubble relayed two-way to the operator's
+// Telegram. A conversation belongs to the owner account (req.user.id); its
+// messages carry a Telegram message_id so agent swipe-to-reply can be routed back.
+export const supportConversations = pgTable("support_conversations", {
+  id: serial("id").primaryKey(),
+  // S- + 4 uppercase alphanumerics (e.g. S-4F7K), generated server-side.
+  shortCode: varchar("short_code", { length: 8 }).notNull().unique(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  status: varchar("status", { length: 10 }).notNull().default("open").$type<"open" | "closed">(),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+});
+
+export const supportMessages = pgTable("support_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").references(() => supportConversations.id, { onDelete: "cascade" }).notNull(),
+  sender: varchar("sender", { length: 10 }).notNull().$type<"user" | "agent" | "system">(),
+  body: text("body").notNull(),
+  // Telegram message_id of this message as sent to / received from the admin chat;
+  // used for reply-quote routing. Null until relayed (or for local-only messages).
+  telegramMessageId: bigint("telegram_message_id", { mode: "number" }),
+  deliveredToAgent: boolean("delivered_to_agent").notNull().default(false),
+  readByUser: boolean("read_by_user").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  convIdx: index("idx_support_messages_conversation").on(table.conversationId),
+  telegramIdx: index("idx_support_messages_telegram").on(table.telegramMessageId),
+}));
+
+// Single-row table tracking the highest processed Telegram update_id so duplicate
+// webhook deliveries are ignored (Telegram retries until it gets a 200).
+export const telegramWebhookState = pgTable("telegram_webhook_state", {
+  id: varchar("id").primaryKey().default("singleton"),
+  lastUpdateId: bigint("last_update_id", { mode: "number" }).notNull().default(0),
+});
+
+export type SupportConversation = typeof supportConversations.$inferSelect;
+export type SupportMessage = typeof supportMessages.$inferSelect;
 
 // Validation schemas
 export const signupSchema = z.object({

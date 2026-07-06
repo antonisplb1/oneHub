@@ -54,6 +54,7 @@ import { ObjectPermission } from "./objectAcl";
 import { requirePermission, ownerOnly } from "./permissions";
 import { calculateProductPrice, getProductDescription, syncBillingFromStores as syncBillingFromStoresImpl, reconcileBilling, applyStoreUpdate, applyCustomPrice, applyStatusChange, cancelStripeSubscription, hasAccessGrantingSubscription } from "./billing";
 import { startReconciliationService } from "./reconcile";
+import { registerSupportRoutes, startSupportSweepService } from "./support";
 
 // Use test keys in development, production keys in production
 const stripeSecretKey = process.env.NODE_ENV === 'development' 
@@ -345,6 +346,10 @@ export function registerRoutes(app: Express) {
   // billable account's live Stripe price against the price its stores justify
   // and corrects any drift left behind by a failed sync.
   startReconciliationService(stripe);
+
+  // Live support chat bridged to Telegram (dashboard bubble <-> operator's chat).
+  registerSupportRoutes(app, requireAuth);
+  startSupportSweepService();
 
   // Resolve active store for authenticated API requests (runs before all API routes)
   app.use('/api', (req: Request, res: Response, next: Function) => {
