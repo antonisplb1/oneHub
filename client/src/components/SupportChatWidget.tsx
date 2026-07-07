@@ -15,7 +15,7 @@ interface Conversation {
 interface Message {
   id: number;
   conversationId: number;
-  sender: "user" | "agent" | "system";
+  sender: "user" | "agent" | "system" | "ai";
   body: string;
   createdAt: string;
   readByUser: boolean;
@@ -315,6 +315,14 @@ export default function SupportChatWidget() {
                   </div>
                   <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
                     <span>{formatTime(m.createdAt)}</span>
+                    {m.sender === "ai" && (
+                      <span
+                        className="rounded-sm border px-1 text-[10px] font-medium uppercase"
+                        data-testid={`badge-ai-${m.id}`}
+                      >
+                        AI
+                      </span>
+                    )}
                     {isUser && m._status === "sending" && (
                       <Loader2 className="h-3 w-3 animate-spin" />
                     )}

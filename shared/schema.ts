@@ -400,6 +400,9 @@ export const supportConversations = pgTable("support_conversations", {
   shortCode: varchar("short_code", { length: 8 }).notNull().unique(),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   status: varchar("status", { length: 10 }).notNull().default("open").$type<"open" | "closed">(),
+  // Who currently answers this conversation: the external AI agent ("ai") or a
+  // human operator ("human"). Flips to "human" on manual takeover or escalation.
+  mode: varchar("mode", { length: 10 }).notNull().default("ai").$type<"ai" | "human">(),
   createdAt: timestamp("created_at").defaultNow(),
   lastMessageAt: timestamp("last_message_at").defaultNow(),
 });
@@ -407,7 +410,7 @@ export const supportConversations = pgTable("support_conversations", {
 export const supportMessages = pgTable("support_messages", {
   id: serial("id").primaryKey(),
   conversationId: integer("conversation_id").references(() => supportConversations.id, { onDelete: "cascade" }).notNull(),
-  sender: varchar("sender", { length: 10 }).notNull().$type<"user" | "agent" | "system">(),
+  sender: varchar("sender", { length: 10 }).notNull().$type<"user" | "agent" | "system" | "ai">(),
   body: text("body").notNull(),
   // Telegram message_id of this message as sent to / received from the admin chat;
   // used for reply-quote routing. Null until relayed (or for local-only messages).

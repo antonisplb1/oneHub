@@ -17,7 +17,7 @@ import type { Express, Request, Response } from "express";
 import { EventEmitter } from "events";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
-import { and, asc, desc, eq, lt, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
   supportConversations,
@@ -30,7 +30,10 @@ import {
 import {
   answerCallbackQuery,
   getAdminChatId,
+  getAiSharedSecret,
+  getAiWebhookUrl,
   getWebhookSecret,
+  isAiConfigured,
   isTelegramConfigured,
   sendMessage,
   warnIfTelegramMisconfigured,
@@ -214,16 +217,112 @@ async function relayUserMessage(
 }
 
 // ---------------------------------------------------------------------------
+// Forward: dashboard -> external AI agent (n8n)
+// ---------------------------------------------------------------------------
+
+const AI_FORWARD_TIMEOUT_MS = 5000;
+const AI_HISTORY_LIMIT = 10;
+
+// Fire-and-forget forward of a new user message to the external AI agent.
+// Every failure is caught and logged — a forward failure must never affect the
+// customer response or the Telegram relay. There is deliberately no retry
+// queue: the degradation mode is simply "a human will answer".
+async function forwardToAi(
+  conversation: { id: number; shortCode: string; userId: string },
+  message: SupportMessage,
+): Promise<void> {
+  const url = getAiWebhookUrl();
+  const secret = getAiSharedSecret();
+  if (!url || !secret) return;
+
+  try {
+    const [user] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, conversation.userId))
+      .limit(1);
+
+    const storeRows = await db
+      .select({ displayName: stores.displayName, shopName: stores.shopName })
+      .from(stores)
+      .where(eq(stores.userId, conversation.userId))
+      .orderBy(asc(stores.createdAt));
+
+    // Last N messages of this conversation (ascending, excluding the one being
+    // forwarded) so the AI has context.
+    const recent = await db
+      .select({ sender: supportMessages.sender, body: supportMessages.body })
+      .from(supportMessages)
+      .where(
+        and(
+          eq(supportMessages.conversationId, conversation.id),
+          ne(supportMessages.id, message.id),
+        ),
+      )
+      .orderBy(desc(supportMessages.createdAt), desc(supportMessages.id))
+      .limit(AI_HISTORY_LIMIT);
+    const history = recent.reverse();
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), AI_FORWARD_TIMEOUT_MS);
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Support-Secret": secret },
+        body: JSON.stringify({
+          conversationId: conversation.id,
+          shortCode: conversation.shortCode,
+          userEmail: user?.email ?? null,
+          stores: storeRows.map((s) => s.displayName || s.shopName),
+          message: message.body,
+          history,
+        }),
+        signal: controller.signal,
+      });
+      if (!resp.ok) throw new Error(`webhook responded ${resp.status}`);
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (err) {
+    console.error(
+      `[Support][ai] forward failed conversation=${conversation.id}: ` +
+        `${err instanceof Error ? err.message : err}`,
+    );
+  }
+}
+
+// Relay a copy of an AI reply to the operator's Telegram so they can follow
+// along and swipe-reply (which routes to this conversation AND flips it to
+// human mode). On failure the AI reply still stands — the row keeps
+// deliveredToAgent=false so the sweep retries the copy.
+async function relayAiCopy(message: SupportMessage, shortCode: string): Promise<void> {
+  if (!isTelegramConfigured()) return;
+  try {
+    const telegramMessageId = await sendMessage(`AI [${shortCode}]: ${message.body}`);
+    await db
+      .update(supportMessages)
+      .set({ telegramMessageId, deliveredToAgent: true })
+      .where(eq(supportMessages.id, message.id));
+  } catch (err) {
+    console.error(
+      `[Support][ai] Telegram copy failed for message ${message.id}: ` +
+        `${err instanceof Error ? err.message : err}`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Persistence helpers
 // ---------------------------------------------------------------------------
 
 async function insertMessage(
   conversationId: number,
-  sender: "user" | "agent" | "system",
+  sender: "user" | "agent" | "system" | "ai",
   body: string,
   opts?: { telegramMessageId?: number; deliveredToAgent?: boolean; readByUser?: boolean },
+  executor: Pick<typeof db, "insert" | "update"> = db,
 ): Promise<SupportMessage> {
-  const [row] = await db
+  const [row] = await executor
     .insert(supportMessages)
     .values({
       conversationId,
@@ -234,7 +333,7 @@ async function insertMessage(
       readByUser: opts?.readByUser ?? false,
     })
     .returning();
-  await db
+  await executor
     .update(supportConversations)
     .set({ lastMessageAt: new Date() })
     .where(eq(supportConversations.id, conversationId));
@@ -441,6 +540,25 @@ async function handleTelegramUpdate(update: TelegramUpdate): Promise<void> {
   }
 
   const body = stripShortCode(text);
+
+  // Manual takeover: BEFORE inserting the agent message, an ai-mode
+  // conversation flips to human so the external AI stops answering. This
+  // applies to every routing method (quote, S-code, fallback); the AI reply
+  // endpoint re-checks mode at insertion time, which closes the race where a
+  // takeover happens while the AI is mid-generation.
+  const [conv] = await db
+    .select({ status: supportConversations.status, mode: supportConversations.mode })
+    .from(supportConversations)
+    .where(eq(supportConversations.id, target.id))
+    .limit(1);
+  if (conv?.mode === "ai") {
+    await db
+      .update(supportConversations)
+      .set({ mode: "human" })
+      .where(eq(supportConversations.id, target.id));
+    console.log(`[Support][ai] manual takeover conversation=${target.id} — mode flipped to human`);
+  }
+
   const agentMsg = await insertMessage(target.id, "agent", body, {
     telegramMessageId: msg.message_id,
     deliveredToAgent: true,
@@ -448,11 +566,6 @@ async function handleTelegramUpdate(update: TelegramUpdate): Promise<void> {
   });
 
   // A reply on a closed conversation reopens it.
-  const [conv] = await db
-    .select({ status: supportConversations.status })
-    .from(supportConversations)
-    .where(eq(supportConversations.id, target.id))
-    .limit(1);
   if (conv?.status === "closed") {
     await db
       .update(supportConversations)
@@ -511,6 +624,24 @@ function validWebhookSecret(req: Request): boolean {
   if (a.length !== b.length) return false;
   return crypto.timingSafeEqual(a, b);
 }
+
+// Same timing-safe pattern for the AI agent's shared secret.
+function validAiSecret(req: Request): boolean {
+  const expected = getAiSharedSecret();
+  if (!expected) return false;
+  const provided = req.headers["x-support-secret"];
+  if (typeof provided !== "string") return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+// System messages shown to the merchant when the AI escalates to a human.
+const ESCALATION_MESSAGES: Record<"money" | "human_requested", string> = {
+  human_requested: "You're being connected with a real person. Anto will reply here shortly.",
+  money: "This looks like a billing question — a human will take it from here and reply shortly.",
+};
 
 // ---------------------------------------------------------------------------
 // Route registration
@@ -612,6 +743,15 @@ export function registerSupportRoutes(app: Express, requireAuth: Middleware): vo
 
       // Background relay — failures never affect the customer's request.
       void relayUserMessage(message, conv.shortCode, req.user!.id, isFirstUserMessage);
+
+      // Forward to the external AI agent only for open, ai-mode conversations.
+      // Fire-and-forget: a forward failure never affects anything else.
+      if (isAiConfigured() && conv.status === "open" && conv.mode === "ai") {
+        void forwardToAi(
+          { id: conv.id, shortCode: conv.shortCode, userId: req.user!.id },
+          message,
+        );
+      }
     } catch (err) {
       console.error("[Support] post message error:", err);
       if (!res.headersSent) res.status(500).json({ error: "Failed to send message" });
@@ -716,6 +856,158 @@ export function registerSupportRoutes(app: Express, requireAuth: Middleware): vo
       console.error(`[Support][webhook] processing error update_id=${updateId}:`, err);
     }
   });
+
+  // --- AI agent inbound: reply -------------------------------------------
+  // Secured by the shared secret; unauthenticated otherwise (called by n8n).
+  app.post("/api/support/ai/reply", async (req, res) => {
+    if (!isAiConfigured()) {
+      return res.status(503).json({ error: "AI integration is not configured" });
+    }
+    if (!validAiSecret(req)) {
+      console.warn("[Support][ai] reply rejected reason=bad_secret");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const conversationId = Number(req.body?.conversationId);
+    const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+    if (!Number.isInteger(conversationId) || !text) {
+      return res.status(400).json({ error: "conversationId and non-empty text are required" });
+    }
+    if (text.length > 3000) {
+      return res.status(400).json({ error: "Text is too long (max 3000 characters)" });
+    }
+
+    try {
+      // Transaction with a row lock: the state re-check and the insert are
+      // atomic, so a manual takeover (which flips mode before inserting the
+      // agent message) cannot interleave between check and insert.
+      const outcome = await db.transaction(async (tx) => {
+        const [conv] = await tx
+          .select()
+          .from(supportConversations)
+          .where(eq(supportConversations.id, conversationId))
+          .for("update")
+          .limit(1);
+        if (!conv) return { kind: "not_found" as const };
+        if (conv.status !== "open" || conv.mode !== "ai") {
+          return { kind: "taken_over" as const, status: conv.status, mode: conv.mode };
+        }
+        const aiMsg = await insertMessage(conversationId, "ai", text, { readByUser: false }, tx);
+        return { kind: "inserted" as const, aiMsg, shortCode: conv.shortCode };
+      });
+
+      if (outcome.kind === "not_found") {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      if (outcome.kind === "taken_over") {
+        console.log(
+          `[Support][ai] reply rejected conversation=${conversationId} ` +
+            `status=${outcome.status} mode=${outcome.mode} — conversation_taken_over`,
+        );
+        return res.status(409).json({ error: "conversation_taken_over" });
+      }
+
+      const { aiMsg } = outcome;
+      emitSupportEvent(conversationId, { type: "message", message: aiMsg });
+      console.log(
+        `[Support][ai] reply inserted conversation=${conversationId} ` +
+          `message_id=${aiMsg.id} — SSE 'message' emitted`,
+      );
+      res.json({ ok: true, messageId: aiMsg.id });
+
+      // Copy to Telegram in the background; failure leaves deliveredToAgent
+      // false for the sweep to retry, and never affects the stored reply.
+      void relayAiCopy(aiMsg, outcome.shortCode);
+    } catch (err) {
+      console.error("[Support][ai] reply endpoint error:", err);
+      if (!res.headersSent) res.status(500).json({ error: "Failed to store reply" });
+    }
+  });
+
+  // --- AI agent inbound: escalate to human --------------------------------
+  app.post("/api/support/ai/escalate", async (req, res) => {
+    if (!isAiConfigured()) {
+      return res.status(503).json({ error: "AI integration is not configured" });
+    }
+    if (!validAiSecret(req)) {
+      console.warn("[Support][ai] escalate rejected reason=bad_secret");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const conversationId = Number(req.body?.conversationId);
+    const reason = req.body?.reason as unknown;
+    if (!Number.isInteger(conversationId) || (reason !== "money" && reason !== "human_requested")) {
+      return res
+        .status(400)
+        .json({ error: "conversationId and reason ('money' | 'human_requested') are required" });
+    }
+
+    try {
+      // Atomic conditional flip: only ONE concurrent escalate (or none, if a
+      // takeover already flipped the mode) wins this UPDATE, so exactly one
+      // system message + operator ping is ever produced.
+      const [flipped] = await db
+        .update(supportConversations)
+        .set({ mode: "human" })
+        .where(
+          and(
+            eq(supportConversations.id, conversationId),
+            eq(supportConversations.mode, "ai"),
+            eq(supportConversations.status, "open"),
+          ),
+        )
+        .returning();
+
+      if (!flipped) {
+        const [conv] = await db
+          .select({ id: supportConversations.id })
+          .from(supportConversations)
+          .where(eq(supportConversations.id, conversationId))
+          .limit(1);
+        if (!conv) return res.status(404).json({ error: "Conversation not found" });
+        // Idempotent: already human (or closed) means there is nothing to do.
+        return res.json({ ok: true, alreadyHuman: true });
+      }
+      const conv = flipped;
+
+      const sysMsg = await insertMessage(conversationId, "system", ESCALATION_MESSAGES[reason], {
+        readByUser: false,
+      });
+      emitSupportEvent(conversationId, { type: "message", message: sysMsg });
+      console.log(
+        `[Support][ai] escalated conversation=${conversationId} reason=${reason} ` +
+          `— mode flipped to human, SSE 'message' emitted`,
+      );
+      res.json({ ok: true, alreadyHuman: false });
+
+      // Ping the operator in the background. If this fails, the mode flip and
+      // system message stand — never let a Telegram hiccup silently leave the
+      // bot in charge of a billing issue.
+      void (async () => {
+        try {
+          const [user] = await db
+            .select({ email: users.email })
+            .from(users)
+            .where(eq(users.id, conv.userId))
+            .limit(1);
+          const email = user?.email ?? "unknown";
+          const ping =
+            reason === "money"
+              ? `⚠️ [${conv.shortCode}] Billing question from ${email} — switched to human mode. Reply here as usual.`
+              : `⚠️ [${conv.shortCode}] ${email} asked for a human — switched to human mode. Reply here as usual.`;
+          await sendMessage(ping);
+        } catch (err) {
+          console.error(
+            `[Support][ai] escalation ping failed conversation=${conversationId}: ` +
+              `${err instanceof Error ? err.message : err}`,
+          );
+        }
+      })();
+    } catch (err) {
+      console.error("[Support][ai] escalate endpoint error:", err);
+      if (!res.headersSent) res.status(500).json({ error: "Failed to escalate" });
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -753,7 +1045,9 @@ async function runSupportSweep(): Promise<void> {
     console.error("[Support] auto-close sweep error:", err);
   }
 
-  // 2) Retry undelivered user messages in still-open conversations, oldest first.
+  // 2) Retry undelivered Telegram sends in still-open conversations, oldest
+  //    first: user-message relays AND copies of AI replies. This retry pass is
+  //    Telegram-only — forwards to the external AI agent are never retried.
   if (!isTelegramConfigured()) return;
   try {
     const pending = await db
@@ -766,7 +1060,7 @@ async function runSupportSweep(): Promise<void> {
       .innerJoin(supportConversations, eq(supportMessages.conversationId, supportConversations.id))
       .where(
         and(
-          eq(supportMessages.sender, "user"),
+          inArray(supportMessages.sender, ["user", "ai"]),
           eq(supportMessages.deliveredToAgent, false),
           eq(supportConversations.status, "open"),
         ),
@@ -775,19 +1069,26 @@ async function runSupportSweep(): Promise<void> {
       .limit(MAX_RETRIES_PER_SWEEP);
 
     for (const row of pending) {
-      // Header only if no user message from this conversation has been delivered yet.
-      const [{ count }] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(supportMessages)
-        .where(
-          and(
-            eq(supportMessages.conversationId, row.message.conversationId),
-            eq(supportMessages.sender, "user"),
-            eq(supportMessages.deliveredToAgent, true),
-          ),
-        );
-      const includeHeader = (count ?? 0) === 0;
       try {
+        if (row.message.sender === "ai") {
+          // Retry the Telegram copy of an AI reply (same framing as the
+          // original send so swipe-reply routing keeps working).
+          await relayAiCopy(row.message, row.shortCode);
+          continue;
+        }
+
+        // Header only if no user message from this conversation has been delivered yet.
+        const [{ count }] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(supportMessages)
+          .where(
+            and(
+              eq(supportMessages.conversationId, row.message.conversationId),
+              eq(supportMessages.sender, "user"),
+              eq(supportMessages.deliveredToAgent, true),
+            ),
+          );
+        const includeHeader = (count ?? 0) === 0;
         const telegramMessageId = await attemptRelay(row.message, row.shortCode, row.userId, includeHeader);
         if (telegramMessageId != null) {
           await db

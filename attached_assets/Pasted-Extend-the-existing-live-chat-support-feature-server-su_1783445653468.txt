@@ -1,0 +1,102 @@
+Extend the existing live chat support feature (server/support.ts, server/services/telegram.ts, the support widget) with an AI-agent integration layer. The AI itself runs externally (n8n); this task adds the server-side plumbing: a conversation mode, an outbound forward, and two secured inbound endpoints. Follow this spec exactly.
+
+Constraints (same as Round 5): Do not modify Stripe, wallet, session, or auth code. Telegram remains the only notification channel — no email/SMS/other services. No new dependencies. All secrets from env only; never log message bodies or secrets. TypeScript strict. Reuse the existing timing-safe comparison pattern, the existing SSE emitter, and the existing job scheduler. Do not restructure unrelated code.
+
+1. Schema (Drizzle migration via the established workflow)
+
+
+Add to support_conversations: mode varchar, values ai | human, not null, default ai.
+Allow a new sender value on support_messages: ai (alongside user, agent, system). No column change needed if sender is a plain varchar — just update the TypeScript types/unions.
+IMPORTANT: after schema change, remind in the completion report that db:push must be run against BOTH dev and production DATABASE_URL (production schema drift was a real incident in Round 5).
+
+
+2. Config (server/services/telegram.ts or a small new config helper)
+
+
+Read SUPPORT_AI_WEBHOOK_URL and SUPPORT_AI_SHARED_SECRET (trim both, same as the Telegram vars).
+isAiConfigured() — true only when both are set. When false, everything behaves exactly as today (no forward attempted, endpoints still registered but escalate/agent-reply reject with 503).
+
+
+3. Outbound forward (user message → n8n)
+
+In the existing new-user-message path (after storing the message and triggering the Telegram relay):
+
+
+Forward to n8n ONLY IF: isAiConfigured() AND conversation status = 'open' AND conversation mode = 'ai'.
+POST SUPPORT_AI_WEBHOOK_URL with header X-Support-Secret: <SUPPORT_AI_SHARED_SECRET> and JSON body:
+
+
+json  {
+    "conversationId": 4,
+    "shortCode": "S-4F7K",
+    "userEmail": "merchant@email.com",
+    "stores": ["Store One", "Store Two"],
+    "message": "the merchant's message text",
+    "history": [ { "sender": "user|ai|agent|system", "body": "..." } ]
+  }
+
+history = the last 10 messages of this conversation (ascending, excluding the one being forwarded), so the AI has context.
+
+
+Fire-and-forget: 5s timeout (AbortController), all failures caught and logged as [Support][ai] forward failed conversation=N: <err> — a forward failure must never affect the customer response, the Telegram relay, or anything else. No retry queue for AI forwards: the degradation mode is simply "a human will answer", which is acceptable.
+
+
+4. Mode flip on manual takeover (Telegram webhook handler)
+
+In handleTelegramUpdate, in the regular-agent-reply path: BEFORE inserting the agent message, if the target conversation has mode = 'ai', update it to mode = 'human'. This must happen for every manual reply regardless of routing method (quote, S-code, fallback). The /close command and callback close do NOT need to touch mode (closing already stops forwards via the status check).
+
+5. Inbound endpoint: agent reply — POST /api/support/ai/reply
+
+
+Auth: require header X-Support-Secret to match SUPPORT_AI_SHARED_SECRET via the existing timing-safe pattern; 401 on mismatch, 503 if not configured.
+Body: { "conversationId": number, "text": string } — trim, max 3000 chars, reject empty (400).
+Re-check state at insertion time: load the conversation; if it does not exist → 404; if status != 'open' OR mode != 'ai' → 409 with { "error": "conversation_taken_over" } and insert nothing. This closes the race where you take over while the AI is mid-generation.
+On success: insert as sender = 'ai', deliveredToAgent handling as below, readByUser = false; update lastMessageAt; emit the SSE message event (merchant sees it live).
+Relay a copy to your Telegram via the existing sendMessage: AI [S-4F7K]: <text> — store the returned message_id on the row's telegramMessageId (so you can swipe-reply to an AI answer and it routes correctly, which also flips mode to human per §4). If the Telegram relay of the copy fails, the AI reply still stands (merchant already has it); mark deliveredToAgent = false so the sweep retries the copy.
+
+
+6. Inbound endpoint: escalate — POST /api/support/ai/escalate
+
+
+Same auth as §5.
+Body: { "conversationId": number, "reason": "money" | "human_requested" } (reject other values with 400).
+Load conversation; 404 if missing; if already mode = 'human' or status != 'open', return 200 { "ok": true, "alreadyHuman": true } idempotently and do nothing else.
+Otherwise, atomically: set mode = 'human'; insert a system message for the merchant — for human_requested: "You're being connected with a real person. Anto will reply here shortly."; for money: "This looks like a billing question — a human will take it from here and reply shortly."; emit SSE.
+Ping your Telegram via the existing sendMessage:
+
+money: ⚠️ [S-4F7K] Billing question from merchant@email.com — switched to human mode. Reply here as usual.
+human_requested: ⚠️ [S-4F7K] merchant@email.com asked for a human — switched to human mode. Reply here as usual.
+If the ping fails, still keep the mode flip and system message (never let a Telegram hiccup silently leave the bot in charge of a billing issue), and log the failure.
+
+
+
+
+
+7. Widget
+
+
+Render sender = 'ai' messages left-aligned like agent messages, with a small muted "AI" label or badge next to the timestamp so merchants aren't misled about talking to a person.
+Render the escalation system messages with the existing system style. No other widget changes.
+
+
+8. Sweep / auto-close
+
+
+Treat ai messages like agent messages for the 24h inactivity calculation (an AI-answered conversation is active).
+The sweep's retry pass must also retry failed Telegram copies of AI replies (§5) — same deliveredToAgent = false mechanism, and it must skip forwards to n8n entirely (retry applies only to Telegram sends).
+
+
+9. Definition of done — report each item explicitly
+
+
+Migration applied; mode column exists, default ai; existing conversations backfilled to a sane value (human for conversations that already contain an agent message, else ai).
+With AI env vars unset, everything behaves exactly as before (verified: message send, relay, manual reply) and the two new endpoints return 503.
+With env vars set: a merchant message in an ai-mode open conversation fires exactly one POST to SUPPORT_AI_WEBHOOK_URL with the correct header, payload shape, and last-10 history; messages in human-mode or closed conversations fire none.
+Forward failure (unreachable URL) is swallowed: customer gets 200, Telegram relay unaffected, error logged.
+A manual Telegram reply flips mode to human (verified in DB) via all three routing methods.
+POST /api/support/ai/reply: correct secret + ai-mode open conversation → message inserted as ai, SSE fires, Telegram copy sent with AI [S-XXXX]: prefix and message_id stored. Wrong secret → 401. Human-mode conversation → 409 and nothing inserted. Closed → 409.
+Swipe-replying to an AI copy in Telegram routes to the correct conversation AND flips it to human mode.
+POST /api/support/ai/escalate with each reason: mode flips, correct system message appears in the widget via SSE, correct Telegram ping received; repeat call returns alreadyHuman: true and inserts nothing.
+Widget shows the AI badge on ai messages.
+Auto-close counts ai messages as activity.
+Type-check and build pass; list every file touched; confirm no Stripe/wallet/auth/session files changed and no new dependencies added.

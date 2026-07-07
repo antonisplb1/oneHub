@@ -11,6 +11,24 @@ const TOKEN = process.env.TELEGRAM_BOT_TOKEN?.trim();
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
 
+// External AI support agent (n8n). Trimmed for the same pasted-whitespace reason.
+const AI_WEBHOOK_URL = process.env.SUPPORT_AI_WEBHOOK_URL?.trim();
+const AI_SHARED_SECRET = process.env.SUPPORT_AI_SHARED_SECRET?.trim();
+
+// True only when both AI vars are set. When false, no forwards are attempted and
+// the AI inbound endpoints reject with 503 — support behaves exactly as before.
+export function isAiConfigured(): boolean {
+  return !!(AI_WEBHOOK_URL && AI_SHARED_SECRET);
+}
+
+export function getAiWebhookUrl(): string | undefined {
+  return AI_WEBHOOK_URL;
+}
+
+export function getAiSharedSecret(): string | undefined {
+  return AI_SHARED_SECRET;
+}
+
 const BASE_URL = `https://api.telegram.org/bot${TOKEN}`;
 
 // True only when every TELEGRAM_* var is present. When false the chat feature
