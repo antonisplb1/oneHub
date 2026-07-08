@@ -1,0 +1,143 @@
+ROUND 6 — Dashboard & Analytics redesign (merchant-friendly, read-only)
+
+SCOPE: Only these areas. Do NOT touch billing, auth, spin wheel, menu, shifts CRUD,
+wallet passes, support chat, or any other part of the app.
+
+CONTEXT
+The Dashboard (client/src/components/DashboardHome.tsx) and Analytics
+(client/src/components/AnalyticsSection.tsx) currently show overlapping lifetime
+totals and both fetch ALL raw rows (/api/customers, /api/loyalty-cards,
+/api/loyalty-transactions, /api/spins) and compute stats client-side.
+Goal: give each screen a distinct job and move computation into two efficient
+read-only aggregate endpoints.
+- Dashboard = "what's happening today + what needs my attention" (daily glance)
+- Analytics = "is loyalty working for my business" (weekly/monthly review)
+
+HARD CONSTRAINTS — read carefully, these are non-negotiable
+1. NO new database tables, NO new columns, NO migrations. shared/schema.ts must
+   have zero changes in the final diff.
+2. NO event tracking, telemetry, page-view logging, audit logging, or analytics
+   event rows of any kind. Do not INSERT anything to record that a merchant
+   viewed a page or that a stat was computed.
+3. The two new endpoints must be strictly read-only: SELECT/aggregate queries
+   only. No INSERT, UPDATE, or DELETE anywhere in code added this round.
+4. NO new cron jobs, setInterval, background workers, or caching layers on the
+   server. Compute on request; it's cheap with aggregates.
+5. NO new npm dependencies. Use the existing chart approach (plain divs /
+   existing components) — no new chart libraries.
+6. NO console.log in the new code except console.error inside catch blocks.
+7. All queries must be SQL aggregates (COUNT, GROUP BY, LIMIT) scoped to the
+   active store (req.storeId) — never fetch full tables and filter in JS.
+8. Client: use react-query with staleTime of 60 seconds on both summary queries
+   so navigation between tabs doesn't refire requests.
+
+PART A — Two new read-only endpoints in server/routes.ts
+
+A1. GET /api/dashboard/summary
+Middleware: requireAuth, requireSubscription, requirePermission('dashboard')
+(match the existing middleware pattern used by similar routes).
+Returns one JSON object, all scoped to req.storeId:
+{
+  today:        { stamps, spins, newMembers },          // counts for today (server date)
+  week:         { stamps, stampsPrevWeek },             // last 7 days vs the 7 days before
+  attention: {
+    readyToRedeem,        // COUNT loyalty_cards WHERE is_redeemable = true
+    nearReward,           // COUNT loyalty_cards WHERE stamps = max_stamps - 1
+    inactive30d,          // COUNT loyalty_cards WHERE last_stamp_at < now() - 30 days AND stamps > 0
+    noShiftsTomorrow      // boolean; only computed if the active store has the
+                          // 'shift' product enabled, else omit the field entirely
+  },
+  todaysShifts: [ { employeeName, startTime, endTime } ],  // shifts WHERE shift_date =
+                          // today, ordered by start_time; ONLY if 'shift' product is
+                          // enabled for the active store, else empty array. Must not
+                          // 403 for users/stores without the shift product.
+  trend7d: [ n, n, n, n, n, n, n ],   // stamps+spins per day, last 7 days, one GROUP BY query
+  recentActivity: [ ... ]  // last 8 items (stamps, rewards, spins) with customerName,
+                           // type, description, timestamp — built from LIMIT queries,
+                           // NOT full-table fetches
+}
+
+A2. GET /api/analytics/summary
+Middleware: requireAuth, requireSubscription, requirePermission('analytics').
+Returns, all scoped to req.storeId:
+{
+  thisMonth: { visits, newMembers, spins, rewards },
+  lastMonth: { visits, newMembers, spins, rewards },
+  repeatRate: {
+    avgVisitsRepeatMembers,   // avg stamp count this month among customers with 2+ stamps this month
+    singleVisitMembers,       // customers with exactly 1 stamp this month
+    repeatMembers             // customers with 2+ stamps this month
+  },
+  visitsByDayOfWeek: [ n x7 ],  // stamp transactions from the last 60 days grouped by
+                                 // EXTRACT(DOW ...), Monday-first order
+  topCustomers: [ { name, visits, lastVisit } ]  // top 10 by stamp count, GROUP BY + LIMIT 10
+}
+"visits" = loyalty_transactions of type 'stamp'.
+
+PART B — Dashboard UI (rewrite DashboardHome.tsx)
+Remove the four raw-data useQuery calls; use only /api/dashboard/summary.
+Layout top to bottom:
+1. Today strip: three compact stats — "Stamps today", "Spins today", "New members
+   today". Under the stamps stat, a comparison line: "X this week vs Y last week"
+   with an up/down indicator.
+2. "Needs your attention" card, showing only rows whose count > 0:
+   - "N customers are ready to redeem a reward" → links to Customers
+   - "N customers are 1 stamp away from a reward" → links to Customers
+   - "N customers haven't visited in 30+ days" → links to Customers
+   - "No shifts scheduled for tomorrow" (only when noShiftsTomorrow === true) → links to Shifts
+   If nothing needs attention, show a single friendly line: "All good — nothing
+   needs your attention today."
+3. "Working today" strip: names + times from todaysShifts. Render this section
+   ONLY when todaysShifts is present/non-empty concept applies (hide entirely if
+   the store doesn't have the shift product).
+4. Keep the existing Quick Actions card unchanged.
+5. 7-day trend: keep the existing div-bar chart style but half height, fed from
+   trend7d, with one generated sentence under it, e.g. "Your busiest day this
+   week was Saturday."
+6. Recent Activity: keep existing look, fed from recentActivity.
+Remove: the four lifetime-total stat cards and the "Most Loyal Customers" card
+(that moves to Analytics).
+
+PART C — Analytics UI (rewrite AnalyticsSection.tsx)
+Remove the four raw-data useQuery calls; use only /api/analytics/summary.
+Three sections with plain-language headers:
+1. "Is loyalty working?"
+   - Headline sentence computed from repeatRate, e.g.: "Your repeat customers
+     visited an average of 3.2 times this month — N customers came back more
+     than once." If repeatMembers === 0, show instead: "Not enough data yet —
+     this fills in after a few weeks of stamps."
+   - Four compact cards: Visits, New members, Spins, Rewards — each showing this
+     month's number with a % change vs last month (green up / red down / "—" if
+     last month was 0). No lifetime totals anywhere on the page.
+2. "When do customers visit?"
+   - Day-of-week bar chart (7 bars, Mon–Sun, same div-bar style as the dashboard
+     trend) from visitsByDayOfWeek.
+   - One generated sentence: "Saturday is your busiest day; Tuesday is your
+     quietest." Hide the sentence if total visits in the period < 10.
+3. "Your best customers"
+   - Simple table/list of topCustomers: name, visit count, "last visit X days
+     ago" (use existing formatDistanceToNow). Empty state: "No customer visits
+     recorded yet."
+Every section must render a graceful empty state for a brand-new account with
+zero data — no NaN, no crashes, no empty charts with broken scales.
+
+MOBILE: both pages must collapse to a single column and stay readable on a
+~380px viewport, matching the app's existing responsive patterns.
+
+DEFINITION OF DONE — verify each before reporting completion:
+[ ] git diff shows zero changes to shared/schema.ts and no files under migrations/
+[ ] No INSERT/UPDATE/DELETE statements in any code added this round
+[ ] No new entries in package.json dependencies
+[ ] No new cron/setInterval/background jobs
+[ ] DashboardHome.tsx and AnalyticsSection.tsx each make exactly one API request
+    (the old /api/customers, /api/loyalty-cards, /api/loyalty-transactions,
+    /api/spins queries are removed from these two files — do not delete the
+    endpoints themselves, other pages may use them)
+[ ] Both endpoints reject unauthenticated requests and respect subuser
+    permissions ('dashboard' / 'analytics')
+[ ] A store WITHOUT the shift product sees no shift strip and no errors
+[ ] A brand-new account with zero data renders both pages with empty states
+[ ] All summary queries filter by the active store (req.storeId)
+[ ] npm run check passes with no TypeScript errors
+Report back with a summary of every file changed and confirmation of each
+checklist item.

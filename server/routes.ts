@@ -37,7 +37,7 @@ import {
   updateStoreSchema,
   loyaltySettingsSchema,
 } from "@shared/schema";
-import { eq, and, desc, asc, gt, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, asc, gt, gte, lt, lte, sql } from "drizzle-orm";
 import { hashPassword, generateToken, comparePasswords } from "./auth";
 import passport from "passport";
 import { nanoid } from "nanoid";
@@ -4008,6 +4008,292 @@ export function registerRoutes(app: Express) {
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Dashboard & Analytics read-only aggregate summaries (Round 6)
+  const toDateStr = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  app.get("/api/dashboard/summary", requireAuth, requireSubscription, requirePermission('dashboard'), async (req, res) => {
+    try {
+      const storeId = req.storeId!;
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekStart = new Date(todayStart); weekStart.setDate(weekStart.getDate() - 6);
+      const prevWeekStart = new Date(todayStart); prevWeekStart.setDate(prevWeekStart.getDate() - 13);
+      const days30Ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const tomorrow = new Date(todayStart); tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const [store] = await db
+        .select({ selectedProducts: stores.selectedProducts })
+        .from(stores)
+        .where(eq(stores.id, storeId))
+        .limit(1);
+      const hasShiftProduct = (store?.selectedProducts ?? []).includes('shift');
+
+      const [
+        todayCounts,
+        weekCounts,
+        newMembersToday,
+        cardCounts,
+        trendRows,
+        recentTx,
+        recentSpins,
+      ] = await Promise.all([
+        db.select({
+          stamps: sql<number>`count(*) filter (where ${loyaltyTransactions.type} = 'stamp')`.mapWith(Number),
+        }).from(loyaltyTransactions)
+          .where(and(eq(loyaltyTransactions.storeId, storeId), gte(loyaltyTransactions.createdAt, todayStart)))
+          .then(async ([r]) => {
+            const [s] = await db.select({ spins: sql<number>`count(*)`.mapWith(Number) })
+              .from(spins)
+              .where(and(eq(spins.storeId, storeId), gte(spins.spunAt, todayStart)));
+            return { stamps: r?.stamps ?? 0, spins: s?.spins ?? 0 };
+          }),
+        db.select({
+          stamps: sql<number>`count(*) filter (where ${loyaltyTransactions.createdAt} >= ${weekStart})`.mapWith(Number),
+          stampsPrevWeek: sql<number>`count(*) filter (where ${loyaltyTransactions.createdAt} >= ${prevWeekStart} and ${loyaltyTransactions.createdAt} < ${weekStart})`.mapWith(Number),
+        }).from(loyaltyTransactions)
+          .where(and(
+            eq(loyaltyTransactions.storeId, storeId),
+            eq(loyaltyTransactions.type, 'stamp'),
+            gte(loyaltyTransactions.createdAt, prevWeekStart),
+          )),
+        db.select({ count: sql<number>`count(*)`.mapWith(Number) })
+          .from(customers)
+          .where(and(eq(customers.storeId, storeId), gte(customers.createdAt, todayStart))),
+        db.select({
+          readyToRedeem: sql<number>`count(*) filter (where ${loyaltyCards.isRedeemable} = true)`.mapWith(Number),
+          nearReward: sql<number>`count(*) filter (where ${loyaltyCards.stamps} = ${loyaltyCards.maxStamps} - 1)`.mapWith(Number),
+          inactive30d: sql<number>`count(*) filter (where ${loyaltyCards.lastStampAt} < ${days30Ago} and ${loyaltyCards.stamps} > 0)`.mapWith(Number),
+        }).from(loyaltyCards)
+          .where(eq(loyaltyCards.storeId, storeId)),
+        db.execute(sql`
+          select date_trunc('day', ts)::date as day, count(*)::int as count
+          from (
+            select ${loyaltyTransactions.createdAt} as ts
+            from ${loyaltyTransactions}
+            where ${loyaltyTransactions.storeId} = ${storeId}
+              and ${loyaltyTransactions.type} = 'stamp'
+              and ${loyaltyTransactions.createdAt} >= ${weekStart}
+            union all
+            select ${spins.spunAt} as ts
+            from ${spins}
+            where ${spins.storeId} = ${storeId}
+              and ${spins.spunAt} >= ${weekStart}
+          ) t
+          group by 1
+        `),
+        db.select({
+          id: loyaltyTransactions.id,
+          type: loyaltyTransactions.type,
+          createdAt: loyaltyTransactions.createdAt,
+          customerName: customers.name,
+        }).from(loyaltyTransactions)
+          .innerJoin(loyaltyCards, eq(loyaltyTransactions.loyaltyCardId, loyaltyCards.id))
+          .innerJoin(customers, eq(loyaltyCards.customerId, customers.id))
+          .where(eq(loyaltyTransactions.storeId, storeId))
+          .orderBy(desc(loyaltyTransactions.createdAt))
+          .limit(8),
+        db.select({
+          id: spins.id,
+          prizeWon: spins.prizeWon,
+          spunAt: spins.spunAt,
+          customerName: customers.name,
+        }).from(spins)
+          .leftJoin(customers, eq(spins.customerId, customers.id))
+          .where(eq(spins.storeId, storeId))
+          .orderBy(desc(spins.spunAt))
+          .limit(8),
+      ]);
+
+      const trendByDay = new Map<string, number>();
+      for (const row of (trendRows as any).rows ?? []) {
+        const key = typeof row.day === 'string' ? row.day.slice(0, 10) : toDateStr(new Date(row.day));
+        trendByDay.set(key, Number(row.count) || 0);
+      }
+      const trend7d: number[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart); d.setDate(d.getDate() + i);
+        trend7d.push(trendByDay.get(toDateStr(d)) ?? 0);
+      }
+
+      const recentActivity = [
+        ...recentTx.map((t) => ({
+          id: `tx-${t.id}`,
+          type: t.type === 'reward' ? 'reward' as const : 'stamp' as const,
+          customerName: t.customerName || 'Unknown',
+          description: t.type === 'reward' ? 'Redeemed reward' : 'Received a stamp',
+          timestamp: t.createdAt,
+        })),
+        ...recentSpins.map((s) => ({
+          id: `spin-${s.id}`,
+          type: 'spin' as const,
+          customerName: s.customerName || 'Unknown',
+          description: s.prizeWon ? `Won: ${s.prizeWon}` : 'Spun the wheel',
+          timestamp: s.spunAt,
+        })),
+      ]
+        .filter((a) => a.timestamp)
+        .sort((a, b) => new Date(b.timestamp as any).getTime() - new Date(a.timestamp as any).getTime())
+        .slice(0, 8);
+
+      const attention: Record<string, number | boolean> = {
+        readyToRedeem: cardCounts[0]?.readyToRedeem ?? 0,
+        nearReward: cardCounts[0]?.nearReward ?? 0,
+        inactive30d: cardCounts[0]?.inactive30d ?? 0,
+      };
+
+      let todaysShifts: { employeeName: string; startTime: string; endTime: string }[] = [];
+      if (hasShiftProduct) {
+        const [shiftRows, [tomorrowCount]] = await Promise.all([
+          db.select({
+            employeeName: shifts.employeeName,
+            startTime: shifts.startTime,
+            endTime: shifts.endTime,
+          }).from(shifts)
+            .where(and(eq(shifts.storeId, storeId), eq(shifts.shiftDate, toDateStr(todayStart))))
+            .orderBy(asc(shifts.startTime)),
+          db.select({ count: sql<number>`count(*)`.mapWith(Number) })
+            .from(shifts)
+            .where(and(eq(shifts.storeId, storeId), eq(shifts.shiftDate, toDateStr(tomorrow)))),
+        ]);
+        todaysShifts = shiftRows;
+        attention.noShiftsTomorrow = (tomorrowCount?.count ?? 0) === 0;
+      }
+
+      res.json({
+        today: {
+          stamps: todayCounts.stamps,
+          spins: todayCounts.spins,
+          newMembers: newMembersToday[0]?.count ?? 0,
+        },
+        week: {
+          stamps: weekCounts[0]?.stamps ?? 0,
+          stampsPrevWeek: weekCounts[0]?.stampsPrevWeek ?? 0,
+        },
+        attention,
+        todaysShifts,
+        trend7d,
+        recentActivity,
+      });
+    } catch (error: any) {
+      console.error('[dashboard/summary] failed:', error);
+      res.status(500).json({ error: "Failed to load dashboard summary" });
+    }
+  });
+
+  app.get("/api/analytics/summary", requireAuth, requireSubscription, requirePermission('analytics'), async (req, res) => {
+    try {
+      const storeId = req.storeId!;
+      const now = new Date();
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const days60Ago = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+      const monthCounts = (from: Date, to?: Date) => {
+        const txWhere = and(
+          eq(loyaltyTransactions.storeId, storeId),
+          gte(loyaltyTransactions.createdAt, from),
+          ...(to ? [lt(loyaltyTransactions.createdAt, to)] : []),
+        );
+        return Promise.all([
+          db.select({
+            visits: sql<number>`count(*) filter (where ${loyaltyTransactions.type} = 'stamp')`.mapWith(Number),
+            rewards: sql<number>`count(*) filter (where ${loyaltyTransactions.type} = 'reward')`.mapWith(Number),
+          }).from(loyaltyTransactions).where(txWhere),
+          db.select({ count: sql<number>`count(*)`.mapWith(Number) })
+            .from(customers)
+            .where(and(
+              eq(customers.storeId, storeId),
+              gte(customers.createdAt, from),
+              ...(to ? [lt(customers.createdAt, to)] : []),
+            )),
+          db.select({ count: sql<number>`count(*)`.mapWith(Number) })
+            .from(spins)
+            .where(and(
+              eq(spins.storeId, storeId),
+              gte(spins.spunAt, from),
+              ...(to ? [lt(spins.spunAt, to)] : []),
+            )),
+        ]).then(([[tx], [nm], [sp]]) => ({
+          visits: tx?.visits ?? 0,
+          newMembers: nm?.count ?? 0,
+          spins: sp?.count ?? 0,
+          rewards: tx?.rewards ?? 0,
+        }));
+      };
+
+      const [thisMonth, lastMonth, repeatRows, dowRows, topRows] = await Promise.all([
+        monthCounts(thisMonthStart),
+        monthCounts(lastMonthStart, thisMonthStart),
+        db.execute(sql`
+          select
+            coalesce(avg(cnt) filter (where cnt >= 2), 0)::float as avg_visits,
+            count(*) filter (where cnt = 1)::int as single_visit,
+            count(*) filter (where cnt >= 2)::int as repeat_members
+          from (
+            select ${loyaltyTransactions.loyaltyCardId} as card_id, count(*)::int as cnt
+            from ${loyaltyTransactions}
+            where ${loyaltyTransactions.storeId} = ${storeId}
+              and ${loyaltyTransactions.type} = 'stamp'
+              and ${loyaltyTransactions.createdAt} >= ${thisMonthStart}
+            group by 1
+          ) t
+        `),
+        db.select({
+          dow: sql<number>`extract(dow from ${loyaltyTransactions.createdAt})::int`.mapWith(Number),
+          count: sql<number>`count(*)`.mapWith(Number),
+        }).from(loyaltyTransactions)
+          .where(and(
+            eq(loyaltyTransactions.storeId, storeId),
+            eq(loyaltyTransactions.type, 'stamp'),
+            gte(loyaltyTransactions.createdAt, days60Ago),
+          ))
+          .groupBy(sql`extract(dow from ${loyaltyTransactions.createdAt})`),
+        db.select({
+          name: customers.name,
+          visits: sql<number>`count(*)`.mapWith(Number),
+          lastVisit: sql<string>`to_char(max(${loyaltyTransactions.createdAt}), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`,
+        }).from(loyaltyTransactions)
+          .innerJoin(loyaltyCards, eq(loyaltyTransactions.loyaltyCardId, loyaltyCards.id))
+          .innerJoin(customers, eq(loyaltyCards.customerId, customers.id))
+          .where(and(
+            eq(loyaltyTransactions.storeId, storeId),
+            eq(loyaltyTransactions.type, 'stamp'),
+          ))
+          .groupBy(customers.id, customers.name)
+          .orderBy(desc(sql`count(*)`))
+          .limit(10),
+      ]);
+
+      const repeatRow: any = (repeatRows as any).rows?.[0] ?? {};
+      const repeatRate = {
+        avgVisitsRepeatMembers: Math.round((Number(repeatRow.avg_visits) || 0) * 10) / 10,
+        singleVisitMembers: Number(repeatRow.single_visit) || 0,
+        repeatMembers: Number(repeatRow.repeat_members) || 0,
+      };
+
+      // Monday-first: DOW 1..6 then 0 (Sunday)
+      const visitsByDayOfWeek = [1, 2, 3, 4, 5, 6, 0].map(
+        (dow) => dowRows.find((r) => r.dow === dow)?.count ?? 0,
+      );
+
+      const topCustomers = topRows.map((r) => ({
+        name: r.name || 'Unknown',
+        visits: r.visits,
+        lastVisit: r.lastVisit,
+      }));
+
+      res.json({ thisMonth, lastMonth, repeatRate, visitsByDayOfWeek, topCustomers });
+    } catch (error: any) {
+      console.error('[analytics/summary] failed:', error);
+      res.status(500).json({ error: "Failed to load analytics summary" });
     }
   });
 
