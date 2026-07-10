@@ -17,6 +17,7 @@ import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { getWeekRange, addWeeks } from "@/lib/shiftDates";
 import type { Shift } from "@shared/schema";
+import { PoweredByBadge } from "@/components/PoweredByBadge";
 
 const GOLD = "#E53935";
 const BORDER = "rgba(255,255,255,0.07)";
@@ -227,6 +228,7 @@ export default function PublicShifts() {
           />
         </div>
       )}
+      <PoweredByBadge variant="dark" className="pb-10 pt-6" />
     </div>
   );
 }

@@ -1,0 +1,69 @@
+ROUND 9 — "POWERED BY uniHub.live" ON ALL PUBLIC SURFACES (DESIGN ONLY)
+
+CONTEXT
+uniHub adds a small "Powered by uniHub.live" attribution badge to every
+customer-facing / public surface. This is purely additive visual branding.
+No behavior, data, or logic changes of any kind.
+
+HARD CONSTRAINTS — DO NOT TOUCH
+- NO backend logic changes: no routes, controllers, middleware, cron, webhooks
+- NO database/schema changes, no migrations, no db:push
+- NO changes to QR code GENERATION/encoding logic — the QR content, size,
+  error-correction level, and quiet zone must remain byte-identical. The
+  badge goes NEXT TO / BELOW the QR in the surrounding layout only, never
+  overlapping the QR or its white quiet-zone margin
+- NO changes to Stripe, Telegram, wallet pass, or SSE/chat logic
+- EXPLICITLY OUT OF SCOPE: Apple/Google Wallet passes (do not touch pass
+  templates or pass generation), merchant dashboard internal screens,
+  admin screens
+- NO new npm dependencies
+- NO changes to .env, secrets, or config
+
+THE BADGE — build one shared component
+Create client/src/components/PoweredByBadge.tsx:
+- Renders: [unihub-mark.svg 20-22px] "Powered by uniHub.live"
+- "Powered by" in grey (#999999 on dark, #6E6E6E on light), Poppins Medium,
+  ~12-13px; "uniHub" in white (dark bg) or #1A1A1A (light bg), Poppins
+  SemiBold; ".live" always #E53935
+- Wraps in <a href="https://unihub.live" target="_blank" rel="noopener">
+- Prop: variant="dark" | "light" (auto-pick based on the page's background)
+- Subtle: opacity ~0.85, small size, centered, never competing with
+  merchant content. Use existing /unihub-mark.svg — do not add new assets
+
+WHERE TO ADD IT
+First, INVENTORY every public/customer-facing route in the app and list
+them in your report. Then add the badge to the footer/bottom of each:
+1. Public menu pages (customer-facing menu views)
+2. Public shift schedule pages (PublicShifts)
+3. Loyalty card customer pages (card view, stamp/redeem screens)
+4. Spin wheel customer pages (wheel play + prize screens)
+5. Customer-facing auth-adjacent pages if public (e.g., verify-email
+   landing), and the public 404 page
+6. Any other public surface found in the inventory that I may have
+   forgotten — add it there too and flag it in the report
+7. QR PRINTABLE/DOWNLOADABLE OUTPUTS: wherever the app renders a QR for
+   the merchant to print/download (posters, table cards, download images),
+   add the badge into the surrounding printable layout BELOW the QR with
+   clear margin. If the printable is generated as an image/canvas, add the
+   badge into the canvas layout only if this does not alter the QR pixels;
+   otherwise place it in the surrounding HTML/print CSS instead and say so
+   in the report
+
+PLACEMENT RULES
+- Always bottom of page/layout, centered, with comfortable margin
+- On pages with merchant branding (their logo/menu), the badge must be
+  visually subordinate — small, muted, last element
+- Print stylesheets: ensure the badge prints legibly in black/white
+  (the grey text must not disappear — minimum #6E6E6E on white)
+
+DEFINITION OF DONE — report each item explicitly
+[ ] Full inventory list of every public route/surface and badge status
+[ ] Shared PoweredByBadge component used everywhere (no copy-paste divs)
+[ ] Badge is a working link to https://unihub.live on all web surfaces
+[ ] QR codes: confirm generation code untouched (show diff scope) and
+    confirm a scanned QR resolves exactly as before
+[ ] Wallet passes and dashboard/admin screens untouched
+[ ] No new dependencies (package.json diff empty)
+[ ] Screenshots: one per surface, dark and light variants shown
+[ ] Build passes with no new warnings
+[ ] List every file touched

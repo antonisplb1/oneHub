@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
+import { PoweredByBadge } from "@/components/PoweredByBadge";
 
 export default function JoinLoyalty() {
   // Handles /join/:userId (legacy), /join/:storeId (new QR), and /:shopName/join (slug-based)
@@ -37,7 +38,7 @@ export default function JoinLoyalty() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="relative min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Join Loyalty Program</CardTitle>
@@ -74,6 +75,7 @@ export default function JoinLoyalty() {
           </form>
         </CardContent>
       </Card>
+      <PoweredByBadge variant="dark" className="absolute inset-x-0 bottom-6" />
     </div>
   );
 }

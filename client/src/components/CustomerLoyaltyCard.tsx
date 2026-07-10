@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Check, Download, Wallet, Smartphone, X, Share2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { SiApple, SiGoogle } from "react-icons/si";
+import { PoweredByBadge } from "@/components/PoweredByBadge";
 
 export default function CustomerLoyaltyCard() {
   const { customerId } = useParams();
@@ -112,7 +113,7 @@ export default function CustomerLoyaltyCard() {
   const isRedeemable = card.isRedeemable;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="relative min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <Avatar className="h-20 w-20 mx-auto">
@@ -244,6 +245,7 @@ export default function CustomerLoyaltyCard() {
           </div>
         </CardContent>
       </Card>
+      <PoweredByBadge variant="dark" className="absolute inset-x-0 bottom-6" />
     </div>
   );
 }

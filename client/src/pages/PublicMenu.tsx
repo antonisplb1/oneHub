@@ -7,6 +7,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { UtensilsCrossed } from "lucide-react";
 import type { MenuCategory, MenuItem } from "@shared/schema";
 import { useEffect, useRef, useState } from "react";
+import { PoweredByBadge } from "@/components/PoweredByBadge";
 
 interface MenuResponse {
   merchant: {
@@ -412,6 +413,7 @@ export default function PublicMenu() {
             </section>
           ))}
         </div>
+        <PoweredByBadge variant="dark" className="pb-10 pt-4" />
       </div>
     </div>
   );

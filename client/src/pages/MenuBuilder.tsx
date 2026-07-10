@@ -34,6 +34,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { PoweredByBadge } from "@/components/PoweredByBadge";
 
 type CategoryFormValues = z.infer<typeof insertMenuCategorySchema>;
 // The merchant types a euro decimal (e.g. "9.99") into the form; it is converted
@@ -514,6 +515,7 @@ export default function MenuBuilder() {
               <Download className="w-4 h-4 mr-2" />
               Download QR Code
             </Button>
+            <PoweredByBadge variant="dark" className="pt-2" />
           </CardContent>
         </Card>
       ) : null}

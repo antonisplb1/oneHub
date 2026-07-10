@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PoweredByBadge } from "@/components/PoweredByBadge";
 import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 
 const GOLD = "#E53935";
@@ -44,6 +45,7 @@ export default function NotFound() {
           </Button>
         </Link>
       </div>
+      <PoweredByBadge variant="dark" className="absolute inset-x-0 bottom-6" />
     </div>
   );
 }

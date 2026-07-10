@@ -5,6 +5,7 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 import { Link } from "wouter";
+import { PoweredByBadge } from "@/components/PoweredByBadge";
 
 const GOLD = "#E53935";
 const GOLD_DIM = "rgba(229, 57, 53,0.18)";
@@ -135,6 +136,7 @@ export default function VerifyEmail() {
           )}
         </div>
       </div>
+      <PoweredByBadge variant="dark" className="absolute inset-x-0 bottom-6" />
     </div>
   );
 }

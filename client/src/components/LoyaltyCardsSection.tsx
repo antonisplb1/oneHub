@@ -17,6 +17,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { PoweredByBadge } from "@/components/PoweredByBadge";
 
 const notificationSchema = z.object({
   header: z.string().optional(),
@@ -424,6 +425,7 @@ export default function LoyaltyCardsSection() {
                   </Button>
                 </a>
               )}
+              <PoweredByBadge variant="dark" className="pt-2" />
             </CardContent>
           </Card>
         </TabsContent>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiRequest } from "@/lib/queryClient";
 import type { Reward } from "@shared/schema";
+import { PoweredByBadge } from "@/components/PoweredByBadge";
 
 export default function InStoreSpinWheel() {
   // Works for both /in-store-spin/:userId (legacy) and /spin-in-store/:storeId (new)
@@ -138,7 +139,7 @@ export default function InStoreSpinWheel() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/20 via-chart-3/20 to-chart-2/20 flex items-center justify-center p-6">
+    <div className="relative min-h-screen bg-gradient-to-br from-primary/20 via-chart-3/20 to-chart-2/20 flex items-center justify-center p-6">
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Spin to Win!</CardTitle>
@@ -183,6 +184,7 @@ export default function InStoreSpinWheel() {
           )}
         </CardContent>
       </Card>
+      <PoweredByBadge variant="dark" className="absolute inset-x-0 bottom-6" />
     </div>
   );
 }
