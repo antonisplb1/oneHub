@@ -78,9 +78,51 @@ export interface BillingStripe {
     update(id: string, params: any): Promise<any>;
     list(params: any): Promise<any>;
   };
+  products: {
+    search(params: any): Promise<any>;
+    create(params: any): Promise<any>;
+  };
 }
 
-// Helper: update an existing Stripe subscription to reflect a new price
+// We self-manage a single Stripe Product that every uniHub subscription price
+// attaches to (no manual dashboard setup). It's identified by a metadata marker
+// so we never create duplicates, and its id is cached in-process to avoid a
+// lookup on every reprice.
+let cachedUnihubProductId: string | null = null;
+
+// Test-only: clear the module-level product cache so each test starts from a
+// clean slate (otherwise one spy's product id would leak into the next test).
+export function _resetProductCacheForTests(): void {
+  cachedUnihubProductId = null;
+}
+
+// Find (or lazily create) the self-managed uniHub subscription Product and return
+// its id, caching it for the lifetime of the process.
+export async function getOrCreateUnihubProduct(stripe: BillingStripe): Promise<string> {
+  if (cachedUnihubProductId) return cachedUnihubProductId;
+
+  const found = await stripe.products.search({
+    query: "metadata['unihub']:'subscription' AND active:'true'",
+    limit: 1,
+  });
+  const existingId = found?.data?.[0]?.id;
+  if (existingId) {
+    cachedUnihubProductId = existingId;
+    return existingId;
+  }
+
+  const created = await stripe.products.create({
+    name: 'uniHub Subscription',
+    metadata: { unihub: 'subscription' },
+  });
+  cachedUnihubProductId = created.id;
+  return created.id;
+}
+
+// Helper: update an existing Stripe subscription to reflect a new price. The
+// price references our self-managed Product by id (inline product_data is only
+// valid for Checkout Sessions, not the subscriptions update API), and the
+// per-merchant description rides at the subscription level.
 export async function updateStripeSubscriptionPrice(
   stripe: BillingStripe,
   subscriptionId: string,
@@ -91,19 +133,20 @@ export async function updateStripeSubscriptionPrice(
   const sub = await stripe.subscriptions.retrieve(subscriptionId);
   const itemId = sub.items.data[0]?.id;
   if (!itemId) throw new Error('Subscription has no items');
+  const productId = await getOrCreateUnihubProduct(stripe);
   await stripe.subscriptions.update(subscriptionId, {
     items: [
       {
         id: itemId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         price_data: {
           currency: 'eur',
-          product_data: { name: 'uniHub Subscription', description },
+          product: productId,
           unit_amount: newPriceCents,
           recurring: { interval: 'month' },
-        } as any,
+        },
       },
     ],
+    description,
     proration_behavior: prorationBehavior,
   });
 }

@@ -39,6 +39,9 @@ import {
   applyStoreUpdate,
   applyCustomPrice,
   applyStatusChange,
+  getProductDescription,
+  getOrCreateUnihubProduct,
+  _resetProductCacheForTests,
   type BillingStripe,
   type CancelableStripe,
 } from "./billing";
@@ -60,22 +63,44 @@ function assertEqual(actual: unknown, expected: unknown, label: string) {
   }
 }
 
-// A Stripe spy that records every reprice call (and the amount sent).
+// A products surface that mimics Stripe's self-managed-product lookup: search
+// finds nothing so getOrCreateUnihubProduct creates, and the spy hands back a
+// fixed id. Shared by the repricing spies below.
+function makeProductsSurface() {
+  return {
+    search: async (_params: any) => ({ data: [] }),
+    create: async (_params: any) => ({ id: "prod_test_unihub" }),
+  };
+}
+
+// Real Stripe rejects the inline product_data shape on the subscriptions update
+// API. Spies mimic that so an accidental regression to product_data fails loudly.
+function assertNoProductData(params: any) {
+  if (params.items?.[0]?.price_data?.product_data) {
+    throw new Error("Received unknown parameter: items[0].price_data.product_data");
+  }
+}
+
+// A Stripe spy that records every reprice call (amount, product id, and the
+// subscription-level description).
 function makeStripeSpy() {
-  const calls: { unitAmount: number; description: string; proration: string }[] = [];
+  const calls: { unitAmount: number; product: string; description: string; proration: string }[] = [];
   const stripe: BillingStripe = {
     subscriptions: {
       retrieve: async () => ({ items: { data: [{ id: "si_test_item" }] } }),
       update: async (_id: string, params: any) => {
+        assertNoProductData(params);
         calls.push({
           unitAmount: params.items[0].price_data.unit_amount,
-          description: params.items[0].price_data.product_data.description,
+          product: params.items[0].price_data.product,
+          description: params.description,
           proration: params.proration_behavior,
         });
         return {};
       },
       list: async () => ({ data: [] }),
     },
+    products: makeProductsSurface(),
   };
   return { stripe, calls };
 }
@@ -93,6 +118,7 @@ function makeThrowingStripe() {
         throw new Error("simulated Stripe outage");
       },
     },
+    products: makeProductsSurface(),
   };
   return stripe;
 }
@@ -127,6 +153,7 @@ function makeReconcileStripe(
         };
       },
       update: async (id: string, params: any) => {
+        assertNoProductData(params);
         const amount = params.items[0].price_data.unit_amount;
         const arr = updatesById.get(id) ?? [];
         arr.push(amount);
@@ -138,6 +165,7 @@ function makeReconcileStripe(
       // promotion pass is a guaranteed no-op for every account.
       list: async () => ({ data: [] }),
     },
+    products: makeProductsSurface(),
   };
   const ourUpdates = () => updatesById.get(ourSubId) ?? [];
   return { stripe, ourUpdates };
@@ -167,7 +195,10 @@ function makeCancelSpy(
         }
         return { id, status: opts.subStatus ?? "active", items: { data: [{ id: `si_${id}` }] } };
       },
-      update: async () => ({}),
+      update: async (_id: string, params: any) => {
+        assertNoProductData(params);
+        return {};
+      },
       list: async () => ({ data: [] }),
       cancel: async (id: string) => {
         if (opts.throwCode || opts.throwMessage) {
@@ -179,6 +210,7 @@ function makeCancelSpy(
         return {};
       },
     },
+    products: makeProductsSurface(),
   };
   return { stripe, canceled };
 }
@@ -201,7 +233,10 @@ function makePromoteStripe(
         status: "active",
         items: { data: [{ id: `si_${id}`, price: { unit_amount: 0 } }] },
       }),
-      update: async () => ({}),
+      update: async (_id: string, params: any) => {
+        assertNoProductData(params);
+        return {};
+      },
       list: async (params: any) => {
         listedCustomers.push(params.customer);
         if (opts.listThrow) throw new Error("simulated Stripe list outage");
@@ -209,6 +244,7 @@ function makePromoteStripe(
         return { data: [] };
       },
     },
+    products: makeProductsSurface(),
   };
   return { stripe, listedCustomers };
 }
@@ -261,6 +297,7 @@ async function resetStores() {
 }
 
 async function run() {
+  _resetProductCacheForTests();
   console.log("\n=== Billing pure-math (calculateProductPrice) ===");
   assertEqual(calculateProductPrice(["loyalty"], 0), 1900, "single loyalty = €19.00");
   assertEqual(calculateProductPrice(["loyalty"], 1), 2400, "loyalty + 1 extra store = +€5");
@@ -950,6 +987,70 @@ async function run() {
   assertEqual(kDeadEntry?.fixed, true, "K3: dead sub on a past_due account healed");
   assertEqual((await getUser()).subscriptionStatus, "inactive", "K3: DB flipped to inactive");
   assertEqual((await getUser()).stripeSubscriptionId, null, "K3: stale sub id cleared");
+
+  // --- Scenario L: self-managed Stripe product powers repricing (ROUND 7) -----
+  // The reprice attaches the price to a self-managed Product by id (no inline
+  // product_data), with the per-merchant description at the subscription level.
+  console.log("\n=== L. Self-managed Stripe product powers repricing ===");
+  await resetStores();
+  const l0 = Date.now();
+  await addStore("l-primary", ["loyalty", "spin"], l0);
+
+  // L1: applyCustomPrice on a billable account performs exactly one reprice whose
+  // price_data.product is the self-managed product id and whose unit_amount is the
+  // custom price; the description rides at the top level, not on product_data.
+  _resetProductCacheForTests();
+  await db
+    .update(users)
+    .set({
+      subscriptionStatus: "active",
+      stripeSubscriptionId: "sub_test_l",
+      chargeFree: false,
+      trialEndsAt: null,
+      customPrice: null,
+    })
+    .where(eq(users.id, userId));
+  await syncBillingFromStores(makeStripeSpy().stripe, userId, { syncStripe: false }); // mirror = loyalty+spin
+  const spyL1 = makeStripeSpy();
+  await applyCustomPrice(spyL1.stripe, userId, 1234); // €12.34 override
+  assertEqual(spyL1.calls.length, 1, "L1: billable account repriced exactly once");
+  assertEqual(spyL1.calls[0]?.product, "prod_test_unihub", "L1: price_data.product is the self-managed product id");
+  assertEqual(spyL1.calls[0]?.unitAmount, 1234, "L1: unit_amount equals the custom price");
+  assertEqual(
+    spyL1.calls[0]?.description,
+    getProductDescription(["loyalty", "spin"]),
+    "L1: top-level description matches getProductDescription",
+  );
+
+  // L2: getOrCreateUnihubProduct searches by metadata before creating, then caches
+  // — the second call must not hit Stripe again.
+  _resetProductCacheForTests();
+  const prodCounts = { search: 0, create: 0 };
+  const prodStripe: BillingStripe = {
+    subscriptions: {
+      retrieve: async () => ({ items: { data: [{ id: "si_test_item" }] } }),
+      update: async () => ({}),
+      list: async () => ({ data: [] }),
+    },
+    products: {
+      search: async (_params: any) => {
+        prodCounts.search++;
+        return { data: [] };
+      },
+      create: async (_params: any) => {
+        prodCounts.create++;
+        return { id: "prod_test_unihub" };
+      },
+    },
+  };
+  const firstId = await getOrCreateUnihubProduct(prodStripe);
+  assertEqual(firstId, "prod_test_unihub", "L2: first call returns the created product id");
+  assertEqual(prodCounts.search, 1, "L2: first call searches Stripe once");
+  assertEqual(prodCounts.create, 1, "L2: first call creates the product (search was empty)");
+  const secondId = await getOrCreateUnihubProduct(prodStripe);
+  assertEqual(secondId, "prod_test_unihub", "L2: second call returns the cached id");
+  assertEqual(prodCounts.search, 1, "L2: second call does NOT search again");
+  assertEqual(prodCounts.create, 1, "L2: second call does NOT create again");
 }
 
 async function cleanup() {

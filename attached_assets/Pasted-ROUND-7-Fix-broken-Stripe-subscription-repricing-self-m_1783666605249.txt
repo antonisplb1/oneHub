@@ -1,0 +1,97 @@
+ROUND 7 — Fix broken Stripe subscription repricing (self-managed Product, no manual Stripe setup)
+
+CONTEXT / THE BUG
+`updateStripeSubscriptionPrice` in server/billing.ts (line ~84) calls
+stripe.subscriptions.update() with `price_data` containing `product_data: { name,
+description }`. That inline product_data shape is only valid for Checkout Sessions.
+The subscriptions update API rejects it with an "unknown parameter" error — this is
+why the code has an `as any` cast. Every reprice call against real Stripe fails:
+- applyCustomPrice: error is swallowed (best-effort by design), so admin custom
+  prices never reach Stripe.
+- reconcileBilling: uses the same broken function, so the drift safety net cannot
+  correct anything either.
+- syncBillingFromStores: same failure when primary-store products change.
+The tests never caught it because the spies in server/billing.test.ts accept the
+invalid shape instead of rejecting it like real Stripe does.
+
+REQUIRED CHANGES
+
+1. In server/billing.ts, add and export:
+
+   getOrCreateUnihubProduct(stripe: BillingStripe): Promise<string>
+
+   Behavior:
+   a. If a module-level cached product ID exists, return it immediately.
+   b. Otherwise call stripe.products.search({ query:
+      "metadata['unihub']:'subscription' AND active:'true'", limit: 1 }).
+      If a product is found, cache and return its id.
+   c. If none found, call stripe.products.create({ name: "uniHub Subscription",
+      metadata: { unihub: "subscription" } }), cache and return its id.
+   Also export a test-only helper `_resetProductCacheForTests()` that clears the
+   module-level cache.
+
+2. Extend the exported BillingStripe interface (line ~75) with:
+   products: {
+     search(params: any): Promise<any>;
+     create(params: any): Promise<any>;
+   };
+
+3. Rewrite updateStripeSubscriptionPrice:
+   - Call getOrCreateUnihubProduct(stripe) to obtain the product ID.
+   - Build price_data as: { currency: 'eur', product: <productId>,
+     unit_amount: newPriceCents, recurring: { interval: 'month' } }.
+   - REMOVE product_data entirely and REMOVE the `as any` cast — the object must
+     type-check against Stripe's types without casting.
+   - Pass the per-merchant `description` string as a top-level `description`
+     parameter on the same stripe.subscriptions.update() call (subscription-level
+     description), since it no longer lives on the product.
+   - Keep the function signature, the prorationBehavior parameter, and its
+     'create_prorations' default EXACTLY as they are. Keep the retrieve-item-id
+     logic and the "Subscription has no items" error unchanged.
+
+4. Update server/billing.test.ts spies to mimic real Stripe validation:
+   - In makeStripeSpy, makeThrowingStripe, and makeReconcileStripe, add a
+     `products` surface: search returns { data: [] } on first call, create returns
+     { id: "prod_test_unihub" } (or search can return a fixed product — your
+     choice, but getOrCreateUnihubProduct must work against all three spies).
+   - In EVERY spy's subscriptions.update, THROW an error if
+     params.items[0].price_data.product_data is present (mimicking Stripe's
+     unknown-parameter rejection), and assert the new shape by reading
+     params.items[0].price_data.product for the product ID.
+   - makeStripeSpy currently records `description` from
+     price_data.product_data.description — change it to record the top-level
+     params.description instead. Update any assertions that relied on the old path.
+   - Call _resetProductCacheForTests() in test setup/between tests so the cache
+     never leaks a spy's product ID into another test.
+
+5. Add two new tests:
+   a. applyCustomPrice on a billable account results in exactly one
+      subscriptions.update call whose price_data.product is the product ID from
+      the spy and whose unit_amount equals the custom price; top-level
+      description matches getProductDescription output.
+   b. getOrCreateUnihubProduct: first call performs search (and create when
+      search is empty); second call returns the cached ID with NO further
+      products.search or products.create calls.
+
+6. Everywhere else updateStripeSubscriptionPrice is called (syncBillingFromStores,
+   applyCustomPrice, reconcileBilling) — NO signature or call-site changes should
+   be needed. If you find yourself editing call sites, stop and reconsider.
+
+HARD CONSTRAINTS
+- Changes ONLY in server/billing.ts and server/billing.test.ts.
+- No schema changes, no new dependencies, no new cron jobs, no telemetry, no new
+  env vars or Replit Secrets.
+- Do NOT touch the checkout session flow (create-checkout-session in routes.ts).
+- Do NOT change proration defaults, isBillableAccount gating, or the best-effort
+  try/catch error handling around Stripe calls.
+- Tests run with: npx tsx server/billing.test.ts — all must pass.
+
+DEFINITION OF DONE
+- [ ] updateStripeSubscriptionPrice contains no product_data and no `as any`
+- [ ] getOrCreateUnihubProduct searches by metadata before creating, caches in a
+      module-level variable, and has a test-only reset export
+- [ ] BillingStripe interface includes the products surface
+- [ ] All three spies throw on product_data and expose products.search/create
+- [ ] Both new tests present and passing; full suite passes via npx tsx
+- [ ] Report: list of changed files + paste the final updateStripeSubscriptionPrice
+      and getOrCreateUnihubProduct implementations in full
