@@ -40,7 +40,7 @@ export async function sendVerificationEmail(
           <h1 style="color: #333;">Welcome to uniHub, ${shopName}!</h1>
           <p style="color: #666; font-size: 16px;">Thank you for registering. Please verify your email address to complete your registration.</p>
           <div style="margin: 30px 0;">
-            <a href="${verifyUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Verify Email</a>
+            <a href="${verifyUrl}" style="background-color: #E53935; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Verify Email</a>
           </div>
           <p style="color: #999; font-size: 14px;">Or copy this link: ${verifyUrl}</p>
           <p style="color: #999; font-size: 14px;">This link will expire in 24 hours.</p>
@@ -75,7 +75,7 @@ export async function sendPasswordResetEmail(
           <p style="color: #666; font-size: 16px;">Hi ${shopName},</p>
           <p style="color: #666; font-size: 16px;">We received a request to reset your ${isAdmin ? 'admin ' : ''}password. Click the button below to create a new password:</p>
           <div style="margin: 30px 0;">
-            <a href="${resetUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password</a>
+            <a href="${resetUrl}" style="background-color: #E53935; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password</a>
           </div>
           <p style="color: #999; font-size: 14px;">Or copy this link: ${resetUrl}</p>
           <p style="color: #999; font-size: 14px;">This link will expire in 1 hour.</p>
@@ -107,7 +107,7 @@ export async function sendTrialEndingSoonEmail(
           <p style="color: #666; font-size: 16px;">Hi ${shopName},</p>
           <p style="color: #666; font-size: 16px;">Your uniHub free trial ends in less than 24 hours. Subscribe now to keep your loyalty cards, spin wheel, menu, and shift tools running without interruption.</p>
           <div style="margin: 30px 0;">
-            <a href="${accountUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Subscribe Now</a>
+            <a href="${accountUrl}" style="background-color: #E53935; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Subscribe Now</a>
           </div>
           <p style="color: #999; font-size: 14px;">Or copy this link: ${accountUrl}</p>
           <p style="color: #999; font-size: 14px;">Thanks for trying uniHub!</p>
@@ -138,7 +138,7 @@ export async function sendTrialEndedEmail(
           <p style="color: #666; font-size: 16px;">Hi ${shopName},</p>
           <p style="color: #666; font-size: 16px;">Your uniHub free trial has ended. Subscribe now to restore access to your dashboard and pick up right where you left off — your data is safe and waiting for you.</p>
           <div style="margin: 30px 0;">
-            <a href="${accountUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Subscribe Now</a>
+            <a href="${accountUrl}" style="background-color: #E53935; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Subscribe Now</a>
           </div>
           <p style="color: #999; font-size: 14px;">Or copy this link: ${accountUrl}</p>
           <p style="color: #999; font-size: 14px;">We'd love to have you back!</p>
@@ -185,7 +185,7 @@ export async function sendSubuserInvitationEmail(
           <p style="color: #555; font-size: 16px; margin-left: 20px;">${permissionsList}</p>
           <p style="color: #666; font-size: 16px;">Click the button below to set up your password and get started:</p>
           <div style="margin: 30px 0;">
-            <a href="${setupUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Set Up Account</a>
+            <a href="${setupUrl}" style="background-color: #E53935; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Set Up Account</a>
           </div>
           <p style="color: #999; font-size: 14px;">Or copy this link: ${setupUrl}</p>
           <p style="color: #999; font-size: 14px;">This link will expire in 24 hours.</p>

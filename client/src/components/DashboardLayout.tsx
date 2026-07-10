@@ -43,7 +43,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useStore } from "@/contexts/StoreContext";
 import SupportChatWidget from "@/components/SupportChatWidget";
-import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
+import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", products: [], permission: 'dashboard' as string | null, ownerOnly: false },
@@ -354,7 +354,7 @@ export default function DashboardLayout({ children, requiredProduct }: Dashboard
                   <img src={logoImage} alt="uniHub logo" className="h-8 w-8" />
                   <h1 className="text-2xl tracking-tight">
                     <span style={{ color: "#fff", fontWeight: 300 }}>uni</span>
-                    <span style={{ color: "#c9a84c", fontStyle: "italic", fontWeight: 600 }}>Hub</span>
+                    <span style={{ color: "#E53935", fontStyle: "italic", fontWeight: 600 }}>Hub</span>
                   </h1>
                 </div>
               </Link>

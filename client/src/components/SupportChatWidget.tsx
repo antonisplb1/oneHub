@@ -246,18 +246,18 @@ export default function SupportChatWidget() {
           className="fixed inset-0 z-50 flex h-full max-h-none w-full max-w-none flex-col overflow-hidden rounded-none p-0 shadow-lg sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[32rem] sm:max-h-[calc(100vh-3rem)] sm:w-[22rem] sm:max-w-[calc(100vw-3rem)] sm:rounded-md"
           data-testid="panel-support-chat"
         >
-          <div className="flex items-center justify-between gap-2 border-b p-4">
+          <div className="flex items-center justify-between gap-2 border-b bg-[#1A1A1A] p-4 text-white">
             <div className="flex items-center gap-2">
               <span
                 className={cn(
                   "h-2 w-2 rounded-full",
-                  conversation?.status === "closed" ? "bg-muted-foreground" : "bg-green-500",
+                  conversation?.status === "closed" ? "bg-white/40" : "bg-green-500",
                 )}
                 aria-hidden="true"
               />
               <div className="flex flex-col">
                 <span className="text-sm font-medium">uniHub Support</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-white/70">
                   {conversation?.status === "closed"
                     ? "This chat is closed"
                     : "We usually reply within a few hours"}
@@ -268,6 +268,7 @@ export default function SupportChatWidget() {
               size="icon"
               variant="ghost"
               onClick={() => setOpen(false)}
+              className="text-white"
               data-testid="button-support-close"
             >
               <X className="h-4 w-4" />

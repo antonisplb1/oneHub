@@ -1,0 +1,92 @@
+ROUND 7 — FULL REBRAND (DESIGN ONLY, ZERO FUNCTIONAL CHANGES)
+
+CONTEXT
+uniHub is rebranding. New logo assets are attached to this prompt. This round
+touches ONLY visual/branding elements: colors, logos, fonts, favicons, and
+brand text treatments. No feature work of any kind.
+
+HARD CONSTRAINTS — DO NOT TOUCH
+- NO backend logic changes: no routes, controllers, middleware, cron jobs
+- NO database/schema changes, no Drizzle migrations, no db:push
+- NO changes to Stripe, Telegram, wallet pass, email, or SSE/chat logic
+  (the chat bubble may be RESTYLED with the new colors, but its behavior,
+  markup structure, and event logic must remain byte-identical)
+- NO new npm dependencies. Fonts load via a Google Fonts <link> tag only
+- NO changes to .env, secrets, or config values
+- NO copy/content changes: do not edit pricing text, product descriptions,
+  or the existing meta description text (that is a separate task)
+- NO renaming of components, files, routes, or CSS class names used by JS
+
+NEW BRAND SYSTEM
+Palette (replace the old maroon palette everywhere it appears):
+  --brand-red:      #E53935   (primary actions, links, accents, ".live")
+  --brand-red-deep: #C62828   (hover/pressed states, gradients with brand-red)
+  --brand-dark:     #1A1A1A   (dark backgrounds, header/footer)
+  --brand-surface:  #333333   (cards/surfaces on dark backgrounds)
+  --brand-white:    #FFFFFF
+Typography: Poppins (SemiBold 600 for headings/wordmark, Medium 500 for
+subheadings, Regular 400 for body). Load weights 400,500,600 only.
+Wordmark treatment: "uniHub" in white (or #1A1A1A on light bg) with ".live"
+always in #E53935. Tagline where used: "CONNECT. FOCUS. ACHIEVE." in
+letterspaced uppercase, grey (#999999).
+
+ATTACHED ASSETS — place in the public/static root exactly as named
+  unihub-mark.svg              primary logo (use in navbars/headers)
+  unihub-mark-outline.svg      white outline variant (for red backgrounds)
+  unihub-lockup-horizontal.png full logo+wordmark (transparent, for dark bg)
+  unihub-lockup-stacked.png    stacked version (footers, auth screens)
+  favicon.ico, unihub-mark-16.png, unihub-mark-32.png,
+  unihub-mark-192.png, unihub-mark-512.png, icon-512-maskable.png
+  apple-touch-icon.png, og-image.png, site.webmanifest, pattern-tile.png
+
+SCOPE OF CHANGES
+1. Design tokens: centralize the palette above as CSS variables (or Tailwind
+   theme extension if the project uses Tailwind config) and replace ALL
+   occurrences of the old maroon/red values with the new tokens. Search for
+   old hex codes and any hardcoded rgb() equivalents; nothing hardcoded
+   may remain.
+2. Landing/marketing pages: full dark rebrand per the brand board —
+   #1A1A1A background, #333333 cards, white text, #E53935 accents/CTAs,
+   Poppins typography, new horizontal lockup in the navbar, stacked lockup
+   or mark in the footer. Optionally use pattern-tile.png as a subtle
+   repeating background band on ONE section maximum.
+3. Merchant dashboard + customer-facing pages (loyalty cards, spin wheel,
+   menus, shift views): logo swap + color token swap ONLY. Keep the existing
+   layout, spacing, and light/dark scheme as-is. Buttons, links, active
+   states, and highlights move to #E53935 / #C62828.
+4. Chat bubble widget: restyle to brand colors only (bubble #E53935, panel
+   header #1A1A1A). No markup or behavior changes.
+5. HTML head (index.html): replace favicon/link tags and add:
+   <link rel="icon" href="/favicon.ico" sizes="48x48">
+   <link rel="icon" href="/unihub-mark-32.png" type="image/png" sizes="32x32">
+   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+   <link rel="manifest" href="/site.webmanifest">
+   <meta name="theme-color" content="#1a1a1a">
+   <meta property="og:image" content="https://unihub.live/og-image.png">
+   <meta property="og:image:width" content="1200">
+   <meta property="og:image:height" content="630">
+   <meta name="twitter:card" content="summary_large_image">
+   Add the Poppins Google Fonts link (weights 400;500;600, display=swap).
+   Do NOT edit the existing meta description content.
+6. Email templates (if any HTML emails exist in the codebase): swap logo
+   URL and brand colors only. No copy changes.
+7. Delete/replace old logo image files so no page can still reference the
+   old maroon assets. Verify with a project-wide search for the old
+   filenames.
+
+ACCESSIBILITY REQUIREMENT
+#E53935 on #1A1A1A passes contrast for large text/UI accents but NOT for
+body text. Never use brand red for body copy. Body text on dark = #FFFFFF
+or #E0E0E0; on light = #1A1A1A.
+
+DEFINITION OF DONE — report each item explicitly
+[ ] Zero changes outside styling files, asset files, template markup
+    class/style attributes, and index.html head — list every file touched
+[ ] Project-wide grep shows no old maroon hex values or old logo filenames
+[ ] All new assets present in public root and referenced correctly
+[ ] Landing page renders fully dark-branded; screenshots included
+[ ] Dashboard renders with swapped tokens/logo, layout unchanged; screenshot
+[ ] Chat bubble opens/works identically, restyled colors only
+[ ] Favicon, apple-touch-icon, and manifest load without 404s
+[ ] No new dependencies in package.json (diff must show none)
+[ ] Build passes with no new warnings

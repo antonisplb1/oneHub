@@ -3,11 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Award, Gift, UtensilsCrossed, Calendar, ArrowRight, Shield, CheckCircle, Minus } from "lucide-react";
 import { SiStripe } from "react-icons/si";
-import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
+import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 
-const GOLD = "#c9a84c";
-const GOLD_DIM = "rgba(201,168,76,0.18)";
-const GOLD_BORDER = "rgba(201,168,76,0.25)";
+const GOLD = "#E53935";
+const GOLD_DIM = "rgba(229, 57, 53,0.18)";
+const GOLD_BORDER = "rgba(229, 57, 53,0.25)";
 const SURFACE = "#111111";
 const BORDER = "rgba(255,255,255,0.07)";
 const MUTED = "rgba(255,255,255,0.45)";
@@ -91,7 +91,7 @@ export default function Pricing() {
       <section className="relative px-6 py-28 md:py-36 text-center overflow-hidden">
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(201,168,76,0.07) 0%, transparent 70%)" }}
+          style={{ background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(229, 57, 53,0.07) 0%, transparent 70%)" }}
         />
         <div className="relative container mx-auto max-w-3xl">
           <p className="text-xs tracking-[0.25em] uppercase mb-6" style={{ color: GOLD }}>Pricing</p>
@@ -319,7 +319,7 @@ export default function Pricing() {
       <section className="py-32 px-6 text-center relative overflow-hidden">
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 60% 60% at 50% 100%, rgba(201,168,76,0.06) 0%, transparent 70%)" }}
+          style={{ background: "radial-gradient(ellipse 60% 60% at 50% 100%, rgba(229, 57, 53,0.06) 0%, transparent 70%)" }}
         />
         <div className="relative container mx-auto max-w-2xl">
           <p className="text-xs tracking-[0.25em] uppercase mb-6" style={{ color: GOLD }}>Get started</p>

@@ -8,12 +8,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Ticket, Gift, Loader2, UtensilsCrossed, Calendar } from "lucide-react";
-import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
+import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 import { Link } from "wouter";
 
-const GOLD = "#c9a84c";
-const GOLD_DIM = "rgba(201,168,76,0.18)";
-const GOLD_BORDER = "rgba(201,168,76,0.25)";
+const GOLD = "#E53935";
+const GOLD_DIM = "rgba(229, 57, 53,0.18)";
+const GOLD_BORDER = "rgba(229, 57, 53,0.25)";
 const SURFACE = "#111111";
 const BORDER = "rgba(255,255,255,0.07)";
 const MUTED = "rgba(255,255,255,0.45)";
@@ -107,7 +107,7 @@ export default function SelectProducts() {
     >
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 60% 50% at 50% 20%, rgba(201,168,76,0.06) 0%, transparent 70%)" }}
+        style={{ background: "radial-gradient(ellipse 60% 50% at 50% 20%, rgba(229, 57, 53,0.06) 0%, transparent 70%)" }}
       />
       <div className="relative w-full max-w-lg">
         {/* Logo + logout */}
@@ -160,7 +160,7 @@ export default function SelectProducts() {
                     checked={isSelected}
                     onCheckedChange={() => toggleProduct(product.id)}
                     data-testid={`checkbox-product-${product.id}`}
-                    className="border-white/30 data-[state=checked]:bg-[#c9a84c] data-[state=checked]:border-[#c9a84c]"
+                    className="border-white/30 data-[state=checked]:bg-[#E53935] data-[state=checked]:border-[#E53935]"
                   />
                 </div>
                 <div className="flex-1 min-w-0">

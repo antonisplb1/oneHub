@@ -18,7 +18,7 @@ import { format } from "date-fns";
 import { getWeekRange, addWeeks } from "@/lib/shiftDates";
 import type { Shift } from "@shared/schema";
 
-const GOLD = "#c9a84c";
+const GOLD = "#E53935";
 const BORDER = "rgba(255,255,255,0.07)";
 const MUTED = "rgba(255,255,255,0.45)";
 

@@ -1,0 +1,12 @@
+{
+  "name": "uniHub",
+  "short_name": "uniHub",
+  "icons": [
+    { "src": "/unihub-mark-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/unihub-mark-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "theme_color": "#1a1a1a",
+  "background_color": "#1a1a1a",
+  "display": "standalone"
+}

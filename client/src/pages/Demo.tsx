@@ -6,11 +6,11 @@ import {
   Award, Gift, UtensilsCrossed, Calendar,
   QrCode, Wallet, Users, BarChart3, ArrowRight, Minus, Coffee, Check,
 } from "lucide-react";
-import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
+import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 
-const GOLD = "#c9a84c";
-const GOLD_DIM = "rgba(201,168,76,0.18)";
-const GOLD_BORDER = "rgba(201,168,76,0.25)";
+const GOLD = "#E53935";
+const GOLD_DIM = "rgba(229, 57, 53,0.18)";
+const GOLD_BORDER = "rgba(229, 57, 53,0.25)";
 const SURFACE = "#111111";
 const BORDER = "rgba(255,255,255,0.07)";
 const MUTED = "rgba(255,255,255,0.45)";
@@ -110,12 +110,12 @@ function LoyaltyDemo() {
 
 // ─── Spin Wheel Demo ──────────────────────────────────────────────────────────
 const PRIZES = [
-  { label: "Free Coffee",   short: "Coffee",  color: "#c9a84c" },
+  { label: "Free Coffee",   short: "Coffee",  color: "#E53935" },
   { label: "10% Off",       short: "10% Off", color: "#7a5014" },
   { label: "Free Pastry",   short: "Pastry",  color: "#a87530" },
   { label: "Try Again",     short: "Try Again",color: "#1e1e1e" },
   { label: "20% Off",       short: "20% Off", color: "#8b6020" },
-  { label: "Buy 1 Get 1",   short: "BOGO",    color: "#c9a84c" },
+  { label: "Buy 1 Get 1",   short: "BOGO",    color: "#E53935" },
   { label: "€5 Voucher",    short: "€5 Off",  color: "#7a5014" },
   { label: "Free Upgrade",  short: "Upgrade", color: "#a87530" },
 ];
@@ -485,7 +485,7 @@ function InteractiveDemo() {
             style={{
               color: activeTab === id ? GOLD : MUTED,
               borderBottom: activeTab === id ? `2px solid ${GOLD}` : "2px solid transparent",
-              backgroundColor: activeTab === id ? "rgba(201,168,76,0.05)" : "transparent",
+              backgroundColor: activeTab === id ? "rgba(229, 57, 53,0.05)" : "transparent",
             }}
             data-testid={`tab-demo-${id}`}
           >
@@ -547,7 +547,7 @@ export default function Demo() {
       <section className="relative px-6 py-20 md:py-32 text-center overflow-hidden">
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(201,168,76,0.07) 0%, transparent 70%)" }}
+          style={{ background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(229, 57, 53,0.07) 0%, transparent 70%)" }}
         />
         <div className="relative container mx-auto max-w-4xl">
           <p className="text-xs tracking-[0.25em] uppercase mb-6" style={{ color: GOLD }}>
@@ -605,7 +605,7 @@ export default function Demo() {
                   <div className="w-10 h-10 rounded-md flex items-center justify-center" style={{ backgroundColor: GOLD_DIM }}>
                     <Icon className="w-5 h-5" style={{ color: GOLD }} />
                   </div>
-                  <span className="text-xs tracking-[0.2em]" style={{ color: "rgba(201,168,76,0.4)" }}>{n}</span>
+                  <span className="text-xs tracking-[0.2em]" style={{ color: "rgba(229, 57, 53,0.4)" }}>{n}</span>
                 </div>
                 <h3 className="text-base font-medium text-white">{title}</h3>
                 <p className="text-sm font-light leading-relaxed" style={{ color: MUTED }}>{body}</p>
@@ -636,7 +636,7 @@ export default function Demo() {
                   <div className="text-white font-light">Customer Name</div>
                   <div className="flex gap-1.5 flex-wrap">
                     {[...Array(10)].map((_, i) => (
-                      <div key={i} className="w-6 h-6 rounded-full" style={{ backgroundColor: i < 7 ? GOLD : "rgba(201,168,76,0.15)" }} />
+                      <div key={i} className="w-6 h-6 rounded-full" style={{ backgroundColor: i < 7 ? GOLD : "rgba(229, 57, 53,0.15)" }} />
                     ))}
                   </div>
                   <div className="text-xs" style={{ color: MUTED }}>7 of 10 stamps</div>
@@ -677,7 +677,7 @@ export default function Demo() {
                 <div className="relative">
                   <div className="w-44 h-44 rounded-full flex items-center justify-center relative overflow-hidden" style={{ border: `2px solid ${GOLD_BORDER}` }}>
                     <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
-                      {["rgba(201,168,76,0.12)", "rgba(201,168,76,0.06)", "rgba(201,168,76,0.09)", "rgba(201,168,76,0.15)"].map((bg, i) => (
+                      {["rgba(229, 57, 53,0.12)", "rgba(229, 57, 53,0.06)", "rgba(229, 57, 53,0.09)", "rgba(229, 57, 53,0.15)"].map((bg, i) => (
                         <div key={i} style={{ backgroundColor: bg }} />
                       ))}
                     </div>
@@ -763,7 +763,7 @@ export default function Demo() {
 
       {/* ─── CTA ─── */}
       <section className="py-32 px-6 text-center relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 60% 60% at 50% 100%, rgba(201,168,76,0.06) 0%, transparent 70%)" }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 60% 60% at 50% 100%, rgba(229, 57, 53,0.06) 0%, transparent 70%)" }} />
         <div className="relative container mx-auto max-w-2xl">
           <p className="text-xs tracking-[0.25em] uppercase mb-6" style={{ color: GOLD }}>Get started</p>
           <h2 className="text-3xl md:text-5xl font-light text-white mb-6" data-testid="text-cta-title">

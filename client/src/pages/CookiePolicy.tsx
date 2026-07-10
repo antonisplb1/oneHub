@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowUp, Cookie } from "lucide-react";
-import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
+import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 import CookiePreferences from "@/components/CookiePreferences";
 
-const GOLD = "#c9a84c";
-const GOLD_DIM = "rgba(201,168,76,0.12)";
-const GOLD_BORDER = "rgba(201,168,76,0.3)";
+const GOLD = "#E53935";
+const GOLD_DIM = "rgba(229, 57, 53,0.12)";
+const GOLD_BORDER = "rgba(229, 57, 53,0.3)";
 const SURFACE = "#111111";
 const BORDER = "rgba(255,255,255,0.07)";
 const MUTED = "rgba(255,255,255,0.5)";

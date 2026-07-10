@@ -7,7 +7,7 @@ import { ShieldCheck, Loader2 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
-const GOLD = "#c9a84c";
+const GOLD = "#E53935";
 const BG = "#080808";
 const SURFACE = "#101010";
 const BORDER = "rgba(255,255,255,0.07)";

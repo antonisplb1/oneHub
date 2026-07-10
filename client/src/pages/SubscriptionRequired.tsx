@@ -6,13 +6,13 @@ import { AlertCircle, Ticket, Gift, UtensilsCrossed, Calendar, Loader2 } from "l
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
+import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 import { Link } from "wouter";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const GOLD = "#c9a84c";
-const GOLD_DIM = "rgba(201,168,76,0.18)";
-const GOLD_BORDER = "rgba(201,168,76,0.25)";
+const GOLD = "#E53935";
+const GOLD_DIM = "rgba(229, 57, 53,0.18)";
+const GOLD_BORDER = "rgba(229, 57, 53,0.25)";
 const SURFACE = "#111111";
 const BORDER = "rgba(255,255,255,0.07)";
 const MUTED = "rgba(255,255,255,0.45)";
@@ -98,7 +98,7 @@ export default function SubscriptionRequired() {
     >
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 50% 40% at 50% 30%, rgba(201,168,76,0.05) 0%, transparent 70%)" }}
+        style={{ background: "radial-gradient(ellipse 50% 40% at 50% 30%, rgba(229, 57, 53,0.05) 0%, transparent 70%)" }}
       />
       <div className="relative w-full max-w-lg">
 
@@ -163,7 +163,7 @@ export default function SubscriptionRequired() {
                         checked={isSelected}
                         onCheckedChange={() => toggle(product.id)}
                         data-testid={`checkbox-product-${product.id}`}
-                        className="border-white/25 data-[state=checked]:bg-[#c9a84c] data-[state=checked]:border-[#c9a84c]"
+                        className="border-white/25 data-[state=checked]:bg-[#E53935] data-[state=checked]:border-[#E53935]"
                       />
                     </div>
                     <Icon className="w-4 h-4 flex-shrink-0" style={{ color: isSelected ? GOLD : MUTED }} />

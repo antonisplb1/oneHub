@@ -13,11 +13,11 @@ import {
   Layers,
 } from "lucide-react";
 import { SiStripe } from "react-icons/si";
-import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
+import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 
-const GOLD = "#c9a84c";
-const GOLD_DIM = "rgba(201,168,76,0.18)";
-const GOLD_BORDER = "rgba(201,168,76,0.25)";
+const GOLD = "#E53935";
+const GOLD_DIM = "rgba(229, 57, 53,0.18)";
+const GOLD_BORDER = "rgba(229, 57, 53,0.25)";
 const SURFACE = "#111111";
 const BORDER = "rgba(255,255,255,0.07)";
 const MUTED = "rgba(255,255,255,0.45)";
@@ -75,7 +75,7 @@ export default function LandingPage() {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(201,168,76,0.07) 0%, transparent 70%)",
+            background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(229, 57, 53,0.07) 0%, transparent 70%)",
           }}
         />
 
@@ -84,7 +84,7 @@ export default function LandingPage() {
           src={logoImage}
           alt="uniHub icon"
           className="h-20 w-20 md:h-24 md:w-24 mb-10 relative"
-          style={{ filter: "drop-shadow(0 0 24px rgba(201,168,76,0.35))" }}
+          style={{ filter: "drop-shadow(0 0 24px rgba(229, 57, 53,0.35))" }}
         />
 
         {/* Wordmark */}
@@ -420,7 +420,7 @@ export default function LandingPage() {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: "radial-gradient(ellipse 60% 60% at 50% 100%, rgba(201,168,76,0.06) 0%, transparent 70%)",
+            background: "radial-gradient(ellipse 60% 60% at 50% 100%, rgba(229, 57, 53,0.06) 0%, transparent 70%)",
           }}
         />
         <div className="relative container mx-auto max-w-2xl">

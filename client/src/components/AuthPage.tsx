@@ -5,10 +5,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { useEffect } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
-import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
+import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 import { Loader2 } from "lucide-react";
 
-const GOLD = "#c9a84c";
+const GOLD = "#E53935";
 const BG = "#080808";
 const SURFACE = "#101010";
 const BORDER = "rgba(255,255,255,0.07)";

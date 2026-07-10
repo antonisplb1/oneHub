@@ -3,11 +3,11 @@ import { useRoute, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import logoImage from "@assets/unihub-logo-transparent_1774625335894.png";
+import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 import { Link } from "wouter";
 
-const GOLD = "#c9a84c";
-const GOLD_DIM = "rgba(201,168,76,0.18)";
+const GOLD = "#E53935";
+const GOLD_DIM = "rgba(229, 57, 53,0.18)";
 const SURFACE = "#111111";
 const BORDER = "rgba(255,255,255,0.07)";
 const MUTED = "rgba(255,255,255,0.45)";
@@ -52,7 +52,7 @@ export default function VerifyEmail() {
     >
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 50% 40% at 50% 40%, rgba(201,168,76,0.05) 0%, transparent 70%)" }}
+        style={{ background: "radial-gradient(ellipse 50% 40% at 50% 40%, rgba(229, 57, 53,0.05) 0%, transparent 70%)" }}
       />
       <div className="relative w-full max-w-sm">
         <div className="text-center mb-8">
