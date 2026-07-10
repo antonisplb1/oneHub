@@ -128,7 +128,10 @@ export async function updateStripeSubscriptionPrice(
   subscriptionId: string,
   newPriceCents: number,
   description: string,
-  prorationBehavior: 'create_prorations' | 'none' = 'create_prorations',
+  // Price changes take effect on the next invoice; the current cycle is never
+  // adjusted (no proration credits or charges). The proration option remains in
+  // the type union for flexibility, but no caller ever opts into it.
+  prorationBehavior: 'create_prorations' | 'none' = 'none',
 ): Promise<void> {
   const sub = await stripe.subscriptions.retrieve(subscriptionId);
   const itemId = sub.items.data[0]?.id;
@@ -162,13 +165,14 @@ export async function updateStripeSubscriptionPrice(
 // Stripe is synced best-effort: the DB is the source of truth, so a Stripe
 // failure is logged and left for the next renewal/reconciliation. Pass
 // `syncStripe: false` to skip Stripe (e.g. product-only changes that should not
-// reprice immediately, matching existing behavior).
+// reprice immediately, matching existing behavior). Any reprice takes effect on
+// the next invoice; the current cycle is never adjusted (no proration).
 export async function syncBillingFromStores(
   stripe: BillingStripe,
   userId: string,
   opts: { syncStripe?: boolean; prorationBehavior?: 'create_prorations' | 'none' } = {},
 ): Promise<typeof users.$inferSelect> {
-  const { syncStripe = true, prorationBehavior = 'create_prorations' } = opts;
+  const { syncStripe = true, prorationBehavior = 'none' } = opts;
 
   const userStores = await db
     .select({ id: stores.id, selectedProducts: stores.selectedProducts })
@@ -579,12 +583,14 @@ export async function reconcileBilling(
 
     if (!dryRun) {
       try {
+        // Corrective reprice applies on the next invoice; the current cycle is
+        // never adjusted (no proration).
         await updateStripeSubscriptionPrice(
           stripe,
           user.stripeSubscriptionId!,
           expectedCents,
           getProductDescription(user.selectedProducts ?? []),
-          'create_prorations',
+          'none',
         );
         entry.fixed = true;
         console.log(`[Reconcile] Corrected ${user.email} to €${(expectedCents / 100).toFixed(2)}`);

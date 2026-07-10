@@ -1,0 +1,43 @@
+ROUND 8 — Price changes apply from the NEXT invoice only (no prorations, ever)
+
+CONTEXT
+Business rule change: when an account's price changes (admin custom price, store/
+product changes, or reconciliation corrections), the current billing cycle must
+NEVER be adjusted — no proration credits, no proration charges. The next invoice
+is simply the new price. Currently all reprice paths use Stripe's
+'create_prorations', which issues credits/charges for the remainder of the cycle.
+
+REQUIRED CHANGES (server/billing.ts and server/billing.test.ts ONLY)
+
+1. In updateStripeSubscriptionPrice, change the prorationBehavior parameter
+   default from 'create_prorations' to 'none'.
+2. In syncBillingFromStores, change the opts default prorationBehavior from
+   'create_prorations' to 'none'.
+3. In reconcileBilling, change the explicit 'create_prorations' argument
+   (currently at the updateStripeSubscriptionPrice call, ~line 587) to 'none'.
+4. Verify no other call site passes 'create_prorations'. The type union
+   'create_prorations' | 'none' stays as-is (the option remains available, it is
+   just never the default or used).
+5. Update code comments that describe proration behavior so they state the new
+   rule: "price changes take effect on the next invoice; the current cycle is
+   never adjusted."
+6. Tests: in server/billing.test.ts, add assertions to existing scenarios (or a
+   small new one) proving that:
+   a. applyCustomPrice sends proration_behavior 'none'
+   b. reconcileBilling's corrective update sends proration_behavior 'none'
+   (The makeStripeSpy already records params.proration_behavior; the reconcile
+   spy should record it too if it doesn't yet.)
+   All tests must pass via: npx tsx server/billing.test.ts
+
+HARD CONSTRAINTS
+- No schema changes, no new dependencies, no new env vars, no cron changes.
+- Do NOT touch the checkout flow or anything in routes.ts.
+- No behavior changes other than proration: same gating (isBillableAccount),
+  same best-effort error handling, same product/description handling from Round 7.
+
+DEFINITION OF DONE
+- [ ] grep for 'create_prorations' in server/ shows it ONLY in the type union
+      definition(s), never as a passed value or default
+- [ ] Tests assert 'none' on both the applyCustomPrice and reconcile paths
+- [ ] Full suite passes; report changed files + paste the three changed
+      defaults/call sites

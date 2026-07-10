@@ -136,6 +136,7 @@ function makeReconcileStripe(
 ) {
   const currentById = new Map<string, number>([[ourSubId, ourCurrentUnitAmount]]);
   const updatesById = new Map<string, number[]>();
+  const prorationsById = new Map<string, string[]>();
   const stripe: BillingStripe = {
     subscriptions: {
       retrieve: async (id: string) => {
@@ -159,6 +160,9 @@ function makeReconcileStripe(
         arr.push(amount);
         updatesById.set(id, arr);
         currentById.set(id, amount);
+        const parr = prorationsById.get(id) ?? [];
+        parr.push(params.proration_behavior);
+        prorationsById.set(id, parr);
         return {};
       },
       // No promotion candidates in these scenarios — return an empty list so the
@@ -168,7 +172,8 @@ function makeReconcileStripe(
     products: makeProductsSurface(),
   };
   const ourUpdates = () => updatesById.get(ourSubId) ?? [];
-  return { stripe, ourUpdates };
+  const ourProrations = () => prorationsById.get(ourSubId) ?? [];
+  return { stripe, ourUpdates, ourProrations };
 }
 
 // A Stripe spy for status changes: records cancel calls, reports a configurable
@@ -499,6 +504,7 @@ async function run() {
   const fixEntry = fixResult.drift.find((d) => d.userId === userId);
   assertEqual(fixEntry?.fixed, true, "live run: drift corrected");
   assertEqual(recFix.ourUpdates().at(-1), 3699, "live run: our Stripe sub repriced to €36.99");
+  assertEqual(recFix.ourProrations().at(-1), "none", "live run: corrective reprice uses proration 'none' (next invoice only)");
 
   // E3: a second pass finds nothing to fix (now in sync).
   const recAgain = makeReconcileStripe(ourSub, 3699);
@@ -689,6 +695,7 @@ async function run() {
   assertEqual((await getUser()).customPrice, 999, "G1: custom price stored in DB");
   assertEqual(spyG1.calls.length, 1, "G1: active sub -> Stripe repriced exactly once");
   assertEqual(spyG1.calls[0]?.unitAmount, 999, "G1: Stripe charged the custom €9.99 immediately");
+  assertEqual(spyG1.calls[0]?.proration, "none", "G1: custom-price reprice uses proration 'none' (next invoice only)");
 
   // G2: clearing the custom price reprices back to the standard calculated price.
   const spyG2 = makeStripeSpy();
@@ -1016,6 +1023,7 @@ async function run() {
   assertEqual(spyL1.calls.length, 1, "L1: billable account repriced exactly once");
   assertEqual(spyL1.calls[0]?.product, "prod_test_unihub", "L1: price_data.product is the self-managed product id");
   assertEqual(spyL1.calls[0]?.unitAmount, 1234, "L1: unit_amount equals the custom price");
+  assertEqual(spyL1.calls[0]?.proration, "none", "L1: reprice uses proration 'none' (next invoice only)");
   assertEqual(
     spyL1.calls[0]?.description,
     getProductDescription(["loyalty", "spin"]),
