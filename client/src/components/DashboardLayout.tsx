@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
   SidebarProvider,
@@ -73,7 +73,6 @@ interface DashboardLayoutProps {
 function StoreSwitcher() {
   const { stores, activeStore, setActiveStoreId } = useStore();
   const { toast } = useToast();
-  const qc = useQueryClient();
   const { data: userInfo } = useQuery<{ isSubuser?: boolean; permissions?: string[] }>({
     queryKey: ['/api/auth/me'],
   });
@@ -104,7 +103,6 @@ function StoreSwitcher() {
             data-testid={`option-store-${store.id}`}
             onClick={() => {
               setActiveStoreId(store.id);
-              qc.clear();
               toast({ title: "Switched store", description: `Now managing ${store.displayName || store.shopName}` });
             }}
             className={store.id === activeStore?.id ? "font-medium" : ""}

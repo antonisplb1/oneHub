@@ -348,7 +348,6 @@ export default function StoresPage() {
                       data-testid={`button-switch-store-${store.id}`}
                       onClick={() => {
                         setActiveStoreId(store.id);
-                        queryClient.clear();
                         toast({ title: "Switched store", description: `Now managing ${store.displayName || store.shopName}` });
                       }}
                     >

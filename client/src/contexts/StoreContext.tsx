@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
 export interface Store {
@@ -79,8 +80,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [stores]);
 
   const setActiveStoreId = (id: string) => {
+    if (id === activeStoreId) return;
     setActiveStoreIdState(id);
     localStorage.setItem("activeStoreId", id);
+    // Store-scoped queries (loyalty settings/cards, customers, menu, shifts, etc.)
+    // use store-agnostic cache keys with staleTime: Infinity and send the active
+    // store via the X-Store-Id header. Switching stores must invalidate the cache
+    // or the previous store's data would keep showing under the newly-active store.
+    // Centralizing this here guarantees every switch path (header switcher, stores
+    // page, create, delete) stays consistent instead of relying on each call site.
+    queryClient.invalidateQueries();
   };
 
   const activeStore = stores.find(s => s.id === activeStoreId) || stores[0] || null;
