@@ -385,7 +385,7 @@ export default function PublicMenu() {
                         <div className="flex-1 min-w-0 flex flex-col justify-between">
                           <div>
                             <div className="flex items-start justify-between gap-3 mb-1">
-                              <h3 className="text-lg font-normal text-[hsl(var(--menu-foreground))]" data-testid={`item-name-${item.id}`}>
+                              <h3 className="text-lg font-normal text-[hsl(var(--menu-foreground))] min-w-0 break-words" data-testid={`item-name-${item.id}`}>
                                 {item.name}
                               </h3>
                               <span

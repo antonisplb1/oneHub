@@ -123,9 +123,8 @@ export default function InStoreSpinWheel() {
     return (
       <svg
         ref={wheelRef}
-        width="400"
-        height="400"
         viewBox="0 0 400 400"
+        className="w-full h-auto max-w-[400px] mx-auto"
         style={{
           transform: `rotate(${rotation}deg)`,
           transition: isSpinning ? 'transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',

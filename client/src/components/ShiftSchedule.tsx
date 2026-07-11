@@ -175,11 +175,11 @@ export function ShiftSchedule({
                       <div key={shift.id} className="p-3 border rounded-lg hover-elevate" data-testid={`shift-card-mobile-${shift.id}`}>
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold" data-testid={`shift-employee-mobile-${shift.id}`}>
+                            <div className="font-semibold truncate" data-testid={`shift-employee-mobile-${shift.id}`}>
                               {shift.employeeName}
                             </div>
                             {shift.employeeRole && (
-                              <div className="text-sm text-muted-foreground" data-testid={`shift-role-mobile-${shift.id}`}>
+                              <div className="text-sm text-muted-foreground truncate" data-testid={`shift-role-mobile-${shift.id}`}>
                                 {shift.employeeRole}
                               </div>
                             )}

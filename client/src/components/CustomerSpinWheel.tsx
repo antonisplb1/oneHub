@@ -45,7 +45,7 @@ export default function CustomerSpinWheel() {
         <CardContent className="space-y-6">
           {!prizeWon && (
             <>
-              <div className="w-full aspect-square bg-gradient-to-br from-primary to-chart-3 rounded-full flex items-center justify-center relative">
+              <div className="w-full max-w-[320px] sm:max-w-none mx-auto aspect-square bg-gradient-to-br from-primary to-chart-3 rounded-full flex items-center justify-center relative">
                 <div
                   className={`w-4/5 h-4/5 bg-background rounded-full flex items-center justify-center ${
                     spinMutation.isPending ? "animate-spin" : ""

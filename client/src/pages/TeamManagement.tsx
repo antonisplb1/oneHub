@@ -265,6 +265,7 @@ export default function TeamManagement() {
               </Button>
             </div>
           ) : (
+            <div className="w-full overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -342,6 +343,7 @@ export default function TeamManagement() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

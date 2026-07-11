@@ -134,18 +134,18 @@ export default function CustomerLoyaltyCard() {
             <p className="text-lg font-semibold mb-2">
               {stamps}/{maxStamps} Stamps
             </p>
-            <div className="grid grid-cols-5 gap-3 justify-items-center">
+            <div className="grid grid-cols-5 gap-2 sm:gap-3 justify-items-center">
               {Array.from({ length: maxStamps }).map((_, i) => (
                 <div
                   key={i}
-                  className={`w-12 h-12 rounded-full border-2 flex items-center justify-center ${
+                  className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 flex items-center justify-center ${
                     i < stamps
                       ? "bg-chart-2 border-chart-2 text-white"
                       : "border-muted bg-muted/20"
                   }`}
                   data-testid={`stamp-${i}`}
                 >
-                  {i < stamps && <Check className="w-6 h-6" />}
+                  {i < stamps && <Check className="w-5 h-5 sm:w-6 sm:h-6" />}
                 </div>
               ))}
             </div>

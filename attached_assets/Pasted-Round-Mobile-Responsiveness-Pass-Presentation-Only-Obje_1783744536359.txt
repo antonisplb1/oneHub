@@ -1,0 +1,60 @@
+Round: Mobile Responsiveness Pass (Presentation-Only)
+Objective
+Make the entire site fully responsive and comfortable to use on mobile phones (viewports 360px–430px wide, plus tablet 768px). This is a CSS/layout-only round. No functional changes, no logic changes, no new features.
+Priority order
+
+Customer-facing pages (loyalty card view, spin wheel, public menu pages, chat widget) — these are opened almost exclusively on phones and must be flawless.
+Landing/marketing pages (homepage, pricing, product pages, signup/login).
+Merchant dashboard — conservative fixes only: prevent horizontal overflow, make tables scrollable, ensure nav is usable. Do NOT redesign dashboard layouts.
+
+What "responsive and easy to use" means here
+
+No horizontal scrolling on any page at 360px width. Find and fix every overflow source (fixed widths, wide tables, long unbroken strings, oversized images).
+Touch targets: all buttons, links, and interactive elements at least 44×44px tap area with adequate spacing.
+Navigation: header/nav collapses to a working mobile menu (hamburger or equivalent) if it doesn't already; menu must open, close, and not trap scroll.
+Typography: body text at least 16px on mobile (also prevents iOS input zoom — all form inputs must be ≥16px font-size).
+Forms: inputs full-width on mobile, correct inputmode/type attributes where already present stay as-is (do not change input types/names).
+Tables: wrap wide tables in horizontally scrollable containers on mobile rather than restructuring them.
+Images/media: max-width 100%, no fixed pixel widths that overflow.
+Modals/dialogs: fit within viewport, scrollable content area, close buttons reachable with thumb.
+Spin wheel: scales to fit the viewport width and remains fully spinnable via touch.
+Chat widget: usable on mobile — doesn't cover the whole screen permanently, input visible above the keyboard, close button reachable.
+Safe areas: respect notches/home indicator where relevant (viewport-fit / env(safe-area-inset-*)) only if fixed-position elements are affected.
+
+Allowed changes
+
+CSS / Tailwind classes / styled layout code inside existing components
+Adding responsive breakpoint variants (e.g., Tailwind sm: md: lg:)
+Minimal JSX structural changes ONLY where strictly required for layout (e.g., wrapping a table in a scroll container, adding a mobile menu toggle button with local useState)
+The <meta name="viewport"> tag in index.html if missing or incorrect
+
+HARD NO-TOUCH LIST — do not modify under any circumstances
+
+server/ — any server code, routes, middleware
+Database schema, Drizzle config, migrations
+Stripe code (checkout, webhooks, billing, pricing logic)
+Telegram / SSE / chat backend logic (widget styling only is fine)
+Google Wallet / Apple Wallet code
+.env, secrets, environment handling
+package.json / package-lock.json — no new dependencies, no version changes
+Form field names, API call payloads, component props/state logic, business logic
+Copy/text content, branding colors, logos, meta tags (except viewport tag if needed)
+Route paths or navigation destinations
+
+Rules
+
+Do not delete or rewrite components — adjust styling in place.
+Do not introduce a UI library, CSS framework, or any new package.
+Do not change desktop appearance: desktop (≥1024px) must look identical to before. All changes should apply at mobile/tablet breakpoints or be visually neutral on desktop.
+Prefer the smallest possible diff per file.
+
+Definition of Done
+
+npm run build passes with zero errors.
+At 360px, 390px, and 430px widths: no horizontal scroll on any customer-facing page, landing page, auth page, or dashboard page.
+Mobile nav menu opens/closes correctly on landing pages and dashboard.
+All forms usable on mobile: inputs ≥16px font, buttons full-width or comfortably tappable.
+Spin wheel and loyalty card pages render fully within a 390px viewport and are touch-operable.
+Chat widget opens, is typeable, and closes on a 390px viewport.
+Desktop layout at 1440px is visually unchanged.
+Provide a completion report listing: every file changed, what was changed in each, and confirmation that nothing on the no-touch list was modified.

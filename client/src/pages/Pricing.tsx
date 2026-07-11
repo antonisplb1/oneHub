@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Award, Gift, UtensilsCrossed, Calendar, ArrowRight, Shield, CheckCircle, Minus } from "lucide-react";
+import { Award, Gift, UtensilsCrossed, Calendar, ArrowRight, Shield, CheckCircle, Minus, Menu, X } from "lucide-react";
 import { SiStripe } from "react-icons/si";
 import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 
@@ -52,6 +53,7 @@ const plans = [
 ];
 
 export default function Pricing() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#080808", color: "white" }}>
 
@@ -70,7 +72,7 @@ export default function Pricing() {
               </span>
             </div>
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1">
             <Link href="/demo">
               <Button variant="ghost" data-testid="button-demo"
                 className="text-white/60 hover:text-white hover:bg-white/5">Demo</Button>
@@ -84,7 +86,35 @@ export default function Pricing() {
                 className="ml-2 border-white/20 text-white bg-transparent hover:bg-white/5">Login</Button>
             </Link>
           </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="md:hidden text-white/60 hover:text-white hover:bg-white/5"
+            onClick={() => setMobileMenuOpen((o) => !o)}
+            aria-label="Toggle menu"
+            data-testid="button-mobile-menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </Button>
         </div>
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t" style={{ borderColor: BORDER }}>
+            <div className="container mx-auto px-6 py-3 flex flex-col gap-1">
+              <Link href="/demo" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="ghost" data-testid="button-demo-mobile"
+                  className="w-full justify-start text-white/60 hover:text-white hover:bg-white/5">Demo</Button>
+              </Link>
+              <Link href="/pricing" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="ghost" data-testid="button-pricing-mobile"
+                  className="w-full justify-start text-white/60 hover:text-white hover:bg-white/5">Pricing</Button>
+              </Link>
+              <Link href="/auth?mode=login" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="outline" data-testid="button-login-mobile"
+                  className="w-full justify-start border-white/20 text-white bg-transparent hover:bg-white/5">Login</Button>
+              </Link>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ─── HERO ─── */}
@@ -95,7 +125,7 @@ export default function Pricing() {
         />
         <div className="relative container mx-auto max-w-3xl">
           <p className="text-xs tracking-[0.25em] uppercase mb-6" style={{ color: GOLD }}>Pricing</p>
-          <h1 className="text-4xl md:text-6xl font-light text-white mb-6 leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-light text-white mb-6 leading-tight">
             Simple,<br />transparent pricing.
           </h1>
           <p className="text-lg font-light max-w-xl mx-auto" style={{ color: MUTED }}>

@@ -121,7 +121,7 @@ export default function PublicShifts() {
     <div className="min-h-screen" style={{ backgroundColor: "#080808", color: "white" }}>
       {/* PIN Entry Dialog */}
       <Dialog open={showDialog && !authenticated} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-md" data-testid="pin-dialog">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md" data-testid="pin-dialog">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Lock className="w-5 h-5" />

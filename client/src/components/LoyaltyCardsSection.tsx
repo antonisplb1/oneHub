@@ -373,7 +373,7 @@ export default function LoyaltyCardsSection() {
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {Array.from({ length: card.maxStamps }).map((_, i) => (
                           <div
                             key={i}
