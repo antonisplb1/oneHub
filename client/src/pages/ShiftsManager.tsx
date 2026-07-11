@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, ChevronLeft, ChevronRight, Users, Calendar, Copy, Clock, Pencil, CopyPlus } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { useStore } from "@/contexts/StoreContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertCrewMemberSchema, insertShiftSchema, insertTimeframePresetSchema, type CrewMember, type Shift, type TimeframePreset } from "@shared/schema";
@@ -61,7 +61,7 @@ export default function ShiftsManager() {
   } | null>(null);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { activeStore } = useStore();
 
   const crewForm = useForm<CrewMemberFormValues>({
     resolver: zodResolver(insertCrewMemberSchema),
@@ -461,7 +461,7 @@ export default function ShiftsManager() {
   };
 
   const copyLinkToClipboard = async () => {
-    if (!user?.shopName) {
+    if (!activeStore?.shopName) {
       toast({
         title: "Error",
         description: "Shop name not available",
@@ -470,7 +470,7 @@ export default function ShiftsManager() {
       return;
     }
 
-    const shareableLink = `${window.location.origin}/${user.shopName}/shifts`;
+    const shareableLink = `${window.location.origin}/${encodeURIComponent(activeStore.shopName)}/shifts`;
     
     try {
       await navigator.clipboard.writeText(shareableLink);
@@ -552,7 +552,7 @@ export default function ShiftsManager() {
         <CardContent>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <Input 
-              value={user?.shopName ? `${window.location.origin}/${user.shopName}/shifts` : ""}
+              value={activeStore?.shopName ? `${window.location.origin}/${encodeURIComponent(activeStore.shopName)}/shifts` : ""}
               readOnly
               data-testid="input-shareable-link"
               className="flex-1"
