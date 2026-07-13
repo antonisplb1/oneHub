@@ -46,6 +46,8 @@ import QRCode from "qrcode";
 import crypto from "crypto";
 import { GoogleWalletService, LoyaltyClassNotFoundError, type LoyaltyPassData } from "./googleWallet";
 import { AppleWalletService, isAppleWalletConfigured, generatePassAuthToken, notifyAppleWalletDevices, notifyAppleWalletDevicesForStore, type AppleLoyaltyPassData } from "./appleWallet";
+import { renderStampStrip, loadBannerBuffer } from "./walletStrip";
+import { validateGoogleBackgroundColor } from "./googleWallet";
 import { sendVerificationEmail, sendPasswordResetEmail, sendSubuserInvitationEmail } from "./email";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
@@ -2309,6 +2311,45 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Public stamp-strip PNG for Google Wallet heroImage. Same exposure model as
+  // /api/logo/store/:storeId: no auth, customerId is an unguessable UUID, and
+  // the response is only the composed image (no customer data). The `?v=` query
+  // param is purely a client-side cache buster and is ignored here.
+  app.get("/api/wallet-strip/:customerId", async (req, res) => {
+    try {
+      const [result] = await db
+        .select({ card: loyaltyCards, customer: customers, store: stores, user: users })
+        .from(loyaltyCards)
+        .leftJoin(customers, eq(loyaltyCards.customerId, customers.id))
+        .leftJoin(stores, eq(customers.storeId, stores.id))
+        .leftJoin(users, eq(loyaltyCards.userId, users.id))
+        .where(eq(customers.id, req.params.customerId))
+        .limit(1);
+
+      if (!result || !result.customer || !result.user) {
+        return res.status(404).send("Not found");
+      }
+
+      const banner = await loadBannerBuffer(result.store?.menuBannerImage || result.user.menuBannerImage);
+      const png = await renderStampStrip({
+        bannerImage: banner,
+        brandColorHex: validateGoogleBackgroundColor(result.store?.cardBackgroundColor || result.user.cardBackgroundColor),
+        stamps: result.card.stamps,
+        maxStamps: result.card.maxStamps,
+        width: 1032,
+        height: 336,
+      });
+
+      res.setHeader("Content-Type", "image/png");
+      // Long-lived cache is correct: stamp changes bust via the ?v= param.
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.send(png);
+    } catch (error: any) {
+      console.error("[Wallet Strip] Render failed:", error);
+      res.status(500).send("Strip render failed");
+    }
+  });
+
   app.get("/api/logo/:userId", async (req, res) => {
     try {
       const [user] = await db
@@ -3264,6 +3305,7 @@ export function registerRoutes(app: Express) {
         customerQrCode: result.customer.customerQrCode || result.customer.id,
         cardBackgroundColor: result.store?.cardBackgroundColor || result.user.cardBackgroundColor,
         logo: result.store?.logo || result.user.logo,
+        bannerImage: result.store?.menuBannerImage || result.user.menuBannerImage,
       };
 
       const appleWalletService = new AppleWalletService();
@@ -3488,6 +3530,7 @@ export function registerRoutes(app: Express) {
         customerQrCode: result.customer.customerQrCode || result.customer.id,
         cardBackgroundColor: result.store?.cardBackgroundColor || result.user.cardBackgroundColor,
         logo: result.store?.logo || result.user.logo,
+        bannerImage: result.store?.menuBannerImage || result.user.menuBannerImage,
       };
 
       const appleWalletService = new AppleWalletService();

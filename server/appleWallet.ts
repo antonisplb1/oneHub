@@ -6,6 +6,7 @@ import sharp from 'sharp';
 import { db } from './db';
 import { appleWalletDevices, customers } from '@shared/schema';
 import { eq, or } from 'drizzle-orm';
+import { renderStampStrip } from './walletStrip';
 
 export interface AppleLoyaltyPassData {
   customerId: string;
@@ -17,6 +18,7 @@ export interface AppleLoyaltyPassData {
   customerQrCode: string;
   cardBackgroundColor?: string | null;
   logo?: string | null;
+  bannerImage?: string | null;
 }
 
 function makePng(width: number, height: number, r: number, g: number, b: number): Buffer {
@@ -81,7 +83,8 @@ function hexToRgbCss(hex: string): string {
 
 // WCAG relative luminance (0 = black .. 1 = white) of a hex color. Used to pick
 // a foreground/label color that stays readable on the merchant's brand color.
-function relativeLuminance(hex: string): number {
+// Exported so the shared strip renderer reuses the exact same contrast rule.
+export function relativeLuminance(hex: string): number {
   const [r, g, b] = hexToRgb(hex).map((c) => {
     const s = c / 255;
     return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
@@ -308,6 +311,32 @@ export class AppleWalletService {
       await template.images.add('logo', makePng(320, 100, r, g, b), '2x');
     }
 
+    // Stamp strip: banner (or brand-gradient) with the stamp circles baked in.
+    // Rendered for every pass so the design is consistent with or without a
+    // banner. On ANY failure we fall back to the pre-strip text layout below —
+    // a bad banner must never prevent pass generation.
+    let stripAdded = false;
+    try {
+      const bannerSrc = await loadLogoBuffer(passData.bannerImage);
+      const stripBase = {
+        bannerImage: bannerSrc,
+        brandColorHex: bgColor,
+        stamps: passData.stamps,
+        maxStamps: passData.maxStamps,
+      };
+      const [strip1x, strip2x, strip3x] = await Promise.all([
+        renderStampStrip({ ...stripBase, width: 375, height: 123 }),
+        renderStampStrip({ ...stripBase, width: 750, height: 246 }),
+        renderStampStrip({ ...stripBase, width: 1125, height: 369 }),
+      ]);
+      await template.images.add('strip', strip1x, '1x');
+      await template.images.add('strip', strip2x, '2x');
+      await template.images.add('strip', strip3x, '3x');
+      stripAdded = true;
+    } catch (err) {
+      console.error('[Apple Wallet] Strip render failed, falling back to text stamp layout:', err);
+    }
+
     const pass = template.createPass({
       barcodes: [
         {
@@ -319,9 +348,19 @@ export class AppleWalletService {
       ],
     });
 
-    // Visual stamp progress for small cards (filled = collected); numeric form for
-    // larger cards where a row of circles would overflow.
-    if (passData.maxStamps <= 12) {
+    if (stripAdded) {
+      // The strip carries the visual stamp circles; primaryFields render ON TOP
+      // of the strip on storeCards and would collide with the baked-in circles,
+      // so the count moves to the header instead.
+      pass.headerFields.add({
+        key: 'stamps',
+        label: 'STAMPS',
+        value: `${passData.stamps}/${passData.maxStamps}`,
+      });
+    } else if (passData.maxStamps <= 12) {
+      // Pre-strip fallback layout, unchanged: visual stamp progress for small
+      // cards (filled = collected); numeric form for larger cards where a row
+      // of circles would overflow.
       const circles = Array.from({ length: passData.maxStamps }, (_, i) =>
         i < passData.stamps ? '\u25CF' : '\u25CB',
       ).join(' ');

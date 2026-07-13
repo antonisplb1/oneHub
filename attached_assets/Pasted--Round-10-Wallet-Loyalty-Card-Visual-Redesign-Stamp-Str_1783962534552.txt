@@ -1,0 +1,118 @@
+# Round 10 — Wallet Loyalty Card Visual Redesign (Stamp Strip)
+
+## Objective
+
+Upgrade the visual design of Apple Wallet and Google Wallet loyalty passes to show a **stamp strip**: a wide banner image (the merchant's uploaded banner) with stamp circles composited on top — filled circles for collected stamps, faded outline circles for remaining ones. The rest of the pass keeps the existing merchant background color behavior exactly as it works today.
+
+This is a **rendering-only round**. No schema changes, no billing code, no auth code, no new external services.
+
+---
+
+## Scope — exactly three things
+
+### 1. New shared strip renderer — `server/walletStrip.ts` (new file)
+
+Create one module used by BOTH wallet paths so the two platforms never drift:
+
+```ts
+export interface StripRenderOptions {
+  bannerImage: Buffer | null;   // decoded merchant banner, or null
+  brandColorHex: string;        // validated #RRGGBB, same fallback rules as today
+  stamps: number;
+  maxStamps: number;
+  width: number;                // px
+  height: number;               // px
+}
+export async function renderStampStrip(opts: StripRenderOptions): Promise<Buffer> // PNG
+```
+
+Rendering rules (use `sharp`, already a dependency — do NOT add canvas, puppeteer, or any other image library):
+
+- **Background**: if `bannerImage` is present, resize with `fit: 'cover'` to width×height. If null or it fails to decode, fill with a vertical gradient of the brand color (brand color → 15% darker). Never throw on a bad banner — fall back to the gradient.
+- **Scrim**: overlay a semi-transparent dark layer (black at ~35% opacity) across the banner so stamps stay legible on any photo.
+- **Stamps**: composite a single SVG overlay (sharp accepts an SVG buffer as a composite input):
+  - 1–6 stamps: one centered row
+  - 7–12 stamps: two centered rows (ceil(n/2) on top)
+  - **>12 stamps: do not render circles** — render only the text `{stamps} / {maxStamps}` centered in a white rounded pill (this mirrors the existing numeric fallback)
+  - Filled stamp: solid white circle at 95% opacity with a checkmark path in the brand color (or in `#1A1A1A` if the brand color's WCAG relative luminance > 0.5 — reuse the existing `relativeLuminance` helper from `appleWallet.ts` by exporting it, do not duplicate it)
+  - Unfilled stamp: transparent circle with a 2px white stroke at 55% opacity
+  - Circle diameter: derive from height (≈ 42% of strip height for one row, ≈ 34% for two rows), with even spacing and side margins ≥ one radius
+- **Progress caption**: small text baked into the SVG at the bottom edge: `{stamps} OF {maxStamps} STAMPS` in white, letter-spaced uppercase, font-family `Poppins, 'Helvetica Neue', Arial, sans-serif` (SVG font stacks fall back safely if Poppins isn't installed in the container — that is acceptable)
+- Output: PNG buffer. Must complete without network access (banner buffer is passed in already-decoded).
+
+Also add a small helper in the same file:
+
+```ts
+export async function loadBannerBuffer(banner?: string | null): Promise<Buffer | null>
+```
+
+Same semantics as the existing `loadLogoBuffer` in `appleWallet.ts` (data-URI or https only, never throws, null on failure). If trivial, re-export/reuse `loadLogoBuffer` itself instead of duplicating — preferred.
+
+### 2. Apple Wallet — strip image (`server/appleWallet.ts` + call sites in `server/routes.ts`)
+
+- Extend `AppleLoyaltyPassData` with one optional field: `bannerImage?: string | null`.
+- In `generatePass`:
+  - Render the strip via `renderStampStrip` and add it as the pass `strip` image:
+    - 1x: 375×123, 2x: 750×246, 3x: 1125×369
+  - **When a strip is added, REMOVE the current primaryFields stamp circles** (the `\u25CF \u25CB` text). Primary fields render on top of the strip on storeCards and would collide with the baked-in circles. Instead:
+    - Move the stamp count to `headerFields`: `{ key: 'stamps', label: 'STAMPS', value: '{stamps}/{maxStamps}' }`
+    - Keep secondaryFields (Reward), auxiliaryFields (status), backFields, barcode, logo, icon, colors, contrast logic — ALL unchanged.
+  - The strip must be generated for every pass, including when the merchant has no banner (gradient fallback), so the design is consistent.
+- At both Apple pass call sites in `routes.ts` (~line 3257 and ~line 3481), populate `bannerImage: result.store?.menuBannerImage || result.user.menuBannerImage` following the exact same store-then-user fallback pattern already used for `logo` and `cardBackgroundColor` on those lines.
+
+### 3. Google Wallet — heroImage (`server/googleWallet.ts` + one new route in `server/routes.ts`)
+
+- **New public endpoint** `GET /api/wallet-strip/:customerId` in `routes.ts`:
+  - Look up customer → loyalty card → store/user (reuse the same join shape as the Apple pass route).
+  - Render `renderStampStrip` at **1032×336** and respond `Content-Type: image/png`.
+  - `Cache-Control: public, max-age=31536000, immutable` — cache-busting is handled by a version query param, so long cache is correct.
+  - 404 if the customer doesn't exist. No auth (same exposure model as the existing `/api/logo/store/:storeId` endpoint; customerId is an unguessable UUID). Ignore any query params server-side (`?v=` is purely a cache buster).
+- In `googleWallet.ts`:
+  - Add a helper `getStripUrl(customerId: string, stamps: number): string` that builds `{domain}/api/wallet-strip/{customerId}?v={stamps}` using the same `REPLIT_DOMAINS` resolution logic as `resolveGoogleLogoUrl`.
+  - In `createLoyaltyPass`: when inserting the loyalty object, set
+    ```
+    heroImage: { sourceUri: { uri: getStripUrl(customerId, stamps) } }
+    ```
+  - In `updateLoyaltyPoints`: extend the existing `patchBody` to ALSO patch `heroImage` with the new `?v={stamps}` URL. This is mandatory — Google caches pass images, and without the version bump the strip will never visually update when stamps change.
+  - Do NOT put heroImage on the loyalty CLASS (stamps are per-customer; class-level heroImage would show the same image to everyone). `updateClassBranding` stays untouched.
+
+---
+
+## Hard constraints
+
+1. **No schema changes. No migrations. No `db:push`.** `menuBannerImage` already exists on `stores` and `users` — read it, nothing else.
+2. **No new npm dependencies.** `sharp` only for image work.
+3. **No new environment variables or secrets.**
+4. `cardBackgroundColor` behavior (validation, fallbacks, contrast-aware foreground/label colors) must be byte-for-byte unchanged.
+5. All strip rendering must be failure-tolerant: a corrupt/missing banner must never prevent pass generation. Wrap render calls so that on error, Apple falls back to the current (pre-round) pass layout and Google simply omits heroImage. Log the error, don't throw.
+6. The strip endpoint must never leak other customers' data — it returns only the composed PNG.
+
+## No-touch list
+
+- `getClassId` and its sanitization rule (hyphens → underscores)
+- `reviewStatus: 'UNDER_REVIEW'` handling in class insert/patch
+- `generatePassAuthToken`, `APPLE_WALLET_AUTH_SECRET` usage, webServiceURL, serial number derivation
+- APNs push code (`sendApnsWalletPush`, `notifyAppleWalletDevices*`) — it already makes Apple strips auto-update; do not modify it
+- `updateClassBranding` (class-level branding patch)
+- All billing, Stripe, auth, Telegram, email, and n8n-related code
+- `/api/logo/*` endpoints
+- Client code (`CustomerLoyaltyCard.tsx` etc.) — the in-app web card is a separate future round
+- All `.test.ts` files' existing assertions (add new tests, don't weaken old ones)
+
+## Definition of done
+
+- [ ] `server/walletStrip.ts` exists, exports `renderStampStrip` and banner loading, uses only sharp
+- [ ] Apple pass includes strip images at 1x/2x/3x; text-circle primaryField removed; stamp count present in headerFields; everything else in the pass JSON identical to before
+- [ ] Both Apple call sites in `routes.ts` pass `bannerImage` with store→user fallback
+- [ ] `GET /api/wallet-strip/:customerId` returns a valid PNG (200) for a real customer and 404 otherwise
+- [ ] New Google loyalty objects carry `heroImage` pointing at the strip URL with `?v={stamps}`
+- [ ] `updateLoyaltyPoints` patches BOTH `loyaltyPoints` and `heroImage` (new `v`)
+- [ ] A merchant with NO banner uploaded still gets a clean gradient strip on both platforms
+- [ ] A maxStamps=20 card renders the numeric pill strip, not circles
+- [ ] Corrupting the banner data (manually, in a dev test) does not break pass generation
+- [ ] Unit tests added for `renderStampStrip` covering: 6 stamps one row, 10 stamps two rows, 15 stamps numeric pill, null banner gradient fallback, invalid banner buffer fallback
+- [ ] `npm run build` and existing test suite pass with zero modifications to existing test expectations
+
+## Completion report format
+
+List: files created, files modified (with a one-line summary each), any deviation from this spec with justification, and confirmation of each definition-of-done item. Do not deploy.

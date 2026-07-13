@@ -7,3 +7,4 @@
 - [Store-scoped cache invalidation on switch](store-scoped-cache-invalidation.md) — store-agnostic query keys + staleTime Infinity; every store switch must invalidate centrally in setActiveStoreId, not per call site.
 - [Wallet logo fetch asymmetry](wallet-logo-fetch.md) — Google servers fetch the logo URL, but our backend fetches it for Apple passes; keep the Apple loader https-only + placeholder fallback (SSRF).
 - [Google Wallet class patch review-status](google-wallet-class-patch.md) — every loyaltyclass patch must resend reviewStatus 'UNDER_REVIEW' or Google rejects it and branding silently never updates.
+- [Wallet stamp-strip rendering](wallet-strip-rendering.md) — Apple strip requires headerFields (primaryFields overlap strip) + fail-open; Google heroImage must be cache-busted per stamp count.

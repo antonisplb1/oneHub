@@ -45,6 +45,17 @@ export function resolveGoogleLogoUrl(storeId: string, logoUrl?: string | null): 
   return defaultLogoUrl;
 }
 
+// Build the public strip-image URL for a customer's pass. The `?v={stamps}`
+// query is a cache buster: Google caches pass images aggressively, so the URL
+// must change whenever the stamp count does. Uses the same REPLIT_DOMAINS
+// resolution as resolveGoogleLogoUrl.
+export function getStripUrl(customerId: string, stamps: number): string {
+  const domain = process.env.REPLIT_DOMAINS
+    ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+    : 'http://localhost:5000';
+  return `${domain}/api/wallet-strip/${customerId}?v=${stamps}`;
+}
+
 // Validate a hex background color, falling back to the Google default.
 export function validateGoogleBackgroundColor(cardBackgroundColor?: string | null): string {
   return (cardBackgroundColor && /^#[0-9A-Fa-f]{6}$/.test(cardBackgroundColor))
@@ -254,7 +265,14 @@ export class GoogleWalletService {
               header: 'Progress',
               body: `${passData.stamps} / ${passData.maxStamps}`
             }
-          ]
+          ],
+          // Per-customer stamp strip. Lives on the OBJECT (never the class —
+          // stamps differ per customer).
+          heroImage: {
+            sourceUri: {
+              uri: getStripUrl(passData.customerId, passData.stamps)
+            }
+          }
         };
 
         await this.client.loyaltyobject.insert({
@@ -296,6 +314,13 @@ export class GoogleWalletService {
           label: 'Stamps',
           balance: {
             int: stamps
+          }
+        },
+        // MUST re-patch heroImage with the new ?v= — Google caches pass images,
+        // so without the version bump the strip never visually updates.
+        heroImage: {
+          sourceUri: {
+            uri: getStripUrl(customerId, stamps)
           }
         }
       };
