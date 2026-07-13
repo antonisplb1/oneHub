@@ -1,0 +1,85 @@
+# ROUND 9.5 — Database Index Additions + Spin-Tokens Endpoint Cap
+
+## Context
+
+This is a narrow, low-risk performance round. The database schema currently has almost no explicit indexes: the only ones that exist are `IDX_session_expire` on `sessions` and the two indexes on `support_messages`. Postgres does NOT auto-index foreign key columns, so every dashboard/analytics query filtering by `store_id` + timestamp is doing sequential scans, and every cascade delete scans child tables. Additionally, `GET /api/spin-tokens` returns every token ever created for a store with no limit.
+
+This round adds indexes to `shared/schema.ts` and caps that one endpoint. **Nothing else changes.**
+
+## Scope — exactly two changes
+
+### Change 1: Add indexes in `shared/schema.ts`
+
+Add index definitions using Drizzle's `index()` helper (already imported in the file) via each table's third-argument callback, following the exact same style already used on `supportMessages`:
+
+```ts
+}, (table) => ({
+  someIdx: index("idx_name").on(table.col1, table.col2),
+}));
+```
+
+For tables that already have a callback (e.g. `loyaltyCards` with `uniqueUserCustomer`), ADD the index entries to the existing callback object — do not remove or rename the existing unique constraints.
+
+Add exactly these indexes and nothing more:
+
+| Table | Index name | Columns |
+|---|---|---|
+| `loyaltyTransactions` | `idx_ltx_store_created` | `storeId, createdAt` |
+| `loyaltyTransactions` | `idx_ltx_card` | `loyaltyCardId` |
+| `spins` | `idx_spins_store_spun` | `storeId, spunAt` |
+| `spins` | `idx_spins_customer` | `customerId` |
+| `spins` | `idx_spins_token` | `tokenId` |
+| `customers` | `idx_customers_store_created` | `storeId, createdAt` |
+| `loyaltyCards` | `idx_cards_store` | `storeId` |
+| `loyaltyCards` | `idx_cards_customer` | `customerId` |
+| `spinTokens` | `idx_tokens_store_created` | `storeId, createdAt` |
+| `shifts` | `idx_shifts_store_date` | `storeId, shiftDate` |
+| `menuItems` | `idx_menu_items_category` | `categoryId` |
+| `appleWalletDevices` | `idx_awd_customer` | `customerId` |
+
+### Change 2: Cap `GET /api/spin-tokens` in `server/routes.ts`
+
+The endpoint currently is:
+
+```ts
+const tokens = await db
+  .select()
+  .from(spinTokens)
+  .where(eq(spinTokens.storeId, req.storeId!))
+  .orderBy(desc(spinTokens.createdAt));
+```
+
+Add `.limit(100)` to the end of this query chain. That is the ONLY modification to this endpoint: same route path, same auth/permission middleware, same response shape (array of full token rows), same ordering. Do not add pagination, query params, filters on `isUsed`/`expiresAt`, or change the response structure.
+
+## HARD CONSTRAINTS
+
+- **No column changes.** Do not add, remove, rename, or retype any column on any table. Indexes only.
+- **No constraint changes.** Do not touch existing `unique()` constraints, primary keys, or foreign key `references()` / `onDelete` behavior.
+- **No query logic changes.** Do not modify any query in `server/routes.ts` other than adding `.limit(100)` to the one endpoint above. Do not "optimize" any dashboard or analytics query — they are correct as written.
+- **No data deletion.** Do not add cleanup jobs, purge logic, or cron changes. `server/cleanup.ts` stays byte-identical.
+- **No new dependencies.** No new npm packages.
+- Do not run `db:push` yourself against production; only against the dev `DATABASE_URL` configured in this Repl.
+
+## NO-TOUCH LIST (must remain byte-identical)
+
+- `server/billing.ts`, `server/billing.test.ts`, `server/reconcile.ts`
+- `server/auth.ts`, `server/permissions.ts`
+- `server/support.ts`, `server/services/telegram.ts`, `server/appleWallet.ts`, `server/googleWallet.ts`
+- `server/cleanup.ts`, `server/trialReminders.ts`, `server/adminSeed.ts`, `server/demoSeed.ts`
+- All Zod schemas, insert schemas, and exported types in `shared/schema.ts` (adding table-callback indexes must not alter any inferred type)
+- Everything under `client/`
+- `drizzle.config.ts`, `package.json`, `package-lock.json`, `.env`, secrets
+
+## DEFINITION OF DONE
+
+1. `shared/schema.ts` contains exactly the 12 new indexes listed above, using the existing `index()` import and existing callback style; all pre-existing constraints and indexes untouched.
+2. `GET /api/spin-tokens` has `.limit(100)` appended and no other changes.
+3. `npm run check` (TypeScript) passes with no new errors.
+4. `db:push` executed successfully against the dev database; confirm the generated statements are `CREATE INDEX` only — if Drizzle proposes any `ALTER TABLE`, `DROP`, or column change, STOP and report instead of applying.
+5. App boots; spot-check that the dashboard summary, analytics summary, and spin-token list endpoints return 200 with the same response shapes as before.
+6. `git diff --stat` shows changes ONLY in `shared/schema.ts` and `server/routes.ts`.
+7. Completion report includes: the full `git diff`, the `db:push` output, and confirmation of the endpoint spot-checks.
+
+## Post-round manual step (owner, not agent)
+
+After the diff is audited and deployed: run `db:push` against the **production** `DATABASE_URL` per the standing schema-drift checklist. Index creation on current data volumes will complete in well under a second.

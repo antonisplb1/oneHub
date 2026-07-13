@@ -76,7 +76,9 @@ export const customers = pgTable("customers", {
   phone: varchar("phone", { length: 50 }),
   customerQrCode: text("customer_qr_code").notNull().unique(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  storeCreatedIdx: index("idx_customers_store_created").on(table.storeId, table.createdAt),
+}));
 
 export const loyaltyCards = pgTable("loyalty_cards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -92,6 +94,8 @@ export const loyaltyCards = pgTable("loyalty_cards", {
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   uniqueUserCustomer: unique().on(table.userId, table.customerId),
+  storeIdx: index("idx_cards_store").on(table.storeId),
+  customerIdx: index("idx_cards_customer").on(table.customerId),
 }));
 
 export const loyaltyTransactions = pgTable("loyalty_transactions", {
@@ -102,7 +106,10 @@ export const loyaltyTransactions = pgTable("loyalty_transactions", {
   amount: integer("amount").default(1),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  storeCreatedIdx: index("idx_ltx_store_created").on(table.storeId, table.createdAt),
+  cardIdx: index("idx_ltx_card").on(table.loyaltyCardId),
+}));
 
 // Spin Wheel feature tables
 export const rewards = pgTable("rewards", {
@@ -127,7 +134,9 @@ export const spinTokens = pgTable("spin_tokens", {
   usedAt: timestamp("used_at"),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  storeCreatedIdx: index("idx_tokens_store_created").on(table.storeId, table.createdAt),
+}));
 
 export const spins = pgTable("spins", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -139,7 +148,11 @@ export const spins = pgTable("spins", {
   customerId: varchar("customer_id").references(() => customers.id, { onDelete: "cascade" }),
   type: varchar("type", { length: 20 }).$type<'customer' | 'token'>(),
   spunAt: timestamp("spun_at").defaultNow(),
-});
+}, (table) => ({
+  storeSpunIdx: index("idx_spins_store_spun").on(table.storeId, table.spunAt),
+  customerIdx: index("idx_spins_customer").on(table.customerId),
+  tokenIdx: index("idx_spins_token").on(table.tokenId),
+}));
 
 // Admin tables
 export const adminUsers = pgTable("admin_users", {
@@ -207,7 +220,9 @@ export const menuItems = pgTable("menu_items", {
   imageStorageKey: text("image_storage_key"),
   displayOrder: integer("display_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  categoryIdx: index("idx_menu_items_category").on(table.categoryId),
+}));
 
 // Shift Manager feature tables
 export const crewMembers = pgTable("crew_members", {
@@ -229,7 +244,9 @@ export const shifts = pgTable("shifts", {
   endTime: text("end_time").notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  storeDateIdx: index("idx_shifts_store_date").on(table.storeId, table.shiftDate),
+}));
 
 export const timeframePresets = pgTable("timeframe_presets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -387,6 +404,7 @@ export const appleWalletDevices = pgTable('apple_wallet_devices', {
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => ({
   uniq: unique().on(table.deviceLibraryIdentifier, table.serialNumber, table.passTypeIdentifier),
+  customerIdx: index("idx_awd_customer").on(table.customerId),
 }));
 
 export type AppleWalletDevice = typeof appleWalletDevices.$inferSelect;

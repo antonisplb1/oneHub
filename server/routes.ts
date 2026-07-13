@@ -2710,7 +2710,8 @@ export function registerRoutes(app: Express) {
         .select()
         .from(spinTokens)
         .where(eq(spinTokens.storeId, req.storeId!))
-        .orderBy(desc(spinTokens.createdAt));
+        .orderBy(desc(spinTokens.createdAt))
+        .limit(100);
       res.json(tokens);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
