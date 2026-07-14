@@ -318,7 +318,7 @@ export default function Pricing() {
                 value: "item-4",
                 testid: "faq-trial",
                 q: "Is there a free trial?",
-                a: "Yes — 3 days free, no credit card required. Explore all features before committing to any plan.",
+                a: "Yes — 7 days free, no credit card required. Explore all features before committing to any plan.",
               },
             ].map(({ value, testid, q, a }) => (
               <AccordionItem
@@ -370,7 +370,7 @@ export default function Pricing() {
             </Button>
           </Link>
           <div className="flex gap-8 justify-center flex-wrap mt-6 text-xs" style={{ color: MUTED }}>
-            <span>3-day free trial</span>
+            <span>7-day free trial</span>
             <span>·</span>
             <span>No credit card</span>
             <span>·</span>

@@ -799,14 +799,14 @@ export default function Demo() {
           <h2 className="text-3xl md:text-5xl font-light text-white mb-6" data-testid="text-cta-title">
             Ready to see it<br />in action?
           </h2>
-          <p className="text-base font-light mb-10" style={{ color: MUTED }}>Try uniHub free for 3 days — no credit card required.</p>
+          <p className="text-base font-light mb-10" style={{ color: MUTED }}>Try uniHub free for 7 days — no credit card required.</p>
           <Link href="/auth">
             <Button size="lg" className="text-sm px-10 tracking-wide font-medium" style={{ backgroundColor: GOLD, color: "#080808", border: "none" }} data-testid="button-final-cta">
               Start Free Trial <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
           </Link>
           <div className="flex gap-8 justify-center flex-wrap mt-6 text-xs" style={{ color: MUTED }}>
-            <span>3-day free trial</span><span>·</span><span>No credit card</span><span>·</span><span>Cancel anytime</span>
+            <span>7-day free trial</span><span>·</span><span>No credit card</span><span>·</span><span>Cancel anytime</span>
           </div>
         </div>
       </section>

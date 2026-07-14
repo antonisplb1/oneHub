@@ -171,7 +171,7 @@ export default function LandingPage() {
         </div>
 
         <p className="mt-5 text-xs" style={{ color: MUTED }}>
-          3-day free trial — no credit card required
+          7-day free trial — no credit card required
         </p>
       </section>
 
@@ -476,7 +476,7 @@ export default function LandingPage() {
             </Button>
           </Link>
           <div className="flex gap-8 justify-center flex-wrap mt-6 text-xs" style={{ color: MUTED }}>
-            <span>3-day free trial</span>
+            <span>7-day free trial</span>
             <span>·</span>
             <span>No credit card</span>
             <span>·</span>
@@ -489,7 +489,7 @@ export default function LandingPage() {
             data-testid="card-benefit-trial"
           >
             <span style={{ color: GOLD }}>●</span>
-            3-day free trial — everything included
+            7-day free trial — everything included
           </div>
         </div>
       </section>

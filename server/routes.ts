@@ -58,6 +58,9 @@ import { calculateProductPrice, getProductDescription, syncBillingFromStores as 
 import { startReconciliationService } from "./reconcile";
 import { registerSupportRoutes, startSupportSweepService } from "./support";
 
+// Free trial length granted at email verification.
+const TRIAL_DAYS = 7;
+
 // Use test keys in development, production keys in production
 const stripeSecretKey = process.env.NODE_ENV === 'development' 
   ? process.env.TESTING_STRIPE_SECRET_KEY!
@@ -568,9 +571,9 @@ export function registerRoutes(app: Express) {
         name: user.shopName,
       });
 
-      // Set trial to expire 3 days from now
+      // Set trial to expire TRIAL_DAYS days from now
       const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + 3);
+      trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
 
       const [updatedUser] = await db
         .update(users)

@@ -1,0 +1,47 @@
+Round 10 — Trial duration change: 3 days → 7 days
+Goal: Change the free trial from 3 days to 7 days, and update all user-facing copy to match. This is a copy + one-constant change. No billing logic changes.
+Task 1 — Backend (server/routes.ts)
+Near the top of the file (with the other module-level constants), add:
+ts// Free trial length granted at email verification.
+const TRIAL_DAYS = 7;
+In the email verification handler (GET /api/auth/verify-email/:token, around line 571), replace:
+ts// Set trial to expire 3 days from now
+const trialEndsAt = new Date();
+trialEndsAt.setDate(trialEndsAt.getDate() + 3);
+with:
+ts// Set trial to expire TRIAL_DAYS days from now
+const trialEndsAt = new Date();
+trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
+This is the ONLY functional change in this round.
+Task 2 — Frontend copy (exact locations)
+Update "3-day" / "3 days" / "three days" trial wording to "7-day" / "7 days" in these files ONLY:
+
+client/src/components/LandingPage.tsx — line ~174: 3-day free trial — no credit card required
+client/src/components/LandingPage.tsx — line ~479: <span>3-day free trial</span>
+client/src/components/LandingPage.tsx — line ~492: 3-day free trial — everything included
+client/src/pages/Pricing.tsx — line ~321: FAQ answer "Yes — 3 days free, no credit card required..." → "Yes — 7 days free, ..."
+client/src/pages/Pricing.tsx — line ~373: <span>3-day free trial</span>
+client/src/pages/SubscriptionRequired.tsx — line ~138: "Your 3-day free trial has ended..." → "Your 7-day free trial has ended..."
+client/src/pages/Demo.tsx — line ~802: Try uniHub free for 3 days — no credit card required. → ...free for 7 days...
+client/src/pages/Demo.tsx — line ~809: <span>3-day free trial</span>
+
+Preserve surrounding punctuation, styling, and JSX structure exactly — text-only edits.
+After making these edits, run a repo-wide search for 3-day, 3 days, and three day (case-insensitive) and fix any remaining trial-related matches. Do NOT change unrelated matches (e.g., anything about reminder windows, cron timing, or non-trial copy).
+Hard constraints:
+
+Do NOT touch server/billing.ts, server/billing.test.ts, server/trialReminders.ts, server/email.ts, shared/schema.ts, or any Stripe-related code. The reminder windows (24h/48h) and email copy are duration-agnostic and must stay as-is.
+Do NOT add any Stripe trial_period_days parameter anywhere. The trial is DB-only by design.
+Do NOT modify trialEndsAt values of existing users, add migrations, or run anything against the database.
+Do NOT add new dependencies, env vars, or config.
+No refactoring beyond extracting the TRIAL_DAYS constant.
+
+No-touch list: server/billing.ts, server/billing.test.ts, server/trialReminders.ts, server/email.ts, server/stripe*, shared/schema.ts, all n8n/webhook-related routes, auth logic other than the two lines shown in Task 1.
+Definition of done:
+
+ TRIAL_DAYS = 7 constant exists in server/routes.ts and is used in the verify-email handler; no other numeric trial duration remains in server code
+ All 8 listed copy locations now say 7-day/7 days
+ Case-insensitive repo search for 3-day and 3 days returns no trial-related hits
+ git diff shows changes ONLY in server/routes.ts, LandingPage.tsx, Pricing.tsx, SubscriptionRequired.tsx, Demo.tsx
+ App builds and runs; signup → verify flow untouched apart from the duration
+
+Report back with the full list of changed files and the diff of server/routes.ts.

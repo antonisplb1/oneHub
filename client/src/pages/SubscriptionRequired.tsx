@@ -135,7 +135,7 @@ export default function SubscriptionRequired() {
             </h2>
             <p className="text-sm font-light text-center mb-8" style={{ color: MUTED }}>
               {isTrialExpired
-                ? "Your 3-day free trial has ended. Choose your features and subscribe to continue."
+                ? "Your 7-day free trial has ended. Choose your features and subscribe to continue."
                 : "Your payment was not completed. Choose your features and subscribe to continue."}
             </p>
 

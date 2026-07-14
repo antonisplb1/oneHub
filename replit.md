@@ -28,7 +28,7 @@ A fully populated demo account exists for testing and video recording purposes:
 - 21 shifts for the current week (Oct 13-19, 2025) with morning/afternoon/evening coverage
 - 3 timeframe presets: Morning Shift (07:00-15:00), Afternoon Shift (12:00-20:00), Evening Shift (16:00-23:00)
 - All 4 products enabled: Loyalty Cards, Spin Wheel, Menu Builder, Shift Manager
-- Email verified, 3-day free trial active
+- Email verified, 7-day free trial active
 
 **Public URLs:**
 - Public Shift Schedule: `/aroma-cafe/shifts` (PIN: 1234)
@@ -55,7 +55,7 @@ Uses Express.js with TypeScript, Passport.js for session-based authentication, a
 ### System Design
 
 -   **Flexible Product Selection & Pricing**: Merchants choose products post-registration, with dynamic dashboard adjustments. Stripe handles subscription and proration.
--   **Registration & Authentication**: Includes email verification via Resend, password reset, and a 3-day free trial activated upon email verification.
+-   **Registration & Authentication**: Includes email verification via Resend, password reset, and a 7-day free trial activated upon email verification.
 -   **Security**: Features Express rate-limiting, Cloudflare Turnstile CAPTCHA, and daily cron jobs for unverified account removal.
 -   **Digital Menu Builder**: Allows merchants to create menus with categories, items, and images. Images are stored in Replit Object Storage, supporting presigned upload URLs. Features drag-and-drop reordering and generates QR codes for public menu access. The public menu page is customer-friendly, with dynamic branding based on loyalty card color, responsive design, and WCAG-compliant text readability.
 -   **Customer Notification Messaging**: Merchants can send push notifications to Google Wallet loyalty card holders via a dashboard UI.
