@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Users, Calendar, Copy, Clock, Pencil, CopyPlus } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Plus, Trash2, ChevronLeft, ChevronRight, ChevronDown, Users, Calendar, Copy, Clock, Pencil, CopyPlus, Settings } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useStore } from "@/contexts/StoreContext";
@@ -29,19 +30,31 @@ type TimeframePresetFormValues = z.infer<typeof insertTimeframePresetSchema>;
 const shiftFormSchema = insertShiftSchema.extend({
   startTime: z.string().min(1, "Start time is required"),
   endTime: z.string().min(1, "End time is required"),
-}).refine(
-  (data) => {
-    if (!data.startTime || !data.endTime) return true;
-    return data.endTime > data.startTime;
-  },
-  {
-    message: "End time must be after start time",
-    path: ["endTime"],
-  }
-);
+});
+
+const CREW_COLORS = ["#E53935", "#FB8C00", "#FDD835", "#43A047", "#00ACC1", "#3949AB", "#8E24AA", "#6D4C41"];
+
+const toMinutes = (time: string): number => {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+};
+
+const shiftDurationMinutes = (startTime: string, endTime: string): number => {
+  const start = toMinutes(startTime);
+  let end = toMinutes(endTime);
+  if (end <= start) end += 1440;
+  return end - start;
+};
+
+const formatDuration = (minutes: number): string => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+};
 
 export default function ShiftsManager() {
   const [isCrewDialogOpen, setIsCrewDialogOpen] = useState(false);
+  const [editingCrew, setEditingCrew] = useState<CrewMember | null>(null);
   const [isShiftDialogOpen, setIsShiftDialogOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
   const [deletingCrew, setDeletingCrew] = useState<CrewMember | null>(null);
@@ -60,6 +73,10 @@ export default function ShiftsManager() {
     days: Array<{ date: string; dayLabel: string; count: number }>;
   } | null>(null);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [revealedPin, setRevealedPin] = useState<string | null>(null);
+  const [setupOpen, setSetupOpen] = useState(true);
+  const setupInitializedRef = useRef(false);
+  const keepShiftDialogOpenRef = useRef(false);
   const { toast } = useToast();
   const { activeStore } = useStore();
 
@@ -67,6 +84,8 @@ export default function ShiftsManager() {
     resolver: zodResolver(insertCrewMemberSchema),
     defaultValues: {
       name: "",
+      role: "",
+      color: null,
     },
   });
 
@@ -120,13 +139,39 @@ export default function ShiftsManager() {
         title: "Success",
         description: "Crew member added successfully",
       });
-      crewForm.reset();
+      crewForm.reset({ name: "", role: "", color: null });
       setIsCrewDialogOpen(false);
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to add crew member",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateCrewMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CrewMemberFormValues }) => {
+      return apiRequest(`/api/crew-members/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/crew-members"] });
+      toast({
+        title: "Success",
+        description: "Crew member updated successfully",
+      });
+      crewForm.reset({ name: "", role: "", color: null });
+      setEditingCrew(null);
+      setIsCrewDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update crew member",
         variant: "destructive",
       });
     },
@@ -168,10 +213,24 @@ export default function ShiftsManager() {
         title: "Success",
         description: "Shift created successfully",
       });
-      shiftForm.reset();
-      setIsShiftDialogOpen(false);
+      if (keepShiftDialogOpenRef.current) {
+        keepShiftDialogOpenRef.current = false;
+        const { shiftDate, startTime, endTime } = shiftForm.getValues();
+        shiftForm.reset({
+          employeeName: "",
+          employeeRole: "",
+          shiftDate,
+          startTime,
+          endTime,
+          notes: "",
+        });
+      } else {
+        shiftForm.reset();
+        setIsShiftDialogOpen(false);
+      }
     },
     onError: (error: Error) => {
+      keepShiftDialogOpenRef.current = false;
       toast({
         title: "Error",
         description: error.message || "Failed to create shift",
@@ -263,13 +322,9 @@ export default function ShiftsManager() {
     },
     onSuccess: (data: { success: boolean; pin: string }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/shift-pin"] });
-      toast({
-        title: "PIN Set Successfully",
-        description: `Your new PIN is: ${data.pin} - Save this PIN now! You won't be able to see it again.`,
-        duration: 10000,
-      });
       setNewPin("");
       setIsPinDialogOpen(false);
+      setRevealedPin(data.pin);
     },
     onError: (error: Error) => {
       toast({
@@ -355,7 +410,32 @@ export default function ShiftsManager() {
   });
 
   const handleCrewSubmit = (values: CrewMemberFormValues) => {
-    createCrewMutation.mutate(values);
+    const data = {
+      ...values,
+      role: values.role || null,
+      color: values.color || null,
+    };
+    if (editingCrew) {
+      updateCrewMutation.mutate({ id: editingCrew.id, data });
+    } else {
+      createCrewMutation.mutate(data);
+    }
+  };
+
+  const handleAddCrew = () => {
+    setEditingCrew(null);
+    crewForm.reset({ name: "", role: "", color: null });
+    setIsCrewDialogOpen(true);
+  };
+
+  const handleEditCrew = (member: CrewMember) => {
+    setEditingCrew(member);
+    crewForm.reset({
+      name: member.name,
+      role: member.role || "",
+      color: member.color || null,
+    });
+    setIsCrewDialogOpen(true);
   };
 
   const handleShiftSubmit = (values: ShiftFormValues) => {
@@ -494,6 +574,57 @@ export default function ShiftsManager() {
     return d >= weekRange.start && d <= weekRange.end;
   });
 
+  useEffect(() => {
+    if (!setupInitializedRef.current && !crewLoading && !pinLoading) {
+      setupInitializedRef.current = true;
+      setSetupOpen(!(crewMembers.length > 0 && pinData?.hasPIN));
+    }
+  }, [crewLoading, pinLoading, crewMembers, pinData]);
+
+  const conflictIds = useMemo(() => {
+    const ids = new Set<string>();
+    const groups = new Map<string, Shift[]>();
+    shifts.forEach(shift => {
+      const key = `${shift.employeeName}|${shift.shiftDate}`;
+      const group = groups.get(key);
+      if (group) {
+        group.push(shift);
+      } else {
+        groups.set(key, [shift]);
+      }
+    });
+    groups.forEach(group => {
+      if (group.length < 2) return;
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i + 1; j < group.length; j++) {
+          const aStart = toMinutes(group[i].startTime);
+          let aEnd = toMinutes(group[i].endTime);
+          if (aEnd <= aStart) aEnd += 1440;
+          const bStart = toMinutes(group[j].startTime);
+          let bEnd = toMinutes(group[j].endTime);
+          if (bEnd <= bStart) bEnd += 1440;
+          if (aStart < bEnd && bStart < aEnd) {
+            ids.add(group[i].id);
+            ids.add(group[j].id);
+          }
+        }
+      }
+    });
+    return ids;
+  }, [shifts]);
+
+  const weeklyHours = useMemo(() => {
+    const totals = new Map<string, number>();
+    currentWeekShifts.forEach(shift => {
+      const mins = shiftDurationMinutes(shift.startTime, shift.endTime);
+      totals.set(shift.employeeName, (totals.get(shift.employeeName) || 0) + mins);
+    });
+    return Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
+  }, [currentWeekShifts]);
+
+  const getCrewColorByName = (name: string): string | undefined =>
+    crewMembers.find(m => m.name === name)?.color || undefined;
+
   const handleCopyToNextWeek = () => {
     const nextWeekStart = dateAddWeeks(weekRange.start, 1);
     const nextWeekEnd = dateAddWeeks(weekRange.end, 1);
@@ -541,6 +672,111 @@ export default function ShiftsManager() {
         <h1 className="text-3xl font-bold" data-testid="heading-shifts-manager">Shift Manager</h1>
       </div>
 
+      <Card data-testid="card-weekly-calendar">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Weekly Schedule
+            </CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={handleCopyToNextWeek}
+                variant="outline"
+                size="sm"
+                disabled={currentWeekShifts.length === 0}
+                data-testid="button-copy-to-next-week"
+                title={currentWeekShifts.length === 0 ? "No shifts this week to copy" : "Copy all shifts to next week"}
+              >
+                <CopyPlus className="h-4 w-4 mr-1" />
+                Copy to Next Week
+              </Button>
+              <Button
+                onClick={handleThisWeek}
+                variant="outline"
+                size="sm"
+                data-testid="button-this-week"
+              >
+                This Week
+              </Button>
+              <Button
+                onClick={handlePreviousWeek}
+                variant="outline"
+                size="icon"
+                data-testid="button-prev-week"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="text-sm font-medium min-w-[200px] text-center" data-testid="text-week-range">
+                {format(weekRange.start, "MMM d")} - {format(weekRange.end, "MMM d, yyyy")}
+              </div>
+              <Button
+                onClick={handleNextWeek}
+                variant="outline"
+                size="icon"
+                data-testid="button-next-week"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          {weeklyHours.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-3" data-testid="weekly-hours-summary">
+              {weeklyHours.map(([name, minutes]) => {
+                const color = getCrewColorByName(name);
+                return (
+                  <div
+                    key={name}
+                    className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
+                    data-testid={`hours-chip-${name}`}
+                  >
+                    {color && (
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: color }}
+                      />
+                    )}
+                    <span className="font-medium">{name}</span>
+                    <span className="text-muted-foreground">— {formatDuration(minutes)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardHeader>
+        <CardContent>
+          {shiftsLoading ? (
+            <div className="text-sm text-muted-foreground">Loading shifts...</div>
+          ) : (
+            <ShiftSchedule
+              shifts={shifts}
+              weekStart={currentWeek}
+              onAddShift={handleAddShift}
+              onEditShift={handleEditShift}
+              onDeleteShift={handleDeleteShift}
+              crewMembers={crewMembers}
+              conflictIds={conflictIds}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <Collapsible open={setupOpen} onOpenChange={setSetupOpen}>
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-full justify-between"
+            data-testid="button-toggle-setup"
+          >
+            <span className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Setup & Sharing
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${setupOpen ? "rotate-180" : ""}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-6 pt-6">
+
       <Card data-testid="card-share-with-crew">
         <CardHeader>
           <CardTitle>Share with Crew</CardTitle>
@@ -581,7 +817,7 @@ export default function ShiftsManager() {
               Crew Roster
             </CardTitle>
             <Button
-              onClick={() => setIsCrewDialogOpen(true)}
+              onClick={handleAddCrew}
               size="sm"
               data-testid="button-add-crew"
             >
@@ -601,20 +837,44 @@ export default function ShiftsManager() {
                 {crewMembers.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover-elevate"
+                    className="flex items-center justify-between gap-2 p-3 border rounded-lg hover-elevate"
                     data-testid={`crew-card-${member.id}`}
                   >
-                    <span className="font-medium" data-testid={`crew-name-${member.id}`}>
-                      {member.name}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeletingCrew(member)}
-                      data-testid={`button-delete-crew-${member.id}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {member.color && (
+                        <span
+                          className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: member.color }}
+                          data-testid={`crew-color-dot-${member.id}`}
+                        />
+                      )}
+                      <span className="font-medium truncate" data-testid={`crew-name-${member.id}`}>
+                        {member.name}
+                      </span>
+                      {member.role && (
+                        <span className="text-sm text-muted-foreground truncate" data-testid={`crew-role-${member.id}`}>
+                          {member.role}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditCrew(member)}
+                        data-testid={`button-edit-crew-${member.id}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeletingCrew(member)}
+                        data-testid={`button-delete-crew-${member.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -717,74 +977,13 @@ export default function ShiftsManager() {
         </CardContent>
       </Card>
 
-      <Card data-testid="card-weekly-calendar">
-        <CardHeader>
-          <div className="flex items-center justify-between gap-4">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Weekly Schedule
-            </CardTitle>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                onClick={handleCopyToNextWeek}
-                variant="outline"
-                size="sm"
-                disabled={currentWeekShifts.length === 0}
-                data-testid="button-copy-to-next-week"
-                title={currentWeekShifts.length === 0 ? "No shifts this week to copy" : "Copy all shifts to next week"}
-              >
-                <CopyPlus className="h-4 w-4 mr-1" />
-                Copy to Next Week
-              </Button>
-              <Button
-                onClick={handleThisWeek}
-                variant="outline"
-                size="sm"
-                data-testid="button-this-week"
-              >
-                This Week
-              </Button>
-              <Button
-                onClick={handlePreviousWeek}
-                variant="outline"
-                size="icon"
-                data-testid="button-prev-week"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <div className="text-sm font-medium min-w-[200px] text-center" data-testid="text-week-range">
-                {format(weekRange.start, "MMM d")} - {format(weekRange.end, "MMM d, yyyy")}
-              </div>
-              <Button
-                onClick={handleNextWeek}
-                variant="outline"
-                size="icon"
-                data-testid="button-next-week"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {shiftsLoading ? (
-            <div className="text-sm text-muted-foreground">Loading shifts...</div>
-          ) : (
-            <ShiftSchedule
-              shifts={shifts}
-              weekStart={currentWeek}
-              onAddShift={handleAddShift}
-              onEditShift={handleEditShift}
-              onDeleteShift={handleDeleteShift}
-            />
-          )}
-        </CardContent>
-      </Card>
+        </CollapsibleContent>
+      </Collapsible>
 
       <Dialog open={isCrewDialogOpen} onOpenChange={setIsCrewDialogOpen}>
         <DialogContent data-testid="dialog-add-crew">
           <DialogHeader>
-            <DialogTitle>Add Crew Member</DialogTitle>
+            <DialogTitle>{editingCrew ? "Edit Crew Member" : "Add Crew Member"}</DialogTitle>
           </DialogHeader>
           <Form {...crewForm}>
             <form onSubmit={crewForm.handleSubmit(handleCrewSubmit)} className="space-y-4">
@@ -805,21 +1004,79 @@ export default function ShiftsManager() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={crewForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., Barista, Cashier"
+                        {...field}
+                        value={field.value || ""}
+                        data-testid="input-crew-role"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={crewForm.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Color (Optional)</FormLabel>
+                    <FormControl>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {CREW_COLORS.map((hex) => (
+                          <button
+                            key={hex}
+                            type="button"
+                            className={`h-7 w-7 rounded-full border ${field.value === hex ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`}
+                            style={{ backgroundColor: hex }}
+                            onClick={() => field.onChange(hex)}
+                            aria-label={`Select color ${hex}`}
+                            data-testid={`swatch-color-${hex.substring(1)}`}
+                          />
+                        ))}
+                        <button
+                          type="button"
+                          className={`h-7 px-2 rounded-md border text-xs text-muted-foreground ${!field.value ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`}
+                          onClick={() => field.onChange(null)}
+                          data-testid="swatch-color-none"
+                        >
+                          None
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsCrewDialogOpen(false)}
+                  onClick={() => {
+                    setIsCrewDialogOpen(false);
+                    setEditingCrew(null);
+                  }}
                   data-testid="button-cancel-crew"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createCrewMutation.isPending}
+                  disabled={createCrewMutation.isPending || updateCrewMutation.isPending}
                   data-testid="button-submit-crew"
                 >
-                  {createCrewMutation.isPending ? "Adding..." : "Add Crew Member"}
+                  {createCrewMutation.isPending || updateCrewMutation.isPending
+                    ? "Saving..."
+                    : editingCrew
+                    ? "Update Crew Member"
+                    : "Add Crew Member"}
                 </Button>
               </div>
             </form>
@@ -869,7 +1126,13 @@ export default function ShiftsManager() {
                     <FormItem>
                       <FormLabel>Employee Name</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          const member = crewMembers.find(m => m.name === value);
+                          if (member?.role && !shiftForm.getValues("employeeRole")) {
+                            shiftForm.setValue("employeeRole", member.role);
+                          }
+                        }}
                         value={field.value}
                       >
                         <FormControl>
@@ -943,6 +1206,10 @@ export default function ShiftsManager() {
                             <Input
                               type="time"
                               {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setSelectedPreset("");
+                              }}
                               data-testid="input-start-time"
                             />
                           </FormControl>
@@ -959,6 +1226,10 @@ export default function ShiftsManager() {
                             <Input
                               type="time"
                               {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setSelectedPreset("");
+                              }}
                               data-testid="input-end-time"
                             />
                           </FormControl>
@@ -967,6 +1238,9 @@ export default function ShiftsManager() {
                       )}
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    An end time earlier than the start time means the shift ends the next day.
+                  </p>
                 </div>
               </div>
 
@@ -1001,6 +1275,20 @@ export default function ShiftsManager() {
                 >
                   Cancel
                 </Button>
+                {!editingShift && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={createShiftMutation.isPending}
+                    onClick={shiftForm.handleSubmit((values) => {
+                      keepShiftDialogOpenRef.current = true;
+                      handleShiftSubmit(values);
+                    })}
+                    data-testid="button-save-add-another"
+                  >
+                    Save & Add Another
+                  </Button>
+                )}
                 <Button
                   type="submit"
                   disabled={createShiftMutation.isPending || updateShiftMutation.isPending}
@@ -1059,6 +1347,32 @@ export default function ShiftsManager() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={revealedPin !== null} onOpenChange={(open) => { if (!open) setRevealedPin(null); }}>
+        <DialogContent data-testid="dialog-pin-reveal">
+          <DialogHeader>
+            <DialogTitle>PIN Set Successfully</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="text-4xl font-bold tracking-[0.3em]" data-testid="text-revealed-pin">
+                {revealedPin}
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              Save this PIN now! You won't be able to see it again. Share it securely with your crew.
+            </p>
+            <div className="flex justify-end">
+              <Button
+                onClick={() => setRevealedPin(null)}
+                data-testid="button-pin-reveal-done"
+              >
+                Done
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

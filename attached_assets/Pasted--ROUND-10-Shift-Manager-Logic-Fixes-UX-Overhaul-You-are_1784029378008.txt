@@ -1,0 +1,143 @@
+# ROUND 10 — Shift Manager: Logic Fixes + UX Overhaul
+
+You are working on an existing production SaaS codebase. This round is scoped **exclusively** to the Shift Manager feature. Follow every constraint exactly. Do not refactor, reformat, rename, or "improve" anything outside the explicit tasks below.
+
+---
+
+## FILES YOU MAY MODIFY (complete list)
+
+- `shared/schema.ts` — ONLY the `crewMembers` table and `insertCrewMemberSchema` (Task 5)
+- `client/src/pages/ShiftsManager.tsx`
+- `client/src/components/ShiftSchedule.tsx`
+- `client/src/pages/PublicShifts.tsx`
+- `server/routes.ts` — ONLY inside the shift-related route handlers listed in Task 2 and Task 3
+
+## NO-TOUCH LIST (do not open, edit, or reformat)
+
+- `server/billing.ts`, `server/billing.test.ts`, anything Stripe-related
+- `server/permissions.ts`, auth logic, `requireAuth` / `requireSubscription` / `requirePermission` middleware (keep using them exactly as-is on every shift route)
+- `server/email.ts`, `server/demoSeed.ts`, `server/storeMigration.ts`
+- All loyalty card, spin wheel, menu builder, wallet, and Telegram code
+- Any route in `server/routes.ts` that is not one of: `/api/shifts*`, `/api/crew-members*`, `/api/timeframe-presets*`, `/api/shift-pin`
+- `package.json` — **do not add, remove, or upgrade any dependency**
+- Do not modify the `shifts` or `timeframePresets` tables in the schema
+- Do not touch `.env`, secrets, or `.gitignore`
+
+---
+
+## TASK 1 — Support overnight shifts (logic fix, currently a blocker)
+
+In `client/src/pages/ShiftsManager.tsx`, the `shiftFormSchema` currently refines `endTime > startTime` and rejects shifts like 18:00–02:00.
+
+1. **Remove** the `endTime > startTime` refinement. Keep the "required" validation on both fields.
+2. Semantics: if `endTime <= startTime`, the shift ends the **next day**. No schema change — `startTime`/`endTime` stay as-is in the DB.
+3. In the shift dialog, under the time inputs, add muted helper text: `"An end time earlier than the start time means the shift ends the next day."`
+4. Everywhere a shift's time range is rendered (`ShiftSchedule.tsx` desktop + mobile cards, and the copy dialog if applicable), append a small `(+1)` suffix when `endTime <= startTime`, e.g. `18:00 - 02:00 (+1)`.
+
+## TASK 2 — Timezone-safe date arithmetic on the server (latent bug)
+
+In `server/routes.ts`, inside `POST /api/shifts/copy-to-next-week`, the +7-day math currently does `new Date(shift.shiftDate + "T00:00:00")` then `toISOString().substring(0, 10)`. This only works because the server runs UTC.
+
+Replace with pure UTC string arithmetic — exactly this pattern:
+
+```ts
+const [y, m, d] = shift.shiftDate.split("-").map(Number);
+const shifted = new Date(Date.UTC(y, m - 1, d + 7));
+const newDateStr = shifted.toISOString().substring(0, 10);
+```
+
+No other behavior change to this route. The `nextWeekHadShifts` logic and response shape stay identical.
+
+## TASK 3 — Cap the public shifts endpoint date range
+
+In `server/routes.ts`, `POST /api/shifts/public/:username` currently returns **every shift ever created** for the store. Add a date-range filter to the shifts query: only return shifts where `shiftDate` is between **7 days ago** and **35 days from now** (inclusive). Compute both bounds with the same UTC-safe pattern from Task 2 (start from `new Date()` converted via `Date.UTC` on its UTC year/month/date parts). Keep the PIN validation, rate limiter, legacy plaintext-PIN upgrade path, ordering, and response shape exactly as they are.
+
+## TASK 4 — Consistent date matching in the calendar
+
+In `client/src/components/ShiftSchedule.tsx`, `getShiftsForDay` parses `new Date(shift.shiftDate)` (UTC) and compares with local `isSameDay`. Replace with **string comparison**: format the target day as `format(targetDate, "yyyy-MM-dd")` and compare directly to `shift.shiftDate`. Remove the now-unused `isSameDay` import if nothing else uses it.
+
+## TASK 5 — Enrich crew members: role + color (schema change)
+
+In `shared/schema.ts`, add to the `crewMembers` table only:
+
+```ts
+role: text("role"),
+color: text("color"),
+```
+
+Both nullable, no defaults, no index changes. `insertCrewMemberSchema` is generated via `createInsertSchema` — verify it picks up the new fields.
+
+Then in `ShiftsManager.tsx`:
+
+1. **Crew dialog**: add an optional "Role" text input (placeholder `e.g., Barista, Cashier`) and an optional color picker rendered as a row of 8 fixed swatch buttons (simple `button` elements with these hex values: `#E53935, #FB8C00, #FDD835, #43A047, #00ACC1, #3949AB, #8E24AA, #6D4C41`), plus a "None" option. Selected swatch gets a visible ring. Store the hex string.
+2. **Crew roster list**: show a small color dot (if set) next to the name and the role as muted text.
+3. **Shift dialog autofill**: when a crew member is selected in the Employee Name select, if the shift form's `employeeRole` field is currently empty, set it to that member's `role`. The field remains editable per-shift.
+4. **Crew edit**: the roster currently only supports add/delete. Add an edit (pencil) button per member that opens the same crew dialog pre-filled (name, role, color) and PATCHes. If `PATCH /api/crew-members/:id` does not exist in `server/routes.ts`, add it following the exact pattern of `PATCH /api/timeframe-presets/:id` (same middleware chain, `storeId` scoping, 404 on no match).
+
+Pass crew members into `ShiftSchedule` as a new optional prop `crewMembers?: CrewMember[]`. In both desktop and mobile shift cards, if a crew member with a matching `name` has a `color`, render a 3px left border on the card in that color. No color = current appearance, unchanged.
+
+## TASK 6 — Non-blocking double-booking warning
+
+Client-side only. In `ShiftsManager.tsx` (or a small helper), compute overlaps: two shifts conflict if same `employeeName`, same `shiftDate`, and their time intervals overlap. For overlap math, convert times to minutes; if `endTime <= startTime`, add 1440 to the end (overnight). Only compare shifts on the same `shiftDate` — do not attempt cross-date overlap detection.
+
+Pass a set of conflicting shift IDs into `ShiftSchedule` (new optional prop). Conflicting cards get a small amber warning icon (`TriangleAlert` from lucide-react) with `title="Overlaps with another shift for this employee"`. **Never block saving.** No server-side validation change.
+
+## TASK 7 — Page reorder: calendar first, setup collapsed
+
+In `ShiftsManager.tsx`, restructure the page order to:
+
+1. Page heading (with the weekly-hours summary from Task 8 nearby)
+2. **Weekly Schedule card** (full calendar, unchanged internals)
+3. A single collapsible **"Setup & Sharing"** section containing the four existing cards: Share with Crew, PIN Management, Crew Roster, Timeframe Presets
+
+Use the existing shadcn `Collapsible` (or `Accordion`) component already present in `client/src/components/ui/` — check which exists and use it; do not install anything. Default state: **collapsed** if the store has at least one crew member AND a PIN set, otherwise **expanded** (first-run experience). Do not change the internals of the four cards beyond Tasks 5 and 9.
+
+## TASK 8 — Weekly hours summary
+
+Under (or inside the header of) the Weekly Schedule card, add a compact summary for the currently visible week: one chip/row per employee with total hours, e.g. `Maria — 38h 30m`. Duration per shift = end − start in minutes, +1440 if `endTime <= startTime`. Group by `employeeName` over `currentWeekShifts`, sort by total descending. Render nothing when the week has no shifts. Show the crew color dot next to each name when available. Pure client-side computation — no new endpoints.
+
+## TASK 9 — Small UX fixes (all in existing dialogs/pages)
+
+1. **PIN reveal**: replace the vanishing success toast with a persistent confirmation inside a dialog: after `POST /api/shift-pin` succeeds, show the returned PIN in large text with the existing warning that it cannot be retrieved later, and a single "Done" button. Keep server-side hashing and the API contract untouched.
+2. **Preset selector reset**: in the shift dialog, if the user manually edits the start or end time after selecting a timeframe preset, clear `selectedPreset` (set to `""`).
+3. **"Save & Add Another"**: in the shift dialog, **add mode only** (not edit), add a secondary submit button that saves the shift and keeps the dialog open, preserving `shiftDate`, `startTime`, `endTime`, and clearing `employeeName`, `employeeRole`, `notes`. Toast on each save.
+4. **Public page — This Week button**: in `PublicShifts.tsx`, add a "This Week" button to the week navigation, matching the merchant page behavior (`setCurrentWeek(new Date())`), styled consistently with the existing outline buttons there.
+5. **Public page — highlight my shifts**: in `PublicShifts.tsx`, add a select populated with the unique `employeeName` values from the fetched shifts (plus an "Everyone" default). When a name is chosen, other employees' shift cards render at reduced opacity (e.g. `opacity-40`). Client-side state only; implement via a new optional `highlightName?: string` prop on `ShiftSchedule` — do not fork the component.
+
+---
+
+## HARD CONSTRAINTS
+
+- No new npm dependencies. No dependency version changes.
+- No changes to API response shapes except the additive crew-member fields (`role`, `color`) and the new `PATCH /api/crew-members/:id`.
+- Every new/modified shift route keeps the exact middleware chain: `requireAuth, requireSubscription, requirePermission('shift')` and `storeId` scoping in every query.
+- The public endpoint keeps its rate limiter and never gains new writable operations.
+- `ShiftSchedule.tsx` must remain a single shared component used by both merchant and public pages; all new props are optional with behavior identical to today when omitted.
+- No `console.log` left behind. No commented-out code blocks. No formatting-only diffs in untouched regions.
+- Preserve all existing `data-testid` attributes; add new ones (same naming style) for new interactive elements.
+- Bilingual note: this codebase's shift UI is currently English-only — keep new strings in English, matching existing tone.
+
+## MIGRATION
+
+- Run `npm run db:push` against the **development** database after the schema change. Do NOT run anything against production — the operator handles prod migration separately.
+
+## DEFINITION OF DONE — verify each before reporting
+
+- [ ] `npm run build` succeeds; TypeScript compiles with no new errors
+- [ ] A shift 18:00 → 02:00 can be created, displays `18:00 - 02:00 (+1)`, and counts as 8h in the weekly summary
+- [ ] Copy-to-next-week places every copied shift exactly +7 days (verify with a Monday and a Sunday shift)
+- [ ] Public endpoint returns only shifts within −7/+35 days; PIN validation, invalid-PIN, and store-not-found paths behave exactly as before
+- [ ] Calendar shows shifts on the correct day (string comparison, no Date parsing of `shiftDate` in `getShiftsForDay`)
+- [ ] Crew member can be created and edited with role + color; color dot appears in roster; shift cards show the colored left border; selecting that member autofills role in the shift dialog
+- [ ] Two overlapping shifts for the same employee on the same day show the amber icon; saving is never blocked
+- [ ] Page order: calendar first; Setup & Sharing collapsible defaults correctly (expanded on fresh store, collapsed when crew + PIN exist)
+- [ ] Weekly hours summary matches manual calculation for the visible week and updates when navigating weeks
+- [ ] PIN success shows persistent dialog with the PIN; toast no longer used for the PIN value
+- [ ] "Save & Add Another" keeps dialog open with date/times retained, name/role/notes cleared; absent in edit mode
+- [ ] Public page: This Week button works; highlight select dims other employees' cards
+- [ ] `git diff` contains changes ONLY in the five permitted files; zero diffs elsewhere
+- [ ] All existing shift/crew/preset/PIN flows (add, edit, delete, copy week) still work unchanged
+
+## REPORT BACK
+
+When finished, produce a completion report listing: every file changed, every new route or schema field, the exact `db:push` output, and confirmation of each DoD checkbox. Do not deploy.

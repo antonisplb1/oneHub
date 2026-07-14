@@ -230,6 +230,8 @@ export const crewMembers = pgTable("crew_members", {
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   storeId: varchar("store_id").references(() => stores.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  role: text("role"),
+  color: text("color"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

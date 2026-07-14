@@ -11,6 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ShiftSchedule } from "@/components/ShiftSchedule";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
@@ -45,6 +52,7 @@ export default function PublicShifts() {
   const [merchant, setMerchant] = useState<MerchantData | null>(null);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [showDialog, setShowDialog] = useState(true);
+  const [highlightName, setHighlightName] = useState("everyone");
 
   const { mutate: validatePin, isPending } = useMutation({
     mutationFn: async (pinValue: string) => {
@@ -94,7 +102,10 @@ export default function PublicShifts() {
 
   const handlePreviousWeek = () => setCurrentWeek(addWeeks(currentWeek, -1));
   const handleNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
+  const handleThisWeek = () => setCurrentWeek(new Date());
   const { start, end } = getWeekRange(currentWeek);
+
+  const employeeNames = Array.from(new Set(shifts.map(s => s.employeeName))).sort();
 
   if (!match) {
     return (
@@ -186,7 +197,36 @@ export default function PublicShifts() {
               </div>
 
               {/* Week Navigation */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {employeeNames.length > 0 && (
+                  <Select value={highlightName} onValueChange={setHighlightName}>
+                    <SelectTrigger
+                      className="w-[160px] border-white/15 text-white bg-transparent"
+                      data-testid="select-highlight-employee"
+                    >
+                      <SelectValue placeholder="Everyone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="everyone" data-testid="option-highlight-everyone">
+                        Everyone
+                      </SelectItem>
+                      {employeeNames.map((name) => (
+                        <SelectItem key={name} value={name} data-testid={`option-highlight-${name}`}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleThisWeek}
+                  className="border-white/15 text-white bg-transparent hover:bg-white/5"
+                  data-testid="button-this-week"
+                >
+                  This Week
+                </Button>
                 <Button
                   variant="outline"
                   size="icon"
@@ -221,6 +261,7 @@ export default function PublicShifts() {
             shifts={shifts}
             weekStart={currentWeek}
             readOnly={true}
+            highlightName={highlightName === "everyone" ? undefined : highlightName}
             branding={{
               colors: { primary: merchant.cardBackgroundColor },
               logo: merchant.logo || undefined,

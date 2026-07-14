@@ -4038,6 +4038,31 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  app.patch("/api/crew-members/:id", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
+    try {
+      const validatedData = insertCrewMemberSchema.parse(req.body);
+
+      const [member] = await db
+        .update(crewMembers)
+        .set(validatedData)
+        .where(
+          and(
+            eq(crewMembers.id, req.params.id),
+            eq(crewMembers.storeId, req.storeId!)
+          )
+        )
+        .returning();
+
+      if (!member) {
+        return res.status(404).json({ error: "Crew member not found" });
+      }
+
+      res.json(member);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   app.delete("/api/crew-members/:id", requireAuth, requireSubscription, requirePermission('shift'), async (req, res) => {
     try {
       await db
@@ -4429,14 +4454,15 @@ export function registerRoutes(app: Express) {
       const nextWeekHadShifts = nextWeekExisting.length > 0;
 
       const newShifts = shiftsToCopy.map(shift => {
-        const d = new Date(shift.shiftDate + "T00:00:00");
-        d.setDate(d.getDate() + 7);
+        const [y, m, d] = shift.shiftDate.split("-").map(Number);
+        const shifted = new Date(Date.UTC(y, m - 1, d + 7));
+        const newDateStr = shifted.toISOString().substring(0, 10);
         return {
           storeId: req.storeId!,
           userId: req.user!.id,
           employeeName: shift.employeeName,
           employeeRole: shift.employeeRole,
-          shiftDate: d.toISOString().substring(0, 10),
+          shiftDate: newDateStr,
           startTime: shift.startTime,
           endTime: shift.endTime,
           notes: shift.notes,
@@ -4656,10 +4682,22 @@ export function registerRoutes(app: Express) {
         return res.status(401).json({ error: "Invalid PIN" });
       }
 
+      const now = new Date();
+      const rangeStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 7))
+        .toISOString().substring(0, 10);
+      const rangeEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 35))
+        .toISOString().substring(0, 10);
+
       const allShifts = await db
         .select()
         .from(shifts)
-        .where(eq(shifts.storeId, store.id))
+        .where(
+          and(
+            eq(shifts.storeId, store.id),
+            gte(shifts.shiftDate, rangeStart),
+            lte(shifts.shiftDate, rangeEnd)
+          )
+        )
         .orderBy(asc(shifts.shiftDate), asc(shifts.startTime));
 
       const merchant = {
