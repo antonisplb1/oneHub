@@ -57,6 +57,7 @@ export default function SelectProducts() {
       return { isTrialFlow: false, url: checkoutRes.url };
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stores"] });
       queryClient.invalidateQueries({ queryKey: ["/api", "auth", "me"] });
       if (data.isTrialFlow) {
         toast({ title: "Products selected", description: "You can now access your dashboard and explore during your free trial!" });
@@ -80,7 +81,7 @@ export default function SelectProducts() {
   const calculateTotal = () => {
     const sorted = [...selectedProducts].sort();
     if (sorted.length === 4 && sorted.includes('loyalty') && sorted.includes('spin') && sorted.includes('menu') && sorted.includes('shift')) {
-      return 24.99;
+      return 36.99;
     }
     return selectedProducts.reduce((total, id) => {
       const product = products.find(p => p.id === id);
