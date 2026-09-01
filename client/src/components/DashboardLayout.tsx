@@ -27,6 +27,7 @@ import {
   UtensilsCrossed,
   CalendarClock,
   Clock,
+  MessageCircle,
   ArrowRight,
   Loader2,
   Store,
@@ -147,6 +148,16 @@ function SidebarMenuItems() {
     }
   };
 
+  const handleSupportClick = () => {
+    try {
+      localStorage.removeItem("unihub.support.launcherHidden.v1");
+    } catch {
+      /* storage unavailable — the event still restores it for this session */
+    }
+    window.dispatchEvent(new Event("unihub:support-show"));
+    handleLinkClick();
+  };
+
   const filterMenuItems = (items: typeof menuItems) => {
     if (isOwner) {
       // Owner: filter by the CURRENTLY SELECTED store's products and show
@@ -227,6 +238,21 @@ function SidebarMenuItems() {
           </SidebarGroupContent>
         </SidebarGroup>
       )}
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={handleSupportClick}
+                data-testid="button-support-restore"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Support</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
     </>
   );
 }

@@ -1,0 +1,136 @@
+FINDINGS — already verified from the repo. Do not re-investigate these.
+The chat bubble is our own component: client/src/components/SupportChatWidget.tsx. There is no third-party chat script anywhere.
+It is mounted in client/src/components/DashboardLayout.tsx as a direct child of <SidebarProvider>, a sibling of <div className="flex h-screen w-full">.
+Launcher button className: fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover-elevate active-elevate-2
+Panel className: fixed inset-0 z-50 flex h-full max-h-none w-full max-w-none flex-col overflow-hidden rounded-none p-0 shadow-lg sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[32rem] sm:max-h-[calc(100vh-3rem)] sm:w-[22rem] sm:max-w-[calc(100vw-3rem)] sm:rounded-md
+The existing X (button-support-close) closes the open panel, not the launcher.
+createPortal is not used.
+Layout root: <div className="flex h-screen w-full">. Scroll container: <main className="flex-1 overflow-auto p-6">.
+client/src/index.css has no rules on html, body or #root, no env(safe-area-inset-*), no overflow-x guard, and no dvh usage.
+client/index.html already has viewport-fit=cover in the viewport meta.
+PHASE A — Chat bubble
+A1. Portal it to document.body
+
+Wrap both the launcher and the panel in createPortal(..., document.body).
+
+Rationale: any ancestor with transform, filter, backdrop-filter, perspective, contain or will-change silently makes position: fixed resolve against that ancestor instead of the viewport. Portalling removes the whole class of problem permanently.
+
+A2. Keep it bottom-right — but anchor it to the viewport properly
+
+The launcher stays in the bottom-right corner. Its classes already say bottom-6 right-6, so the corner is not the problem — the anchoring and the clearance are. Do not treat this section as a no-op: the portal (A1), the z-index (A3) and the safe-area offsets below all still apply.
+
+Launcher: replace fixed bottom-6 right-6 z-50 with fixed z-40 plus a style prop — Tailwind arbitrary values containing env() are unreliable, so set the offsets inline:
+
+jsx
+style={{
+  right: 'calc(env(safe-area-inset-right, 0px) + 1rem)',
+  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
+}}
+
+Panel: keep the desktop anchor at sm:bottom-6 sm:right-6, and apply the same safe-area style so it tracks the launcher.
+
+A3. Fix the z-index collision
+
+z-50 is what shadcn's Dialog and Sheet overlays use, so today the stacking order is decided by DOM order rather than intent. Add a scale to client/src/index.css and use it:
+
+css
+:root {
+  --z-sidebar: 30;
+  --z-chat:    40;
+  --z-modal:   50;
+  --z-toast:   60;
+}
+
+Launcher and chat panel go to z-40 — above page content, sidebar and header; below modals and toasts. Do not raise the launcher above dialogs: a chat button floating over a confirmation dialog reads as a bug.
+
+A4. Add a dismiss X to the launcher
+Small circular button pinned to the launcher's top-right, e.g. absolute -top-1 -right-1 h-6 w-6 rounded-full border bg-muted text-muted-foreground.
+The hit area must be at least 44×44 CSS px — use transparent padding around the glyph, not a bigger glyph.
+e.stopPropagation() on click so it never opens the chat.
+aria-label="Hide support chat", real <button>, visible focus ring, data-testid="button-support-hide".
+Persist to localStorage under unihub.support.launcherHidden.v1. Wrap both read and write in try/catch — storage throws in some private-mode contexts.
+A way back is mandatory. Add a "Support" entry to the sidebar menu that clears the flag and restores the launcher. Do not ship the X without it.
+Hide the launcher only. Do not unmount the widget or discard unread state.
+A5. Do not render the launcher on /scan
+
+That is a kiosk screen — and the bottom-right corner is exactly where a thumb rests while scanning.
+
+A6. Mobile panel safe areas
+
+The open panel is fixed inset-0 on mobile. Add safe-area padding to its header and its input row so the close button clears the notch and the input clears the home indicator.
+
+A7. Replace 100vh in the panel
+
+sm:max-h-[calc(100vh-3rem)] → sm:max-h-[calc(100dvh-3rem)].
+
+Phase A acceptance tests
+Verify in a real browser at a normal viewport, with DevTools element inspection — not a full-page screenshot tool. Full-page capture misplaces position: fixed elements, so a screenshot alone is not evidence either way.
+Launcher sits bottom-right, fully visible, unclipped, on every dashboard route at 320px, 390px and desktop. Its distance from the right and bottom edges is visually equal.
+Open a modal (any dialog or the sidebar sheet) → the launcher is behind it. Trigger a toast → the toast is above the launcher.
+Launcher absent on /scan.
+X hides the launcher; it stays hidden after reload; the sidebar "Support" entry restores it.
+X hit area measures ≥44×44 in DevTools. Clicking it never opens the chat panel.
+iOS standalone emulation: launcher clears the home indicator; the open panel's close button clears the notch.
+npm run build and npx tsc --noEmit pass, no new console errors.
+
+Show the full diff and stop.
+
+PHASE B — Mobile / native pass (only after Phase A is approved)
+B1. Known targets — fix these specifically
+File	Current	Change
+DashboardLayout.tsx	<div className="flex h-screen w-full">	h-[100dvh] (keep h-screen as a preceding fallback class)
+DashboardLayout.tsx	<main className="flex-1 overflow-auto p-6">	flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6, plus overscroll-behavior-y: contain and safe-area bottom padding
+DashboardLayout.tsx	<header className="... p-4 ...">	add safe-area top padding
+index.css	no base rules	add the block in B3
+B2. Audit the rest — report before fixing
+
+On every authenticated route (Dashboard, Loyalty Cards, QR Scanner, Spin Wheel, Menu Builder, Shift Manager, Customers, Analytics, Team Management, Stores, Account) plus /scan and /auth, at 320px, 390px and 768px:
+
+js
+[...document.querySelectorAll('*')]
+  .filter(e => e.getBoundingClientRect().right > document.documentElement.clientWidth + 1)
+  .map(e => [e.tagName + '.' + (e.className || ''), Math.round(e.getBoundingClientRect().right)])
+
+Report route → element → measured right edge. Also report:
+
+every remaining overflow-y: auto|scroll element (there must end up being exactly one for page content);
+every remaining vh unit;
+every input/select/textarea whose computed font-size is under 16px;
+every interactive element under 44×44 CSS px;
+every table, chart or button row with no horizontal-scroll wrapper.
+
+Stop and report. Then fix in small batches, one concern per batch, diff each time.
+
+Fix each overflowing element at source. overflow-x: hidden on body is containment, not a fix — if you use it anywhere, name the element you could not fix and why. Usual causes: flex/grid children missing min-width: 0, fixed pixel widths, whitespace-nowrap on long strings, tables without a wrapper.
+
+B3. Base CSS to add to client/src/index.css
+css
+html { -webkit-text-size-adjust: 100%; }
+body { overscroll-behavior-y: none; }
+button, a, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+img, svg, video { max-width: 100%; height: auto; }
+
+/* iOS zooms the whole page when focusing an input under 16px.
+   shadcn inputs are text-sm (14px), so scope this to small screens only. */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px; }
+}
+
+Add user-select: none to chrome only — sidebar, header, nav, buttons. Leave it selectable on content: customer names, IDs, codes.
+
+B4. Scope discipline
+
+This is a responsiveness pass, not a redesign. Colours, spacing scale, typography, iconography and component structure stay exactly as they are. No new component library, no new dependencies, no incidental restyling.
+
+Phase B acceptance tests
+At 320px, 390px and 768px, on every route, the overflow snippet returns an empty array. Drag horizontally on each route — nothing moves.
+Exactly one vertical scrollbar, on desktop and on mobile.
+Installed standalone on iOS: header clears the notch, nothing sits under the home indicator, no white bars.
+Focus a text input on mobile → the page does not zoom.
+Landscape on a phone → no horizontal scroll, nothing clipped.
+Sidebar sheet opens/closes cleanly on mobile; the background does not scroll behind it.
+Every route visually unchanged apart from the fixes.
+npm run build, npx tsc --noEmit, no new console errors.
+STILL IN FORCE
+
+No new npm packages. No changes to Stripe/billing, DB schema, auth, routing, prize-wheel or loyalty logic. Nothing deployed without showing me the diff first.

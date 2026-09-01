@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MessageCircle, X, Send, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,6 +38,13 @@ function formatTime(iso: string): string {
 
 export default function SupportChatWidget() {
   const [open, setOpen] = useState(false);
+  const [launcherHidden, setLauncherHidden] = useState(() => {
+    try {
+      return localStorage.getItem("unihub.support.launcherHidden.v1") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -48,6 +56,20 @@ export default function SupportChatWidget() {
   openRef.current = open;
   const esRef = useRef<EventSource | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const showLauncher = () => {
+      try {
+        localStorage.removeItem("unihub.support.launcherHidden.v1");
+      } catch {
+        /* storage unavailable — still restore for this session */
+      }
+      setLauncherHidden(false);
+    };
+
+    window.addEventListener("unihub:support-show", showLauncher);
+    return () => window.removeEventListener("unihub:support-show", showLauncher);
+  }, []);
 
   // --- Load any existing conversation on mount so the unread badge is accurate
   // even before the panel is opened. ---
@@ -217,36 +239,73 @@ export default function SupportChatWidget() {
     setInput("");
   };
 
-  return (
+  return createPortal(
     <>
       {/* Launcher bubble */}
-      {!open && (
-        <button
-          type="button"
-          onClick={handleOpen}
-          aria-label="Open support chat"
-          data-testid="button-support-open"
-          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover-elevate active-elevate-2"
+      {!open && !launcherHidden && (
+        <div
+          className="fixed z-40"
+          style={{
+            right: 'calc(env(safe-area-inset-right, 0px) + 1rem)',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
+          }}
         >
-          <MessageCircle className="h-6 w-6" />
-          {unread > 0 && (
+          <button
+            type="button"
+            onClick={handleOpen}
+            aria-label="Open support chat"
+            data-testid="button-support-open"
+            className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover-elevate active-elevate-2"
+          >
+            <MessageCircle className="h-6 w-6" />
+            {unread > 0 && (
+              <span
+                data-testid="badge-support-unread"
+                className="absolute -left-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-xs font-medium text-destructive-foreground"
+              >
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              try {
+                localStorage.setItem("unihub.support.launcherHidden.v1", "true");
+              } catch {
+                /* storage unavailable — still hide for this session */
+              }
+              setLauncherHidden(true);
+            }}
+            aria-label="Hide support chat"
+            data-testid="button-support-hide"
+            className="absolute -right-3 -top-3 flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
             <span
-              data-testid="badge-support-unread"
-              className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-xs font-medium text-destructive-foreground"
+              className="flex h-6 w-6 items-center justify-center rounded-full border bg-muted text-muted-foreground shadow-sm"
+              aria-hidden="true"
             >
-              {unread > 9 ? "9+" : unread}
+              <X className="h-3 w-3" />
             </span>
-          )}
-        </button>
+          </button>
+        </div>
       )}
 
       {/* Chat panel — full-screen sheet on mobile, floating card on desktop */}
       {open && (
         <Card
-          className="fixed inset-0 z-50 flex h-full max-h-none w-full max-w-none flex-col overflow-hidden rounded-none p-0 shadow-lg sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[32rem] sm:max-h-[calc(100vh-3rem)] sm:w-[22rem] sm:max-w-[calc(100vw-3rem)] sm:rounded-md"
+          className="support-chat-panel fixed inset-0 z-40 flex h-full max-h-none w-full max-w-none flex-col overflow-hidden rounded-none p-0 shadow-lg sm:inset-auto sm:h-[32rem] sm:max-h-[calc(100dvh-3rem)] sm:w-[22rem] sm:max-w-[calc(100vw-3rem)] sm:rounded-md"
+          style={{
+            "--support-safe-right": 'calc(env(safe-area-inset-right, 0px) + 1rem)',
+            "--support-safe-bottom": 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
+          } as React.CSSProperties}
           data-testid="panel-support-chat"
         >
-          <div className="flex items-center justify-between gap-2 border-b bg-[#1A1A1A] p-4 text-white">
+          <div
+            className="flex items-center justify-between gap-2 border-b bg-[#1A1A1A] p-4 text-white"
+            style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
+          >
             <div className="flex items-center gap-2">
               <span
                 className={cn(
@@ -360,7 +419,11 @@ export default function SupportChatWidget() {
               </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t p-3">
+            <form
+              onSubmit={handleSubmit}
+              className="flex items-end gap-2 border-t p-3"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
+            >
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -388,6 +451,7 @@ export default function SupportChatWidget() {
           )}
         </Card>
       )}
-    </>
+    </>,
+    document.body,
   );
 }

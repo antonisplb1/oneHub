@@ -4,6 +4,11 @@
 
 /* LIGHT MODE - Elegant Refined Palette */
 :root {
+  --z-sidebar: 30;
+  --z-chat: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+
   --button-outline: rgba(0,0,0, .08);
   --badge-outline: rgba(0,0,0, .04);
 
@@ -138,6 +143,18 @@
   /* Fallback for older browsers */
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+.support-chat-panel {
+  right: 0;
+  bottom: 0;
+}
+
+@media (min-width: 640px) {
+  .support-chat-panel {
+    right: var(--support-safe-right);
+    bottom: var(--support-safe-bottom);
+  }
 }
 
 .dark {
