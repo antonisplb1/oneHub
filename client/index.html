@@ -13,6 +13,23 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/site.webmanifest">
     <meta name="apple-mobile-web-app-title" content="uniHub">
+    <script>
+      (function () {
+        var p = location.pathname;
+        if (p === '/scan' || p === '/dashboard/scanner') {
+          var m = document.querySelector('link[rel="manifest"]');
+          if (m) {
+            m.dataset.scanOriginalHref = m.getAttribute('href') || '';
+            m.setAttribute('href', '/scan.webmanifest');
+          }
+          var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+          if (t) {
+            t.dataset.scanOriginalContent = t.getAttribute('content') || '';
+            t.setAttribute('content', 'uniHub Scan');
+          }
+        }
+      })();
+    </script>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1a1a1a">
     <meta property="og:image" content="https://unihub.live/og-image.png">

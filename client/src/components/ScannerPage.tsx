@@ -6,6 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
+import type { BeforeInstallPromptEvent } from "@/App";
 import {
   Dialog,
   DialogContent,
@@ -16,9 +17,15 @@ import {
 
 interface ScannerPageProps {
   autoStart?: boolean;
+  installPrompt: BeforeInstallPromptEvent | null;
+  clearInstallPrompt: () => void;
 }
 
-export default function ScannerPage({ autoStart = false }: ScannerPageProps) {
+export default function ScannerPage({
+  autoStart = false,
+  installPrompt,
+  clearInstallPrompt,
+}: ScannerPageProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
   const [showResultDialog, setShowResultDialog] = useState(false);
@@ -32,6 +39,11 @@ export default function ScannerPage({ autoStart = false }: ScannerPageProps) {
       || window.matchMedia('(display-mode: standalone)').matches;
     return isIOS && !standalone && localStorage.getItem("scanIOSInstallHintDismissed") !== "true";
   });
+  const [showInstallInstructions, setShowInstallInstructions] = useState(false);
+  const [showInstallFallback, setShowInstallFallback] = useState(false);
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone = (window.navigator as Navigator & { standalone?: boolean }).standalone
+    || window.matchMedia('(display-mode: standalone)').matches;
 
   const scanMutation = useMutation({
     mutationFn: async (qrCodeValue: string) => {
@@ -137,32 +149,17 @@ export default function ScannerPage({ autoStart = false }: ScannerPageProps) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!autoStart) return;
-
-    const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
-    const appTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
-    const originalManifestHref = manifest?.getAttribute("href");
-    const originalAppTitle = appTitle?.getAttribute("content");
-
-    manifest?.setAttribute("href", "/scan.webmanifest");
-    appTitle?.setAttribute("content", "uniHub Scan");
-
-    return () => {
-      if (manifest && originalManifestHref !== null && originalManifestHref !== undefined) {
-        manifest.setAttribute("href", originalManifestHref);
-      }
-      if (appTitle && originalAppTitle !== null && originalAppTitle !== undefined) {
-        appTitle.setAttribute("content", originalAppTitle);
-      }
-    };
-  }, [autoStart]);
-
   return (
     <div className="space-y-6">
       {showIOSInstallHint && (
         <div className="flex items-center justify-between gap-3 bg-primary px-4 py-3 text-sm text-primary-foreground">
-          <span>Add to Home Screen → turn on "Open as Web App" to launch the scanner in one tap.</span>
+          <button
+            type="button"
+            onClick={() => setShowInstallInstructions(true)}
+            className="text-left"
+          >
+            Add to Home Screen → turn on "Open as Web App" to launch the scanner in one tap.
+          </button>
           <Button
             variant="ghost"
             size="icon"
@@ -182,6 +179,51 @@ export default function ScannerPage({ autoStart = false }: ScannerPageProps) {
           Scan customer QR codes to add stamps to their loyalty cards
         </p>
       </div>
+
+      {!standalone && (
+        <div className="space-y-3">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              setShowInstallFallback(false);
+              if (isIOS) {
+                setShowInstallInstructions(true);
+              } else if (installPrompt) {
+                try {
+                  await installPrompt.prompt();
+                } catch {
+                  setShowInstallFallback(true);
+                } finally {
+                  clearInstallPrompt();
+                }
+              } else {
+                setShowInstallFallback(true);
+              }
+            }}
+            data-testid="button-install-scanner"
+          >
+            Install scanner app
+          </Button>
+          {showInstallFallback && (
+            <p className="text-sm text-muted-foreground">
+              Open your browser menu (⋮) and choose Install app.
+            </p>
+          )}
+          {showInstallInstructions && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-4 text-sm">
+              <span>Tap Share → Add to Home Screen → turn on 'Open as Web App' → Add.</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowInstallInstructions(false)}
+                aria-label="Dismiss install instructions"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <Card>
         <CardHeader>

@@ -1,0 +1,66 @@
+The implementation is accepted. One more scoped change before deploying — the intended user flow is different from what we built for.
+
+Intended flow: log in normally → open Scanner from the side menu (/dashboard/scanner) → install the app from the browser → the icon reads "Scan" → tapping it opens the scanner directly.
+
+Problem: the manifest swap currently only runs on /scan. Installing from /dashboard/scanner therefore installs the main "uniHub" app pointing at /, which is the original bug. Also, on a hard page load the React-mounted swap can run after Chrome has already read the manifest and fired beforeinstallprompt, so the captured prompt can install the wrong app.
+
+Fix both. Do not change routing, the side menu, or any existing navigation.
+
+1. Run the manifest swap on /dashboard/scanner too
+
+Extract the existing swap logic from the /scan route into one small reusable hook (e.g. useScanManifest()), and call it from both the /scan route and the /dashboard/scanner route.
+
+Behaviour is identical on both: set link[rel="manifest"] to /scan.webmanifest and meta[name="apple-mobile-web-app-title"] to uniHub Scan on mount; read the originals from the DOM and restore both on unmount.
+Both routes point at the same scan.webmanifest, so an install from either one produces the "Scan" icon that launches /scan. That is intended.
+/dashboard/scanner keeps its dashboard chrome and its manual Start Camera button. Only the manifest tags change.
+2. Add an inline script in client/index.html <head>
+
+This must run before React boots, so a hard load or refresh on either scanner URL has the right manifest before Chrome evaluates installability.
+
+Place it immediately after the existing <link rel="manifest"> and <meta name="apple-mobile-web-app-title"> tags:
+
+html
+<script>
+  (function () {
+    var p = location.pathname;
+    if (p === '/scan' || p === '/dashboard/scanner') {
+      var m = document.querySelector('link[rel="manifest"]');
+      if (m) m.setAttribute('href', '/scan.webmanifest');
+      var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+      if (t) t.setAttribute('content', 'uniHub Scan');
+    }
+  })();
+</script>
+
+No framework, no dependency, no build step. Keep the hook from point 1 as well — the script covers hard loads, the hook covers client-side navigation.
+
+3. Add an "Install scanner app" button on the scanner page
+
+Visible on both /scan and /dashboard/scanner. Merchants will not find the browser's ⋮ menu on their own.
+
+Behaviour:
+
+Listen for beforeinstallprompt at the app level, preventDefault() it, and always store the most recent event, overwriting any earlier one. Do not store only the first.
+Android / desktop Chrome: if a stored prompt exists, the button calls prompt() and then clears the stored event. If none exists, show the fallback text instead: "Open your browser menu (⋮) and choose Install app."
+iOS Safari: no prompt API exists. The button opens a small dismissible panel with the literal steps: "Tap Share → Add to Home Screen → turn on 'Open as Web App' → Add."
+Hide the button entirely when already running standalone (window.navigator.standalone || matchMedia('(display-mode: standalone)').matches).
+Style it with existing components/classes. Do not introduce new design patterns or a new dependency.
+4. Keep the existing iOS hint banner
+
+It stays on /scan. If it now duplicates the button's iOS panel, keep the banner and have it open the same panel rather than repeating the text twice.
+
+CONSTRAINTS
+
+Unchanged from before: no new npm packages, no new images, no service worker, no changes to Stripe/billing, DB schema, prize-wheel logic, the side menu, routing, or any other route. Show me the full diff before deploying.
+
+ACCEPTANCE TESTS
+Hard-load /dashboard/scanner → DevTools → Application → Manifest shows "uniHub Scan", start_url /scan.
+Soft-navigate dashboard → Scanner via the side menu → same result.
+Navigate away from the scanner to any other dashboard page → Manifest shows "uniHub", start_url /.
+Hard-load / → Manifest shows "uniHub". Hard-load /scan → "uniHub Scan".
+Desktop Chrome on /dashboard/scanner → the Install button fires the native install dialog, and the dialog names the app "uniHub Scan" — not "uniHub".
+Same page, ⋮ → Install app → also offers "uniHub Scan".
+iOS emulation → the button shows the Share-sheet instructions, no dead click.
+Already-installed / standalone mode → the button is not rendered.
+/dashboard/scanner still shows the sidebar and still requires pressing Start Camera. /scan still auto-starts.
+No new console errors, no new TypeScript errors, npm run build passes.
