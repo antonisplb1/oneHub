@@ -68,6 +68,7 @@ interface DashboardLayoutProps {
   // The backend enforces this too; this guard prevents direct-URL access from
   // rendering a feature the selected store hasn't enabled.
   requiredProduct?: 'loyalty' | 'spin' | 'menu' | 'shift';
+  bare?: boolean;
 }
 
 function StoreSwitcher() {
@@ -230,7 +231,7 @@ function SidebarMenuItems() {
   );
 }
 
-export default function DashboardLayout({ children, requiredProduct }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, requiredProduct, bare = false }: DashboardLayoutProps) {
   const [location, setLocation] = useLocation();
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const { activeStore } = useStore();
@@ -315,7 +316,8 @@ export default function DashboardLayout({ children, requiredProduct }: Dashboard
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      setLocation("/auth");
+      const dest = window.location.pathname + window.location.search;
+      setLocation(`/auth?redirect=${encodeURIComponent(dest)}`);
     } else if (!isLoading && user && !hasAccess) {
       setLocation("/subscription-required");
     }
@@ -334,6 +336,32 @@ export default function DashboardLayout({ children, requiredProduct }: Dashboard
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#080808" }}>
         <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Verifying access...</p>
       </div>
+    );
+  }
+
+  if (bare) {
+    return productBlocked ? (
+      <div className="flex items-center justify-center min-h-screen">
+        <Alert className="max-w-md" data-testid="alert-product-not-enabled">
+          <Store className="h-4 w-4" />
+          <AlertDescription className="flex flex-col gap-3">
+            <span>
+              This feature isn't enabled for{" "}
+              <span className="font-medium">
+                {activeStore?.displayName || activeStore?.shopName || "this store"}
+              </span>
+              . Enable it from the store's product settings to use it here.
+            </span>
+            <Link href="/dashboard/stores" data-testid="link-manage-stores">
+              <Button size="sm" variant="outline">
+                Manage stores <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      </div>
+    ) : (
+      children
     );
   }
 

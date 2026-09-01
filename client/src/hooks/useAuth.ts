@@ -5,6 +5,22 @@ import { hasAccessGrantingSubscription } from "@/lib/subscription";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+export function getSafeAuthRedirect() {
+  const raw = new URLSearchParams(window.location.search).get("redirect");
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\")) {
+    return "/dashboard";
+  }
+
+  try {
+    const url = new URL(raw, window.location.origin);
+    return url.origin === window.location.origin
+      ? `${url.pathname}${url.search}${url.hash}`
+      : "/dashboard";
+  } catch {
+    return "/dashboard";
+  }
+}
+
 export function useAuth() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -51,7 +67,7 @@ export function useAuth() {
         return;
       }
       
-      setLocation("/dashboard");
+      setLocation(getSafeAuthRedirect());
       toast({
         title: "Welcome back!",
         description: "You've successfully logged in.",

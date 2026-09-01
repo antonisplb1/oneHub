@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/useAuth";
+import { getSafeAuthRedirect, useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { useEffect } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
@@ -36,7 +36,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      setLocation("/dashboard");
+      setLocation(getSafeAuthRedirect());
     }
   }, [isAuthenticated, setLocation]);
 

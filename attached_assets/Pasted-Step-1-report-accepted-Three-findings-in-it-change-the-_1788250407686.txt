@@ -1,0 +1,87 @@
+Step 1 report accepted. Three findings in it change the plan. The amendments below override the corresponding parts of the original spec; everything else in that spec still applies.
+
+What changed and why
+The scanner already has its own route (/dashboard/scanner) and is a real page, not a modal — so no component rewrite is needed.
+It renders inside DashboardLayout requiredProduct="loyalty". That layout holds both the auth guard and the loyalty product entitlement check. /scan must keep both. Do not bypass the entitlement check.
+The scanner does not auto-start the camera. A one-tap home-screen app needs it to try.
+AuthPage hardcodes /dashboard after login, so redirect preservation must be added — carefully, because that is auth code.
+No service worker exists → constraint 4 of the original spec is moot. Do not add one.
+AMENDMENTS
+A. DashboardLayout — add one optional prop, bare (default false)
+When bare is true: skip the dashboard chrome (sidebar, header, nav, page padding) and render children only.
+Auth loading state, the isAuthenticated redirect and the requiredProduct check must run exactly as today, unchanged, in both modes.
+No existing call site changes. With bare absent, behaviour must be identical to today.
+B. DashboardLayout — preserve the intended destination
+
+Change only the redirect line. From:
+
+ts
+setLocation("/auth");
+
+to:
+
+ts
+const dest = window.location.pathname + window.location.search;
+setLocation(`/auth?redirect=${encodeURIComponent(dest)}`);
+
+Nothing else about the guard changes.
+
+C. AuthPage — honour the param, safely
+
+Replace the hardcoded post-login setLocation("/dashboard") with:
+
+ts
+const raw = new URLSearchParams(window.location.search).get("redirect");
+const safe = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard";
+setLocation(safe);
+Must reject absolute URLs and protocol-relative //evil.com. This is an open-redirect guard — do not loosen it.
+With no redirect param the behaviour is identical to today: /dashboard.
+Apply this to every post-auth success path in AuthPage — login, signup, and any OAuth / magic-link callback if one exists. If there is more than one, extract a single small helper and use it in all of them.
+D. New route /scan in client/src/App.tsx
+tsx
+<Route path="/scan">
+  <DashboardLayout requiredProduct="loyalty" bare>
+    <ScannerPage autoStart />
+  </DashboardLayout>
+</Route>
+
+/dashboard/scanner stays exactly as it is. /scan is an addition, not a replacement.
+
+E. ScannerPage — optional autoStart prop (default false)
+When autoStart is true, attempt to start the camera on mount by calling the same function the "Start Camera" button already calls. Do not duplicate, move or rewrite the camera logic.
+If that promise rejects (permission denied, gesture required, no camera), fall back to the current UI with the Start Camera button and the existing error handling. Never leave a blank screen and never leave an unhandled rejection.
+/dashboard/scanner keeps autoStart off, so its behaviour is unchanged.
+Check the <video> element has playsInline and muted. iOS will otherwise force fullscreen or refuse to play. Add them only if missing.
+F. Manifest and <head> — corrections to the original spec
+Create client/public/scan.webmanifest with the exact JSON from the original spec.
+Edit client/public/site.webmanifest: add id, start_url, scope, shortcuts only. The shortcut points at /scan.
+client/index.html: apple-touch-icon already exists — leave it alone. Add only the two missing tags:
+html
+<meta name="apple-mobile-web-app-title" content="uniHub">
+<meta name="mobile-web-app-capable" content="yes">
+On the /scan route only, on mount: swap link[rel="manifest"] href to /scan.webmanifest, and meta[name="apple-mobile-web-app-title"] content to uniHub Scan. Read both originals from the DOM at mount and restore them on unmount. Do not touch apple-touch-icon.
+G. iOS install banner
+
+As originally specified, on /scan only.
+
+STILL IN FORCE
+
+No new npm packages. No new or regenerated images. No service worker. Do not touch Stripe/billing, DB schema, prize-wheel logic, global styling, or any route other than the ones named here. Show me the full diff before deploying.
+
+ACCEPTANCE TESTS — this list replaces the original one
+
+Run each and report the actual result, not an assumption.
+
+/dashboard/scanner logged in with loyalty → identical to before; camera still requires the button press.
+/dashboard and the other dashboard routes → visually and behaviourally unchanged.
+Logged-out visit to any dashboard route → /auth?redirect=… → after login lands back on that route.
+Log in from /auth with no redirect param → lands on /dashboard, as today.
+/auth?redirect=https://example.com and /auth?redirect=//example.com → after login lands on /dashboard, not the external site.
+Logged-out /scan → /auth?redirect=%2Fscan → after login lands on /scan, scanner full-screen, no sidebar.
+Logged-in account without the loyalty product opens /scan → same outcome as opening /dashboard/scanner today. State explicitly what that outcome is.
+curl -i https://unihub.live/scan.webmanifest → JSON, application/manifest+json, not HTML.
+curl -i https://unihub.live/site.webmanifest → JSON containing id, start_url, scope.
+DevTools → Application → Manifest: on /scan shows "uniHub Scan" with start_url /scan; on / shows "uniHub" with start_url /.
+Android phone: install from /scan → icon labelled "Scan" → opens the scanner → camera permission prompt → a scan completes successfully.
+Deny camera permission on /scan → falls back to the Start Camera UI, no blank screen, no unhandled rejection.
+No new console errors and no new TypeScript errors anywhere.

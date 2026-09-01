@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { QrCode, Check, Camera, CameraOff } from "lucide-react";
+import { QrCode, Check, Camera, CameraOff, X } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -14,13 +14,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-export default function ScannerPage() {
+interface ScannerPageProps {
+  autoStart?: boolean;
+}
+
+export default function ScannerPage({ autoStart = false }: ScannerPageProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
   const [showResultDialog, setShowResultDialog] = useState(false);
   const { toast } = useToast();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isProcessingRef = useRef(false);
+  const [showIOSInstallHint, setShowIOSInstallHint] = useState(() => {
+    if (!autoStart) return false;
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const standalone = (window.navigator as Navigator & { standalone?: boolean }).standalone
+      || window.matchMedia('(display-mode: standalone)').matches;
+    return isIOS && !standalone && localStorage.getItem("scanIOSInstallHintDismissed") !== "true";
+  });
 
   const scanMutation = useMutation({
     mutationFn: async (qrCodeValue: string) => {
@@ -76,6 +87,12 @@ export default function ScannerPage() {
           // Ignore continuous scanning errors
         }
       );
+
+      const video = qrElement.querySelector("video");
+      if (video) {
+        video.playsInline = true;
+        video.muted = true;
+      }
     } catch (err) {
       console.error("Error starting scanner:", err);
       const qrElement = document.getElementById("qr-reader");
@@ -107,6 +124,10 @@ export default function ScannerPage() {
   };
 
   useEffect(() => {
+    if (autoStart) {
+      void startScanning();
+    }
+
     return () => {
       if (scannerRef.current) {
         scannerRef.current.stop()
@@ -116,8 +137,45 @@ export default function ScannerPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!autoStart) return;
+
+    const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    const appTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+    const originalManifestHref = manifest?.getAttribute("href");
+    const originalAppTitle = appTitle?.getAttribute("content");
+
+    manifest?.setAttribute("href", "/scan.webmanifest");
+    appTitle?.setAttribute("content", "uniHub Scan");
+
+    return () => {
+      if (manifest && originalManifestHref !== null && originalManifestHref !== undefined) {
+        manifest.setAttribute("href", originalManifestHref);
+      }
+      if (appTitle && originalAppTitle !== null && originalAppTitle !== undefined) {
+        appTitle.setAttribute("content", originalAppTitle);
+      }
+    };
+  }, [autoStart]);
+
   return (
     <div className="space-y-6">
+      {showIOSInstallHint && (
+        <div className="flex items-center justify-between gap-3 bg-primary px-4 py-3 text-sm text-primary-foreground">
+          <span>Add to Home Screen → turn on "Open as Web App" to launch the scanner in one tap.</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              localStorage.setItem("scanIOSInstallHintDismissed", "true");
+              setShowIOSInstallHint(false);
+            }}
+            aria-label="Dismiss install hint"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
       <div>
         <h1 className="text-3xl font-bold">QR Scanner</h1>
         <p className="text-muted-foreground mt-2">

@@ -82,6 +82,13 @@ function Router() {
           </DashboardLayout>
         )}
       </Route>
+      <Route path="/scan">
+        {() => (
+          <DashboardLayout requiredProduct="loyalty" bare>
+            <ScannerPage autoStart />
+          </DashboardLayout>
+        )}
+      </Route>
       <Route path="/dashboard/spin-wheel">
         {() => (
           <DashboardLayout requiredProduct="spin">
