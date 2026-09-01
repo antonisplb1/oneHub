@@ -1,0 +1,116 @@
+GOAL
+
+Add a second installable PWA entry called "uniHub Scan" whose home-screen icon opens the QR scanner directly, in one tap. The existing "uniHub" installed app (dashboard) must keep behaving exactly as it does today.
+
+Context you can rely on (already verified from the deployed site):
+
+The real manifest is served at /site.webmanifest and currently contains only: name, short_name, icons (/unihub-mark-192.png, /unihub-mark-512.png, /icon-512-maskable.png maskable), theme_color: "#1a1a1a", background_color: "#1a1a1a", display: "standalone".
+It has no start_url, no scope, no id. That is why an installed icon lands on whatever page it was installed from (the dashboard) instead of the scanner.
+/manifest.json currently returns index.html, i.e. there is a SPA catch-all route. Keep that in mind for point 6 below.
+
+Do not change any feature, styling, auth logic, database schema, or dependency beyond what is listed here.
+
+STEP 1 — Investigate first. Do NOT edit anything yet.
+
+Report back with:
+
+Path of index.html and its full current <head> — list every <link> and <meta>.
+Path and exact current content of site.webmanifest.
+Whether a service worker or PWA plugin exists (vite-plugin-pwa, workbox, a hand-written sw.js). If yes, name the config file.
+How the QR scanner is reached today: its component file, and whether it has its own route (e.g. /scan) or is a tab / modal inside the dashboard.
+How the router handles unauthenticated users — which guard component, and whether it preserves the intended destination after login.
+
+Stop there and show me this before writing any code.
+
+STEP 2 — Changes (only after I confirm Step 1)
+A. Dedicated scanner route
+Make the scanner reachable at exactly /scan, as a top-level route that renders the scanner UI directly — no dashboard shell, no intermediate click.
+If the scanner is currently a tab or modal, do not rewrite it. Add a thin route that mounts the same existing component with whatever props/state make it open in scanning mode.
+The existing entry point (the button inside the dashboard) must keep working. /scan is an addition, not a replacement.
+An unauthenticated visit to /scan must go to login and return to /scan afterwards. Reuse the existing redirect mechanism; only if none exists, use ?redirect=/scan. Do not build a new auth system.
+B. New file: public/scan.webmanifest
+json
+{
+  "id": "/scan",
+  "name": "uniHub Scan",
+  "short_name": "Scan",
+  "start_url": "/scan",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1a1a1a",
+  "background_color": "#1a1a1a",
+  "icons": [
+    { "src": "/unihub-mark-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/unihub-mark-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
+
+scope is deliberately "/" and not "/scan" — a narrow scope would kick the login redirect out of the installed app into the browser.
+
+C. Update public/site.webmanifest — add these keys only, change nothing else
+json
+"id": "/",
+"start_url": "/",
+"scope": "/",
+"shortcuts": [
+  {
+    "name": "Open scanner",
+    "short_name": "Scan",
+    "url": "/scan",
+    "icons": [{ "src": "/unihub-mark-192.png", "sizes": "192x192" }]
+  }
+]
+
+Do not touch the existing name, short_name, icons, display or colour values.
+
+D. Swap the manifest on the /scan route
+
+In the /scan route component only, on mount:
+
+set <link rel="manifest"> href to /scan.webmanifest
+set <meta name="apple-mobile-web-app-title"> content to uniHub Scan
+ensure a <link rel="apple-touch-icon" href="/unihub-mark-192.png"> exists (create the tag if missing)
+
+On unmount, restore all of them to their original values. Read the original values from the DOM at mount time — do not hardcode them.
+
+Plain DOM manipulation in a useEffect is fine. Use react-helmet only if it is already a dependency. Do not add one.
+
+E. Small iOS install hint
+
+On /scan only, if the user is on iOS and not already running standalone, show a one-line dismissible banner:
+
+Add to Home Screen → turn on "Open as Web App" to launch the scanner in one tap.
+
+Persist the dismissal in localStorage. No library. Detection:
+
+js
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const standalone = window.navigator.standalone
+  || window.matchMedia('(display-mode: standalone)').matches;
+F. index.html <head> — add only what is missing, never duplicate
+html
+<link rel="manifest" href="/site.webmanifest">
+<link rel="apple-touch-icon" href="/unihub-mark-192.png">
+<meta name="apple-mobile-web-app-title" content="uniHub">
+<meta name="mobile-web-app-capable" content="yes">
+CONSTRAINTS
+No new npm packages.
+Do not touch: auth, database, Stripe/billing, loyalty-card or prize-wheel logic, global styling, or any other route.
+Do not rename, move, regenerate or delete existing icon files. Do not generate new images — both manifests reuse the same three icons. The two apps are distinguished by name, not icon, for now.
+If a service worker exists: make sure /scan.webmanifest is served fresh rather than precached with a stale hash, and that /scan is covered by the SPA navigation fallback. Do not add a service worker if there isn't one.
+/scan.webmanifest must be served as a static file with Content-Type: application/manifest+json and must not be swallowed by the SPA catch-all. Verify this specifically — /manifest.json currently returns HTML, so the catch-all is real.
+Keep this to one commit-sized diff. Show me the full diff before deploying.
+ACCEPTANCE TESTS — run each and report the result
+curl -i https://unihub.live/scan.webmanifest → JSON, correct content type, not HTML.
+curl -i https://unihub.live/site.webmanifest → JSON containing id, start_url, scope.
+Open /scan in a desktop browser → the scanner renders directly.
+Open /scan logged out → login → lands back on /scan.
+Open / → dashboard identical to before, nothing moved or restyled.
+Chrome DevTools → Application → Manifest: on /scan shows "uniHub Scan" with start_url /scan; on / shows "uniHub" with start_url /.
+On an Android phone: install from /scan → icon labelled "Scan" → opens the scanner → camera permission prompt appears.
+No new console errors on either route.
+KNOWN, EXPECTED SIDE EFFECT
+
+Adding id and start_url to site.webmanifest can make Chrome treat the already-installed uniHub app as a new app. That is expected — the icon will be removed and re-added once by hand. Do not add workarounds or migration code for this.
