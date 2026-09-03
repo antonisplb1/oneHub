@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { getCurrentUser, login, logout, signup } from "@/lib/api";
 import { hasAccessGrantingSubscription } from "@/lib/subscription";
-import { queryClient } from "@/lib/queryClient";
+import { CURRENT_USER_QUERY_KEY, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export function getSafeAuthRedirect() {
@@ -26,7 +26,7 @@ export function useAuth() {
   const { toast } = useToast();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["/api", "auth", "me"],
+    queryKey: CURRENT_USER_QUERY_KEY,
     queryFn: getCurrentUser,
     retry: false,
     staleTime: 5 * 60 * 1000,
@@ -35,7 +35,7 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api", "auth", "me"] });
+      queryClient.invalidateQueries({ queryKey: CURRENT_USER_QUERY_KEY });
       
       const user = data.user;
       if (!user.emailVerified) {

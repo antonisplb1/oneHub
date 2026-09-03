@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { CURRENT_USER_QUERY_KEY, queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -45,41 +45,28 @@ import TeamManagement from "@/pages/TeamManagement";
 import StoresPage from "@/pages/StoresPage";
 import { StoreProvider } from "@/contexts/StoreContext";
 import { useScanManifest } from "@/hooks/useScanManifest";
-
-export type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-};
-
-interface RouterProps {
-  installPrompt: BeforeInstallPromptEvent | null;
-  clearInstallPrompt: () => void;
-}
+import { useDashboardManifest } from "@/hooks/useDashboardManifest";
+import { InstallAppProvider } from "@/hooks/useInstallApp";
 
 function ScanRoute({
   bare = false,
   autoStart = false,
-  installPrompt,
-  clearInstallPrompt,
 }: {
   bare?: boolean;
   autoStart?: boolean;
-  installPrompt: BeforeInstallPromptEvent | null;
-  clearInstallPrompt: () => void;
 }) {
   useScanManifest();
 
   return (
     <DashboardLayout requiredProduct="loyalty" bare={bare}>
-      <ScannerPage
-        autoStart={autoStart}
-        installPrompt={installPrompt}
-        clearInstallPrompt={clearInstallPrompt}
-      />
+      <ScannerPage autoStart={autoStart} />
     </DashboardLayout>
   );
 }
 
-function Router({ installPrompt, clearInstallPrompt }: RouterProps) {
+function Router() {
+  useDashboardManifest();
+
   return (
     <Switch>
       <Route path="/" component={LandingPage} />
@@ -112,20 +99,12 @@ function Router({ installPrompt, clearInstallPrompt }: RouterProps) {
       </Route>
       <Route path="/dashboard/scanner">
         {() => (
-          <ScanRoute
-            installPrompt={installPrompt}
-            clearInstallPrompt={clearInstallPrompt}
-          />
+          <ScanRoute />
         )}
       </Route>
       <Route path="/scan">
         {() => (
-          <ScanRoute
-            bare
-            autoStart
-            installPrompt={installPrompt}
-            clearInstallPrompt={clearInstallPrompt}
-          />
+          <ScanRoute bare autoStart />
         )}
       </Route>
       <Route path="/dashboard/spin-wheel">
@@ -198,28 +177,26 @@ function Router({ installPrompt, clearInstallPrompt }: RouterProps) {
 }
 
 function App() {
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-
   useEffect(() => {
-    const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as BeforeInstallPromptEvent);
+    const refreshCurrentUser = () => {
+      if (document.visibilityState === "visible") {
+        void queryClient.invalidateQueries({ queryKey: CURRENT_USER_QUERY_KEY });
+      }
     };
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    document.addEventListener("visibilitychange", refreshCurrentUser);
+    return () => document.removeEventListener("visibilitychange", refreshCurrentUser);
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <StoreProvider>
-          <Toaster />
-          <CookieBanner />
-          <Router
-            installPrompt={installPrompt}
-            clearInstallPrompt={() => setInstallPrompt(null)}
-          />
+          <InstallAppProvider>
+            <Toaster />
+            <CookieBanner />
+            <Router />
+          </InstallAppProvider>
         </StoreProvider>
       </TooltipProvider>
     </QueryClientProvider>

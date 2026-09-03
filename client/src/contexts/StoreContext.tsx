@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { CURRENT_USER_QUERY_KEY, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
 export interface Store {
@@ -49,7 +49,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   });
 
   const { data: authInfo } = useQuery<AuthMeResponse>({
-    queryKey: ["/api/auth/me"],
+    queryKey: CURRENT_USER_QUERY_KEY,
     enabled: isAuthenticated && !authLoading,
   });
 

@@ -6,7 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
-import type { BeforeInstallPromptEvent } from "@/App";
+import { useInstallApp } from "@/hooks/useInstallApp";
 import {
   Dialog,
   DialogContent,
@@ -17,14 +17,10 @@ import {
 
 interface ScannerPageProps {
   autoStart?: boolean;
-  installPrompt: BeforeInstallPromptEvent | null;
-  clearInstallPrompt: () => void;
 }
 
 export default function ScannerPage({
   autoStart = false,
-  installPrompt,
-  clearInstallPrompt,
 }: ScannerPageProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
@@ -39,11 +35,7 @@ export default function ScannerPage({
       || window.matchMedia('(display-mode: standalone)').matches;
     return isIOS && !standalone && localStorage.getItem("scanIOSInstallHintDismissed") !== "true";
   });
-  const [showInstallInstructions, setShowInstallInstructions] = useState(false);
-  const [showInstallFallback, setShowInstallFallback] = useState(false);
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const standalone = (window.navigator as Navigator & { standalone?: boolean }).standalone
-    || window.matchMedia('(display-mode: standalone)').matches;
+  const { isStandalone, requestInstall } = useInstallApp();
 
   const scanMutation = useMutation({
     mutationFn: async (qrCodeValue: string) => {
@@ -155,7 +147,7 @@ export default function ScannerPage({
         <div className="flex items-center justify-between gap-3 bg-primary px-4 py-3 text-sm text-primary-foreground">
           <button
             type="button"
-            onClick={() => setShowInstallInstructions(true)}
+            onClick={() => void requestInstall()}
             className="text-left"
           >
             Add to Home Screen → turn on "Open as Web App" to launch the scanner in one tap.
@@ -180,48 +172,15 @@ export default function ScannerPage({
         </p>
       </div>
 
-      {!standalone && (
+      {!isStandalone && (
         <div className="space-y-3">
           <Button
             variant="outline"
-            onClick={async () => {
-              setShowInstallFallback(false);
-              if (isIOS) {
-                setShowInstallInstructions(true);
-              } else if (installPrompt) {
-                try {
-                  await installPrompt.prompt();
-                } catch {
-                  setShowInstallFallback(true);
-                } finally {
-                  clearInstallPrompt();
-                }
-              } else {
-                setShowInstallFallback(true);
-              }
-            }}
+            onClick={() => void requestInstall()}
             data-testid="button-install-scanner"
           >
             Install scanner app
           </Button>
-          {showInstallFallback && (
-            <p className="text-sm text-muted-foreground">
-              Open your browser menu (⋮) and choose Install app.
-            </p>
-          )}
-          {showInstallInstructions && (
-            <div className="flex items-center justify-between gap-3 rounded-lg border p-4 text-sm">
-              <span>Tap Share → Add to Home Screen → turn on 'Open as Web App' → Add.</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowInstallInstructions(false)}
-                aria-label="Dismiss install instructions"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
         </div>
       )}
 

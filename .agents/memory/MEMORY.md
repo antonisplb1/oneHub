@@ -8,3 +8,4 @@
 - [Wallet logo fetch asymmetry](wallet-logo-fetch.md) — Google servers fetch the logo URL, but our backend fetches it for Apple passes; keep the Apple loader https-only + placeholder fallback (SSRF).
 - [Google Wallet class patch review-status](google-wallet-class-patch.md) — every loyaltyclass patch must resend reviewStatus 'UNDER_REVIEW' or Google rejects it and branding silently never updates.
 - [Wallet stamp-strip rendering](wallet-strip-rendering.md) — Apple strip requires headerFields (primaryFields overlap strip) + fail-open; Google heroImage must be cache-busted per stamp count.
+- [Manifest install-event race](manifest-install-event-race.md) — pair install prompts with manifest href; hard-reload before install when navigation makes the captured event stale.

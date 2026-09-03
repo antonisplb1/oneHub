@@ -109,7 +109,13 @@ export default function AuthPage() {
                   <Label htmlFor="login-email" style={labelStyle}>Email</Label>
                   <Input
                     id="login-email"
+                    name="email"
                     type="email"
+                    autoComplete="username"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     placeholder="you@example.com"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
@@ -124,7 +130,9 @@ export default function AuthPage() {
                   <Label htmlFor="login-password" style={labelStyle}>Password</Label>
                   <Input
                     id="login-password"
+                    name="password"
                     type="password"
+                    autoComplete="current-password"
                     placeholder="••••••••"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
@@ -174,7 +182,13 @@ export default function AuthPage() {
                   <Label htmlFor="signup-email" style={labelStyle}>Email</Label>
                   <Input
                     id="signup-email"
+                    name="email"
                     type="email"
+                    autoComplete="email"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     placeholder="you@example.com"
                     value={signupEmail}
                     onChange={(e) => setSignupEmail(e.target.value)}
@@ -189,7 +203,9 @@ export default function AuthPage() {
                   <Label htmlFor="signup-password" style={labelStyle}>Password</Label>
                   <Input
                     id="signup-password"
+                    name="password"
                     type="password"
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
@@ -205,7 +221,9 @@ export default function AuthPage() {
                   <Label htmlFor="confirm-password" style={labelStyle}>Confirm Password</Label>
                   <Input
                     id="confirm-password"
+                    name="confirmPassword"
                     type="password"
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}

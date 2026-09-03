@@ -75,11 +75,12 @@ export function setupAuth(app: Express) {
     secret: sessionSecret || "merchant-hub-dev-only-secret",
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
       httpOnly: true,
       sameSite: "lax",
-      secure: app.get("env") === "production",
+      secure: process.env.NODE_ENV === "production",
     },
     store: new PgStore({
       pool,

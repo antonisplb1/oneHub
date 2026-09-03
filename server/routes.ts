@@ -346,6 +346,37 @@ const sendMessageSchema = z.object({
   displayEndTime: z.coerce.date(),
 });
 
+const DASHBOARD_MANIFEST_NAMES: Record<string, { name: string; shortName: string }> = {
+  "/dashboard": { name: "uniHub", shortName: "uniHub" },
+  "/dashboard/loyalty": { name: "uniHub Loyalty", shortName: "Loyalty" },
+  "/dashboard/spin-wheel": { name: "uniHub Spin Wheel", shortName: "Spin Wheel" },
+  "/dashboard/customers": { name: "uniHub Customers", shortName: "Customers" },
+  "/dashboard/analytics": { name: "uniHub Analytics", shortName: "Analytics" },
+  "/dashboard/menu": { name: "uniHub Menu", shortName: "Menu" },
+  "/dashboard/shifts": { name: "uniHub Shifts", shortName: "Shifts" },
+  "/dashboard/team": { name: "uniHub Team", shortName: "Team" },
+  "/dashboard/stores": { name: "uniHub Stores", shortName: "Stores" },
+  "/dashboard/account": { name: "uniHub Account", shortName: "Account" },
+};
+
+function getDashboardManifestPath(rawStart: unknown): string {
+  if (typeof rawStart !== "string") return "/dashboard";
+
+  const path = rawStart.split(/[?#]/, 1)[0];
+  if (
+    !path.startsWith("/") ||
+    path.startsWith("//") ||
+    path.includes("\\") ||
+    path.includes("//") ||
+    /^[a-z][a-z\d+.-]*:/i.test(path) ||
+    (path !== "/dashboard" && !path.startsWith("/dashboard/"))
+  ) {
+    return "/dashboard";
+  }
+
+  return path;
+}
+
 export function registerRoutes(app: Express) {
   // Safety net for best-effort Stripe price sync: a daily job re-checks every
   // billable account's live Stripe price against the price its stores justify
@@ -355,6 +386,27 @@ export function registerRoutes(app: Express) {
   // Live support chat bridged to Telegram (dashboard bubble <-> operator's chat).
   registerSupportRoutes(app, requireAuth);
   startSupportSweepService();
+
+  app.get("/api/manifest", (req, res) => {
+    const startUrl = getDashboardManifestPath(req.query.start);
+    const identity = DASHBOARD_MANIFEST_NAMES[startUrl] ?? DASHBOARD_MANIFEST_NAMES["/dashboard"];
+
+    res.type("application/manifest+json").json({
+      id: startUrl,
+      start_url: startUrl,
+      name: identity.name,
+      short_name: identity.shortName,
+      scope: "/",
+      display: "standalone",
+      icons: [
+        { src: "/unihub-mark-192.png", sizes: "192x192", type: "image/png" },
+        { src: "/unihub-mark-512.png", sizes: "512x512", type: "image/png" },
+        { src: "/icon-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      ],
+      theme_color: "#1a1a1a",
+      background_color: "#1a1a1a",
+    });
+  });
 
   // Resolve active store for authenticated API requests (runs before all API routes)
   app.use('/api', (req: Request, res: Response, next: Function) => {

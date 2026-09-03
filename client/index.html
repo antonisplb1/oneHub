@@ -27,6 +27,11 @@
             t.dataset.scanOriginalContent = t.getAttribute('content') || '';
             t.setAttribute('content', 'uniHub Scan');
           }
+        } else if (p.indexOf('/dashboard') === 0) {
+          var dashboardManifest = document.querySelector('link[rel="manifest"]');
+          if (dashboardManifest) {
+            dashboardManifest.setAttribute('href', '/api/manifest?start=' + encodeURIComponent(p));
+          }
         }
       })();
     </script>

@@ -1,0 +1,160 @@
+Replit prompt — Step 5 (revised): session lifetime, install target, and an in-app Install button
+
+Paste everything below the line into Replit as one message. This supersedes any earlier version of Step 5.
+
+VERIFIED FINDINGS — from the repo. Do not re-investigate.
+
+server/auth.ts — session config:
+
+js
+{
+  secret: sessionSecret || "merchant-hub-dev-only-secret",
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: app.get("env") === "production"
+  },
+  store: new PgStore({ pool, tableName: "sessions", createTableIfMissing: false })
+}
+
+rolling does not appear anywhere. No req.session.touch(). No reassignment of req.session.cookie after login. With resave: false and no rolling, express-session re-sends Set-Cookie only when the session is new or modified — so the expiry is frozen at login and every user is hard-logged-out exactly 7 days later, however often they use the app.
+
+client/src/components/AuthPage.tsx — proper <form onSubmit> with a real type="submit" button, but:
+
+jsx
+<Input id="login-email" type="email" ... required />
+<Input id="login-password" type="password" ... required />
+
+No name and no autoComplete on either field. iCloud Keychain needs those to save and to fill a password; Chrome's autofill guesses from type and copes without them. That is the whole reason iPhone users are asked for full credentials and Android users are not.
+
+client/src/lib/queryClient.ts — credentials: "include", staleTime: Infinity, refetchOnWindowFocus: false, getQueryFn({ on401: "throw" }).
+
+client/public/site.webmanifest — start_url is "/", so every install opens the marketing landing page regardless of where it was installed from.
+
+Not fixable, do not try: iOS gives a home-screen web app its own cookie storage, separate from Safari. The first launch after installing is always logged out. The goal is to make that one login painless and long-lived.
+
+FIX 1 — 30 days of inactivity, not 30 days from login (server/auth.ts)
+js
+cookie: {
+  maxAge: 30 * 24 * 60 * 60 * 1000,
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
+},
+rolling: true,
+rolling: true re-sends the cookie on every response, so the window slides forward with use. A merchant who scans daily is never logged out; one who disappears for 30 days is.
+connect-pg-simple implements touch, so the DB row's expiry extends too. Confirm disableTouch is not set.
+Keep resave: false and saveUninitialized: false. app.set('trust proxy', 1) already exists in server/index.ts — leave it.
+Keep the default cookie name. Renaming it would log every existing user out on deploy for no functional gain.
+
+rolling: true issues one store touch per request. Fine at current volume — do not add caching for it.
+
+FIX 2 — Password autofill (client/src/components/AuthPage.tsx)
+
+Login form:
+
+jsx
+<Input id="login-email" name="email" type="email"
+  autoComplete="username" inputMode="email"
+  autoCapitalize="none" autoCorrect="off" spellCheck={false} required />
+
+<Input id="login-password" name="password" type="password"
+  autoComplete="current-password" required />
+
+Signup form: autoComplete="email" on email, autoComplete="new-password" on password.
+
+Verify the shadcn Input wrapper spreads ...props onto the underlying <input>. If it does not, these attributes are silently dropped and the fix does nothing.
+
+Do not change submit handling, validation or layout.
+
+FIX 3 — Clean re-login when the session does expire
+On a 401 from any authenticated query or mutation, redirect to /auth?redirect=<current path + query> using the redirect mechanism already built in Step 2, instead of throwing.
+An installed app is suspended and resumed, not reloaded. Add a visibilitychange listener that invalidates only the current-user query when the document becomes visible. Leave staleTime: Infinity on everything else.
+
+Result: reopening after a long gap shows the login screen with Keychain-filled credentials, one tap, and back to the page they were on.
+
+FIX 4 — Install the page the user is on
+
+Add GET /api/manifest?start=<path>, responding with Content-Type: application/manifest+json.
+
+Path rule — deliberately simple:
+
+Accept the path only if it starts with /dashboard. Everything else falls back to /dashboard.
+Reject anything not starting with a single /, anything containing \, //, or a scheme.
+Strip the query string and hash. A merchant installing "Customers" wants the page, not the filter that happened to be applied.
+
+The install entry points all live inside /dashboard/*, so this rule gives the user the exact URL they are on in every real case, while structurally making it impossible to pin an icon to a one-time token URL like /reset-password/:token or /spin/:token.
+
+Manifest body:
+
+id: the validated path. Required — with a constant id, Chrome treats every variant as the same app and silently reuses the first install.
+start_url: the validated path.
+name / short_name from a map, defaulting to "uniHub" / "uniHub":
+path	name	short_name
+/dashboard	uniHub	uniHub
+/dashboard/loyalty	uniHub Loyalty	Loyalty
+/dashboard/spin-wheel	uniHub Spin Wheel	Spin Wheel
+/dashboard/customers	uniHub Customers	Customers
+/dashboard/analytics	uniHub Analytics	Analytics
+/dashboard/menu	uniHub Menu	Menu
+/dashboard/shifts	uniHub Shifts	Shifts
+/dashboard/team	uniHub Team	Team
+/dashboard/stores	uniHub Stores	Stores
+/dashboard/account	uniHub Account	Account
+scope: "/", display: "standalone", and the same three icons, theme_color and background_color as site.webmanifest.
+
+Wire it up on both paths, or it breaks on refresh:
+
+Extend the inline <head> script in client/index.html: for a path starting with /dashboard, point the manifest link at /api/manifest?start=<path> before React boots. Check the existing /scan and /dashboard/scanner branch first and leave it exactly as it is.
+Extend useScanManifest (or add a sibling hook) to do the same on client-side navigation, restoring /site.webmanifest on leaving the dashboard.
+
+Leave /scan and /dashboard/scanner on scan.webmanifest. That flow is deployed and working — do not fold it into the new endpoint.
+
+Leave site.webmanifest's start_url as /; it remains the manifest for the public landing page.
+
+FIX 5 — "Install as app" in the sidebar
+
+Merchants will not find the browser's ⋮ menu, and iPhone has no install prompt at all. Add a sidebar entry that does it for them.
+
+Reuse what already exists. Step 3 added an app-level beforeinstallprompt capture and an iOS instructions panel for the scanner install button. Extract both into one shared hook (e.g. useInstallApp()) and one shared instructions component, and have the scanner button and this new sidebar entry both use them. Do not create a second parallel implementation.
+
+Sidebar entry: label "Install as app", download icon, placed with the "Support" entry in a secondary group near the bottom. Hidden entirely when already running standalone (window.navigator.standalone || matchMedia('(display-mode: standalone)').matches).
+
+Behaviour by platform:
+
+A captured prompt is available (Chrome/Edge, Android and desktop): call prompt(), then clear the stored event.
+iOS Safari: open the instructions panel — "Tap Share → Add to Home Screen → turn on 'Open as Web App' → Add."
+macOS Safari: "File → Add to Dock."
+Anything else with no prompt (Firefox, Samsung Internet): "Open your browser menu and choose Install app / Add to Home screen."
+
+The manifest race — investigate and report before choosing an implementation.
+
+beforeinstallprompt fires after the manifest is evaluated. We now swap the manifest on client-side navigation, so a prompt captured on /dashboard may still refer to /dashboard after the user navigates to /dashboard/customers.
+
+Store the manifest href that was active when each event fired, alongside the event.
+Empirically test whether Chrome re-fires beforeinstallprompt after the manifest link changes. Report the answer.
+If it re-fires: always use the latest event, done.
+If it does not: when the stored href does not match the current one, set a sessionStorage flag and hard-reload the current URL — the head script then sets the correct manifest before Chrome evaluates it. After reload, the flag makes the install panel open automatically with an explicit "Install" button. Do not try to call prompt() automatically on load; Chrome requires user activation and it will fail.
+CONSTRAINTS
+
+No new npm packages. No changes to Stripe/billing, DB schema, the passport strategy, or login/signup business logic. Do not alter the scanner install flow. Show me the full diff before deploying.
+
+ACCEPTANCE TESTS
+
+Session
+
+Log in; the session cookie shows Max-Age ≈ 30 days, HttpOnly, SameSite=Lax, Secure in production.
+Make an authenticated request, re-inspect: expiry has moved forward. The sessions table row's expiry advanced too.
+Manually expire a session in the DB, then use the app → redirected to /auth?redirect=<page you were on> → after login you land back there.
+Existing logged-in users are not logged out by this deploy.
+
+Autofill 5. Real iPhone: log in → Safari offers to save the password → force-quit → reopen → Keychain offers the credentials → one tap logs in. 6. The email field does not auto-capitalise. 7. Signup offers a new password suggestion, not the saved one.
+
+Install target 8. Install from /dashboard/customers on Android → icon reads "Customers" → opens /dashboard/customers. 9. Install from /dashboard → icon "uniHub" → opens /dashboard. 10. Installing from two different dashboard pages yields two distinct icons. 11. /api/manifest?start=/spin/abc123, ?start=//evil.com, ?start=https://evil.com, ?start=/dashboard/customers?f=1#x → all return start_url of /dashboard or /dashboard/customers with query and hash stripped, never an external or token URL. 12. Hard-refresh on /dashboard/customers → Application → Manifest already shows "uniHub Customers" (head script wins the race). 13. /scan and /dashboard/scanner still show "uniHub Scan" / start_url /scan; the scanner install still works end to end. 14. / still shows "uniHub" / start_url /.
+
+Install button 15. Android Chrome, on /dashboard/customers: sidebar → Install as app → native dialog names it "Customers". 16. iPhone Safari: the entry opens the instructions panel with the exact wording above; the panel dismisses cleanly. 17. Desktop Chrome: the entry fires the native install dialog. 18. Running as an installed app: the sidebar entry is absent. 19. The scanner page's own install button still works and now shares the same hook and panel. 20. Report the result of the beforeinstallprompt re-fire test and which branch you implemented.
+
+Regression 21. npm run build, npx tsc --noEmit, no new console errors. Login, signup, password reset, email verification and subuser login all still work.

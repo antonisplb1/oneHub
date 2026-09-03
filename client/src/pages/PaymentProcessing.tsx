@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { queryClient } from "@/lib/queryClient";
+import { CURRENT_USER_QUERY_KEY, queryClient, redirectExpiredSession } from "@/lib/queryClient";
 import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 import { Link } from "wouter";
 
@@ -38,13 +38,14 @@ export default function PaymentProcessing() {
           credentials: "include",
         });
 
+        redirectExpiredSession(response);
         if (!response.ok) throw new Error("Failed to verify payment");
 
         const data = await response.json();
 
         if (data.success && data.subscriptionStatus === "active") {
           setStatus("success");
-          await queryClient.invalidateQueries({ queryKey: ["/api", "auth", "me"] });
+          await queryClient.invalidateQueries({ queryKey: CURRENT_USER_QUERY_KEY });
           setTimeout(() => setLocation("/dashboard"), 1500);
         } else {
           attempts++;

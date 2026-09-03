@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Plus, Edit, Trash2, UtensilsCrossed, Copy, Download, Upload, X, GripVertical } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, redirectExpiredSession } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -761,6 +761,10 @@ export default function MenuBuilder() {
                               method: "POST",
                               credentials: "include",
                             });
+                            redirectExpiredSession(response);
+                            if (!response.ok) {
+                              throw new Error("Failed to prepare image upload");
+                            }
                             const data = await response.json();
                             return {
                               method: "PUT" as const,

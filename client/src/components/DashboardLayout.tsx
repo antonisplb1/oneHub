@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, CURRENT_USER_QUERY_KEY } from "@/lib/queryClient";
 import {
   SidebarProvider,
   Sidebar,
@@ -28,6 +28,7 @@ import {
   CalendarClock,
   Clock,
   MessageCircle,
+  Download,
   ArrowRight,
   Loader2,
   Store,
@@ -44,6 +45,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useStore } from "@/contexts/StoreContext";
 import SupportChatWidget from "@/components/SupportChatWidget";
+import { useInstallApp } from "@/hooks/useInstallApp";
 import logoImage from "@assets/unihub-mark-512_1783671585777.png";
 
 const menuItems = [
@@ -76,7 +78,7 @@ function StoreSwitcher() {
   const { stores, activeStore, setActiveStoreId } = useStore();
   const { toast } = useToast();
   const { data: userInfo } = useQuery<{ isSubuser?: boolean; permissions?: string[] }>({
-    queryKey: ['/api/auth/me'],
+    queryKey: CURRENT_USER_QUERY_KEY,
   });
   const isOwner = !userInfo?.isSubuser;
 
@@ -133,10 +135,11 @@ function SidebarMenuItems() {
   const [location] = useLocation();
   const { activeStore } = useStore();
   const { setOpenMobile, isMobile } = useSidebar();
+  const { isStandalone, requestInstall } = useInstallApp();
 
   // Fetch user info with permissions
   const { data: userInfo } = useQuery<{ isSubuser?: boolean; permissions?: string[] }>({
-    queryKey: ['/api/auth/me'],
+    queryKey: CURRENT_USER_QUERY_KEY,
   });
 
   const isOwner = !userInfo?.isSubuser;
@@ -241,6 +244,20 @@ function SidebarMenuItems() {
       <SidebarGroup>
         <SidebarGroupContent>
           <SidebarMenu>
+            {!isStandalone && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => {
+                    void requestInstall();
+                    handleLinkClick();
+                  }}
+                  data-testid="button-install-app"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Install as app</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={handleSupportClick}

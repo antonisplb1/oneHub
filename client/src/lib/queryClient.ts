@@ -1,7 +1,27 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+export const CURRENT_USER_QUERY_KEY = ["/api", "auth", "me"] as const;
+
+export function redirectExpiredSession(res: Response) {
+  if (res.status !== 401 || typeof window === "undefined") return;
+
+  const path = window.location.pathname;
+  const isAuthenticatedPage =
+    path === "/scan" ||
+    path.startsWith("/dashboard") ||
+    path === "/select-products" ||
+    path === "/subscription-required" ||
+    path === "/payment-processing";
+
+  if (!isAuthenticatedPage) return;
+
+  const destination = `${path}${window.location.search}`;
+  window.location.assign(`/auth?redirect=${encodeURIComponent(destination)}`);
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
+    redirectExpiredSession(res);
     let errorMessage = res.statusText;
     try {
       const contentType = res.headers.get("content-type");
